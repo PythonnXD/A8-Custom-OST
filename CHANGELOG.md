@@ -15,7 +15,6 @@
 ### Added
 - Added independent Fade In and Fade Out On/Off switches in the Outro Editor; switching a fade off keeps its entered duration for later and encodes with `0.0s`.
 - Added an audio quality selector (`High`, `Ultra`, `Standard`, and `Compact`) persisted in `prefs.json`, along with a CLI `--quality` option.
-- Expanded game path resolution (`resolve_game_paths`) to detect Steam libraries, `XboxGames`, `WindowsApps`, `Content/Data`, and loose Asphalt 8 folders across versions.
 
 ### Changed
 - Raised the default Musepack export quality from `32 kHz` (`--radio`) to `44.1 kHz` (`--insane`) with 64-tap resampling and Shibata dither, and raised audio preview WAVs to `44.1 kHz`.
