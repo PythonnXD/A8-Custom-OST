@@ -146,7 +146,7 @@ def inspect_update_manifest(
     if not latest:
         raise ValueError("Update manifest missing 'version' or 'tag_name'.")
 
-    download_url = str(data.get('download_url') or data.get('url') or '').strip()
+    download_url = str(data.get('download_url') or '').strip()
     if not download_url and isinstance(data.get('assets'), list):
         exe_asset = None
         zip_asset = None
@@ -162,6 +162,8 @@ def inspect_update_manifest(
             elif aname.endswith('.zip') and not zip_asset:
                 zip_asset = burl
         download_url = exe_asset or zip_asset or ''
+    if not download_url and 'assets' not in data:
+        download_url = str(data.get('url') or '').strip()
 
     if download_url and not _is_allowed_update_url(download_url):
         raise ValueError("Download URL inside manifest must use https://.")
