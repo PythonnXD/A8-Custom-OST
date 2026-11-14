@@ -1,6 +1,6 @@
 # Asphalt 8: Airborne Custom OST Patcher
 
-Desktop app (`v1.3.0`) and engine for managing custom soundtrack mods in Asphalt 8: Airborne on Windows 10 and 11. Built on PyWebView (Edge WebView2) and Python.
+Desktop app and engine for managing custom soundtrack mods in Asphalt 8: Airborne on Windows 10 and 11. Built on PyWebView (Edge WebView2) and Python.
 
 ## Features
 
@@ -35,9 +35,3 @@ python app/desktop_app.py
 ```powershell
 pyinstaller --noconfirm --onefile --windowed --name A8_Custom_OST_Patcher --paths . --add-data "app/ui;app/ui" --hidden-import webview --hidden-import clr --hidden-import pythonnet --hidden-import engine.detector --hidden-import engine.audio_converter --hidden-import engine.soundpack_manager --hidden-import engine.texts_manager --hidden-import engine.library_manager --hidden-import engine.patcher app/desktop_app.py
 ```
-
-## Updates and releases
-
-Standalone builds check `https://api.github.com/repos/PythonnXD/A8-Custom-OST/releases/latest` when you open App Updates and apply new releases directly to the extracted app folder.
-
-Pushing a version tag such as `v1.3.0` runs `.github/workflows/release.yml` on `windows-latest`. The workflow builds and smoke-tests `A8_Custom_OST_Patcher.exe`, packages it with `tools/` and `README.md` into `A8_Custom_OST_Patcher.zip`, and attaches the archive to the GitHub Release using the matching notes from `CHANGELOG.md`.
