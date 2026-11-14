@@ -1,0 +1,74 @@
+name: Build and Publish Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag name (e.g. v1.2.0)'
+        required: true
+        default: 'v1.2.0'
+
+permissions:
+  contents: write
+
+jobs:
+  release-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pywebview pyinstaller
+
+      - name: Build standalone A8_Custom_OST_Patcher.exe
+        shell: pwsh
+        run: |
+          pyinstaller --noconfirm --onefile --windowed --name A8_Custom_OST_Patcher `
+            --paths . `
+            --add-data "app/ui;app/ui" `
+            --hidden-import webview `
+            --hidden-import clr `
+            --hidden-import pythonnet `
+            --hidden-import engine.detector `
+            --hidden-import engine.audio_converter `
+            --hidden-import engine.soundpack_manager `
+            --hidden-import engine.texts_manager `
+            --hidden-import engine.library_manager `
+            --hidden-import engine.patcher `
+            app/desktop_app.py
+
+      - name: Smoke-test and package portable archive
+        shell: pwsh
+        run: |
+          $stage = "release_pkg/A8_Custom_OST_Patcher"
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item "dist/A8_Custom_OST_Patcher.exe" "$stage/A8_Custom_OST_Patcher.exe"
+          Copy-Item "tools" "$stage/tools" -Recurse
+          Copy-Item "README.md" "$stage/README.md"
+          $p = Start-Process -FilePath "$stage/A8_Custom_OST_Patcher.exe" -ArgumentList "--smoke-test" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Smoke test failed with exit code $($p.ExitCode)" }
+          Compress-Archive -Path "$stage/*" -DestinationPath "dist/A8_Custom_OST_Patcher-win64.zip" -Force
+
+      - name: Publish GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = if ("${{ github.event_name }}" -eq "workflow_dispatch") { "${{ inputs.tag }}" } else { "${{ github.ref_name }}" }
+          gh release view $tag *>$null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag "dist/A8_Custom_OST_Patcher.exe" "dist/A8_Custom_OST_Patcher-win64.zip" --clobber
+          } else {
+            gh release create $tag "dist/A8_Custom_OST_Patcher.exe" "dist/A8_Custom_OST_Patcher-win64.zip" --title "Asphalt 8 Custom OST Patcher $tag" --generate-notes
+          }

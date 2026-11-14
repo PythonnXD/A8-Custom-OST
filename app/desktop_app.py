@@ -21,7 +21,17 @@ from urllib.parse import urlparse
 from typing import Any, Dict, List, Optional
 
 APP_VERSION = '1.2.0'
-DEFAULT_UPDATE_MANIFEST_URL = 'https://api.github.com/repos/PythonnXD/A8-Custom-OST-Releases/releases/latest'
+DEFAULT_UPDATE_MANIFEST_URL = 'https://api.github.com/repos/PythonnXD/A8-Custom-OST/releases/latest'
+_LEGACY_UPDATE_URLS = {
+    '',
+    'https://api.github.com/repos/PythonnXD/A8-Custom-OST-Releases/releases/latest',
+}
+
+
+def _resolve_update_manifest_url(prefs: Optional[Dict[str, Any]] = None) -> str:
+    p = prefs if prefs is not None else load_prefs()
+    saved = str(p.get('update_manifest_url') or '').strip()
+    return DEFAULT_UPDATE_MANIFEST_URL if saved in _LEGACY_UPDATE_URLS else saved
 
 # Ensure A8_Custom_OST_Patcher root is importable both in source and frozen modes
 if getattr(sys, 'frozen', False):
@@ -633,7 +643,7 @@ class PatcherDesktopAPI:
         status.update({
             'app_version': APP_VERSION,
             'is_frozen': bool(getattr(sys, 'frozen', False)),
-            'update_manifest_url': prefs.get('update_manifest_url') or DEFAULT_UPDATE_MANIFEST_URL,
+            'update_manifest_url': _resolve_update_manifest_url(prefs),
             'theme': prefs.get('theme', 'dark'),
             'last_music_dir': prefs.get('last_music_dir', ''),
             'backups_count': len(backups),
@@ -1144,11 +1154,11 @@ class PatcherDesktopAPI:
             'ok': True,
             'app_version': APP_VERSION,
             'is_frozen': bool(getattr(sys, 'frozen', False)),
-            'update_manifest_url': prefs.get('update_manifest_url') or DEFAULT_UPDATE_MANIFEST_URL,
+            'update_manifest_url': _resolve_update_manifest_url(prefs),
         }
 
     def check_for_updates(self, manifest_url: str = '') -> Dict[str, Any]:
-        url = str(manifest_url or '').strip() or load_prefs().get('update_manifest_url') or DEFAULT_UPDATE_MANIFEST_URL
+        url = str(manifest_url or '').strip() or _resolve_update_manifest_url()
         if not url:
             return {'ok': False, 'error': 'Enter a release JSON manifest or GitHub Releases API URL.'}
         try:
