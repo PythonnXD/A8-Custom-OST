@@ -31,4 +31,4 @@ pyinstaller --noconfirm --onefile --windowed --name A8_Custom_OST_Patcher --path
 
 ## In-App Updates & Automated Releases
 - **Default update feed**: `https://api.github.com/repos/PythonnXD/A8-Custom-OST/releases/latest` (overrideable in the Updates modal with any HTTPS `manifest.json` or GitHub Releases URL).
-- **Automated release publishing**: Pushing a version tag (`v1.2.0`, `v1.2.1`, etc.) triggers `.github/workflows/release.yml` on `windows-latest` to build `A8_Custom_OST_Patcher.exe` + `A8_Custom_OST_Patcher-win64.zip`, verify `--smoke-test`, and publish the GitHub Release assets.
+- **Automated release publishing**: Pushing a version tag (`v1.2.0`, `v1.2.1`, etc.) triggers `.github/workflows/release.yml` on `windows-latest` to build and smoke-test `A8_Custom_OST_Patcher.exe`, package `A8_Custom_OST_Patcher-win64.zip`, and publish the `.zip` archive as the GitHub Release asset.
