@@ -1,6 +1,6 @@
 # Asphalt 8: Airborne — Custom OST Patcher
 
-Desktop application (`v1.2.0`) and engine for installing, previewing, trimming Outros, and managing custom soundtrack mods in Asphalt 8: Airborne (Windows 10/11).
+Desktop application (`v1.3.0`) and engine for installing, previewing, trimming Outros, and managing custom soundtrack mods in Asphalt 8: Airborne (Windows 10/11).
 
 ## Features
 - **Desktop GUI & Offline Converter**: PyWebView (Edge WebView2) UI backed by bundled `tools/ffmpeg.exe` and `tools/mpcenc.exe` (32 kHz Musepack SV8, -14 LUFS loudness normalization).
@@ -31,4 +31,4 @@ pyinstaller --noconfirm --onefile --windowed --name A8_Custom_OST_Patcher --path
 
 ## In-App Updates & Automated Releases
 - **Default update feed**: `https://api.github.com/repos/PythonnXD/A8-Custom-OST/releases/latest` (overrideable in the Updates modal with any HTTPS `manifest.json` or GitHub Releases URL).
-- **Automated release publishing**: Pushing a version tag (`v1.2.0`, `v1.2.1`, etc.) triggers `.github/workflows/release.yml` on `windows-latest` to build and smoke-test `A8_Custom_OST_Patcher.exe`, package `A8_Custom_OST_Patcher-win64.zip`, and publish the `.zip` archive as the GitHub Release asset.
+- **Automated release publishing**: Pushing a version tag (`v1.3.0`, `v1.3.1`, etc.) triggers `.github/workflows/release.yml` on `windows-latest` to build and smoke-test `A8_Custom_OST_Patcher.exe`, package `A8_Custom_OST_Patcher-win64.zip`, and publish the `.zip` archive as the GitHub Release asset.
