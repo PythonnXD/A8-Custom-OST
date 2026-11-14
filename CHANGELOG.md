@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.3.2
+
+### Fixed
+- Added support for extracted Android Asphalt 8 directories (`soundpack/`, `music/`, and `text/` at root or inside `files/` / `assets/` with no `Data/` folder), plus `soundpack.xml` fallback and case-insensitive folder lookup.
+- Replaced leftover hardcoded `Data/` joins across `detector.py`, `library_manager.py`, `patcher.py`, and `desktop_app.py` with `resolve_game_paths` so scanning, installing, backups, profiles, and health checks work on Android files.
+- Guarded missing `text/` directories during backups and updates, and stopped flagging valid non-`.mpc` stock audio references inside health checks.
+
+### Changed
+- Updated folder validation errors, empty-soundpack messages, and the sidebar subtitle (`Custom OST Patcher · Musepack SV8`) to reflect current quality presets and Windows/Android folder layouts.
+
 ## v1.3.1
 
 ### Added

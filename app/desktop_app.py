@@ -20,7 +20,7 @@ from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse
 from typing import Any, Dict, List, Optional
 
-APP_VERSION = '1.3.1'
+APP_VERSION = '1.3.2'
 DEFAULT_UPDATE_MANIFEST_URL = 'https://api.github.com/repos/PythonnXD/A8-Custom-OST/releases/latest'
 _LEGACY_UPDATE_URLS = {
     '',
@@ -709,8 +709,9 @@ class PatcherDesktopAPI:
         existing_count = 0
         if valid:
             try:
+                paths = resolve_game_paths(game_dir)
                 existing_count = len([
-                    x for x in get_existing_track_ids(os.path.join(game_dir, 'Data', 'soundpack', 'soundpack'))
+                    x for x in get_existing_track_ids(paths['soundpack_path'])
                     if not x.startswith('m_outro_')
                 ])
             except Exception:
@@ -791,7 +792,7 @@ class PatcherDesktopAPI:
         if not is_valid_game_dir(clean):
             return {
                 'ok': False,
-                'error': 'Selected folder is not a valid Asphalt 8 installation (missing Data/soundpack/soundpack and Data/music).',
+                'error': 'Selected folder is not a valid Asphalt 8 installation (missing Data/soundpack/soundpack + Data/music, or direct Android soundpack/soundpack + music).',
                 'game_dir': clean,
             }
         clean = resolve_game_paths(clean)['base_dir']
@@ -929,7 +930,7 @@ class PatcherDesktopAPI:
         existing_ids = set()
         if game_dir and is_valid_game_dir(game_dir):
             try:
-                existing_ids = get_existing_track_ids(os.path.join(game_dir, 'Data', 'soundpack', 'soundpack'))
+                existing_ids = get_existing_track_ids(resolve_game_paths(game_dir)['soundpack_path'])
             except Exception:
                 existing_ids = set()
 
@@ -1070,7 +1071,7 @@ class PatcherDesktopAPI:
         if not game_dir or not is_valid_game_dir(game_dir):
             return {}
         try:
-            existing = get_existing_track_ids(os.path.join(game_dir, 'Data', 'soundpack', 'soundpack'))
+            existing = get_existing_track_ids(resolve_game_paths(game_dir)['soundpack_path'])
         except Exception:
             return {}
         return {bid: (bid in existing) for bid in base_ids}
@@ -1399,9 +1400,10 @@ class PatcherDesktopAPI:
                 })
                 backup_dir = create_backup(game_dir, reason='install_ost')
 
-                soundpack_path = os.path.join(game_dir, 'Data', 'soundpack', 'soundpack')
-                texts_dir = os.path.join(game_dir, 'Data', 'text')
-                music_dir = os.path.join(game_dir, 'Data', 'music')
+                paths = resolve_game_paths(game_dir)
+                soundpack_path = paths['soundpack_path']
+                texts_dir = paths['text_dir']
+                music_dir = paths['music_dir']
                 os.makedirs(music_dir, exist_ok=True)
                 mpcenc_path = find_tool('mpcenc')
                 existing_ids = get_existing_track_ids(soundpack_path)

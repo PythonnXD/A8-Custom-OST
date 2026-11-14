@@ -12,7 +12,7 @@ parent_dir = os.path.dirname(current_dir)
 if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
-from engine.detector import find_asphalt8_path, is_valid_game_dir, ensure_write_permissions
+from engine.detector import find_asphalt8_path, is_valid_game_dir, ensure_write_permissions, resolve_game_paths
 from engine.audio_converter import (
     scan_input_folder,
     convert_track,
@@ -134,7 +134,7 @@ def run_patcher(
     if not resolved_game_dir or not is_valid_game_dir(resolved_game_dir):
         raise FileNotFoundError(
             f"Could not locate a valid Asphalt 8 installation.\n"
-            f"Expected 'Data/soundpack/soundpack' inside the game folder.\n"
+            f"Expected 'Data/soundpack/soundpack' or direct Android 'soundpack/soundpack' inside the game folder.\n"
             f"Please run the tool with --game-dir <path> or verify your installation."
         )
 
@@ -170,7 +170,8 @@ def run_patcher(
     print(f"[4/6] Confirmed {len(selected_tracks)} track(s) for installation.")
 
     # 5. Check Existing Tracks in Soundpack AFTER Track Selection
-    soundpack_src = os.path.join(resolved_game_dir, 'Data', 'soundpack', 'soundpack')
+    game_paths = resolve_game_paths(resolved_game_dir)
+    soundpack_src = game_paths['soundpack_path']
     existing_labels = get_existing_track_ids(soundpack_src)
     conflicts = [t for t in selected_tracks if t['base_id'] in existing_labels]
 
@@ -208,17 +209,18 @@ def run_patcher(
     
     shutil.copy2(soundpack_src, os.path.join(backup_dir, 'soundpack'))
     
-    texts_dir = os.path.join(resolved_game_dir, 'Data', 'text')
+    texts_dir = game_paths['text_dir']
     backup_text_dir = os.path.join(backup_dir, 'text')
     os.makedirs(backup_text_dir, exist_ok=True)
-    for tf in glob.glob(os.path.join(texts_dir, '*.texts')):
-        shutil.copy2(tf, os.path.join(backup_text_dir, os.path.basename(tf)))
-        
+    if os.path.isdir(texts_dir):
+        for tf in glob.glob(os.path.join(texts_dir, '*.texts')):
+            shutil.copy2(tf, os.path.join(backup_text_dir, os.path.basename(tf)))
+
     print(f"[5/6] Backed up original game files to:\n      {backup_dir}")
 
     # 7. Convert & Deploy
     print(f"[6/6] Converting and deploying {len(selected_tracks)} track(s)...")
-    music_dst_dir = os.path.join(resolved_game_dir, 'Data', 'music')
+    music_dst_dir = game_paths['music_dir']
     os.makedirs(music_dst_dir, exist_ok=True)
 
     resolved_quality, _ = resolve_quality_preset(quality_preset)

@@ -22,30 +22,65 @@ def _resolve_child_ci(parent_dir: str, target_name: str) -> str:
 
 
 def resolve_game_paths(game_dir: str):
-    """Resolves Data/soundpack/music/text paths across old, UWP, Xbox, Steam, and case-varied A8 builds."""
+    """Resolves soundpack/music/text paths across Windows (Data, Content/Data) and Android (direct, files/, assets/) layouts."""
     abs_dir = os.path.abspath(game_dir) if game_dir else ''
-    base_dir = abs_dir
-    data_dir = _resolve_child_ci(base_dir, 'Data') if base_dir else ''
-    if base_dir and not os.path.isdir(data_dir):
-        content_dir = _resolve_child_ci(base_dir, 'Content')
-        if os.path.isdir(content_dir):
-            content_data = _resolve_child_ci(content_dir, 'Data')
-            if os.path.isdir(content_data):
-                base_dir = content_dir
-                data_dir = content_data
-    soundpack_dir = _resolve_child_ci(data_dir, 'soundpack') if data_dir else ''
-    soundpack_path = _resolve_child_ci(soundpack_dir, 'soundpack') if soundpack_dir else ''
-    music_dir = _resolve_child_ci(data_dir, 'music') if data_dir else ''
-    text_dir = _resolve_child_ci(data_dir, 'text') if data_dir else ''
-    return {
-        'root': abs_dir,
-        'base_dir': base_dir,
-        'data_dir': data_dir,
-        'soundpack_dir': soundpack_dir,
-        'soundpack_path': soundpack_path,
-        'music_dir': music_dir,
-        'text_dir': text_dir,
-    }
+
+    def _soundpack_file(sp_dir: str) -> str:
+        direct = _resolve_child_ci(sp_dir, 'soundpack')
+        if os.path.isfile(direct):
+            return direct
+        xml_alt = _resolve_child_ci(sp_dir, 'soundpack.xml')
+        if os.path.isfile(xml_alt):
+            return xml_alt
+        return direct
+
+    def _build(base: str, data: str) -> Dict[str, str]:
+        sp_dir = _resolve_child_ci(data, 'soundpack') if data else ''
+        return {
+            'root': abs_dir,
+            'base_dir': base,
+            'data_dir': data,
+            'soundpack_dir': sp_dir,
+            'soundpack_path': _soundpack_file(sp_dir) if sp_dir else '',
+            'music_dir': _resolve_child_ci(data, 'music') if data else '',
+            'text_dir': _resolve_child_ci(data, 'text') if data else '',
+        }
+
+    if not abs_dir:
+        return _build('', '')
+
+    candidates: List[Tuple[str, str]] = []
+    # 1. Standard Windows root (<game>/Data)
+    candidates.append((abs_dir, _resolve_child_ci(abs_dir, 'Data')))
+
+    # 2. Microsoft Store / Xbox root (<game>/Content/Data)
+    content_dir = _resolve_child_ci(abs_dir, 'Content')
+    if os.path.isdir(content_dir):
+        candidates.append((content_dir, _resolve_child_ci(content_dir, 'Data')))
+
+    # 3. Direct data root (Android unpacked OBB / files/, or user selected Data/ folder directly)
+    direct_base = (
+        os.path.dirname(abs_dir)
+        if os.path.basename(abs_dir).lower() == 'data' and os.path.isdir(os.path.dirname(abs_dir))
+        else abs_dir
+    )
+    candidates.append((direct_base, abs_dir))
+
+    # 4. Android package wrapper (<pkg>/files/...) and APK wrapper (<apk>/assets/...)
+    for sub in ('files', 'assets'):
+        sub_dir = _resolve_child_ci(abs_dir, sub)
+        if os.path.isdir(sub_dir):
+            candidates.append((sub_dir, _resolve_child_ci(sub_dir, 'Data')))
+            candidates.append((sub_dir, sub_dir))
+
+    for base_cand, data_cand in candidates:
+        if not os.path.isdir(data_cand):
+            continue
+        paths = _build(base_cand, data_cand)
+        if os.path.isfile(paths['soundpack_path']) and os.path.isdir(paths['music_dir']):
+            return paths
+
+    return _build(abs_dir, _resolve_child_ci(abs_dir, 'Data'))
 
 
 def is_valid_game_dir(path: str) -> bool:
@@ -279,16 +314,17 @@ def _get_current_user_sid() -> Optional[str]:
 
 def _unlock_targets(game_dir: str) -> Tuple[List[str], List[str]]:
     abs_dir = os.path.abspath(game_dir)
-    data_dir = os.path.join(abs_dir, 'Data')
+    paths = resolve_game_paths(abs_dir)
+    data_dir = paths['data_dir']
     root_dirs = [abs_dir]
-    if os.path.isdir(data_dir):
+    if data_dir and os.path.isdir(data_dir) and os.path.normcase(data_dir) != os.path.normcase(abs_dir):
         root_dirs.append(data_dir)
     mod_candidates = [
-        os.path.join(data_dir, 'soundpack'),
-        os.path.join(data_dir, 'music'),
-        os.path.join(data_dir, 'text'),
+        paths['soundpack_dir'],
+        paths['music_dir'],
+        paths['text_dir'],
     ]
-    mod_dirs = [d for d in mod_candidates if os.path.isdir(d)]
+    mod_dirs = [d for d in mod_candidates if d and os.path.isdir(d)]
     return root_dirs, mod_dirs
 
 
@@ -311,13 +347,14 @@ def is_game_dir_writable(target_dir: str) -> Tuple[bool, str]:
             return False, f"Cannot write in {d}: {e}"
 
     if mod_dirs:
+        paths = resolve_game_paths(target_dir)
         critical_files: List[str] = []
-        sp_file = os.path.join(target_dir, 'Data', 'soundpack', 'soundpack')
-        if os.path.isfile(sp_file):
+        sp_file = paths['soundpack_path']
+        if sp_file and os.path.isfile(sp_file):
             critical_files.append(sp_file)
-        text_dir = os.path.join(target_dir, 'Data', 'text')
-        if os.path.isdir(text_dir):
-            en_texts = os.path.join(text_dir, 'en.texts')
+        text_dir = paths['text_dir']
+        if text_dir and os.path.isdir(text_dir):
+            en_texts = _resolve_child_ci(text_dir, 'en.texts')
             if os.path.isfile(en_texts):
                 critical_files.append(en_texts)
             else:
@@ -577,7 +614,7 @@ def clone_game_to_loose_folder(source_dir: str, dest_dir: str) -> Dict[str, Any]
         if os.listdir(dst_abs):
             return {'ok': False, 'error': f'Destination folder is not empty: {dst_abs}'}
 
-    sp_src = os.path.join(src_abs, 'Data', 'soundpack', 'soundpack')
+    sp_src = resolve_game_paths(src_abs)['soundpack_path']
     try:
         with open(sp_src, 'rb') as fp:
             fp.read(16)

@@ -17,6 +17,7 @@ from engine.audio_converter import (
     build_ffmpeg_audio_filter_and_trim,
     DEFAULT_QUALITY_PRESET,
 )
+from engine.detector import resolve_game_paths
 from engine.soundpack_manager import CATEGORY_EVENT_MAP
 from engine.texts_manager import read_texts, write_texts, add_song_titles
 
@@ -79,9 +80,10 @@ def _backup_roots_for_game(game_dir: Optional[str]) -> List[str]:
 
 
 def create_backup(game_dir: str, reason: str = 'patch') -> str:
-    """Backs up Data/soundpack/soundpack and Data/text/*.texts before mutating game files."""
-    soundpack_path = os.path.join(game_dir, 'Data', 'soundpack', 'soundpack')
-    texts_dir = os.path.join(game_dir, 'Data', 'text')
+    """Backs up soundpack and text/*.texts before mutating game files."""
+    paths = resolve_game_paths(game_dir)
+    soundpack_path = paths['soundpack_path']
+    texts_dir = paths['text_dir']
     ts = datetime.now().strftime('%Y%m%d_%H%M%S_%f')[:19]
 
     last_err: Optional[Exception] = None
@@ -112,8 +114,9 @@ def create_backup(game_dir: str, reason: str = 'patch') -> str:
 
 
 def list_installed_tracks(game_dir: str) -> List[Dict[str, Any]]:
-    """Lists all music tracks registered in Data/soundpack/soundpack paired with localization strings."""
-    soundpack_path = os.path.join(game_dir, 'Data', 'soundpack', 'soundpack')
+    """Lists all music tracks registered in soundpack paired with localization strings."""
+    paths = resolve_game_paths(game_dir)
+    soundpack_path = paths['soundpack_path']
     if not os.path.isfile(soundpack_path):
         raise FileNotFoundError(f"soundpack not found at: {soundpack_path}")
 
@@ -149,10 +152,10 @@ def list_installed_tracks(game_dir: str) -> List[Dict[str, Any]]:
                 full_soundtrack_ids.update(ids)
 
     # Load display names from en.texts (or first *.texts file found)
-    texts_dir = os.path.join(game_dir, 'Data', 'text')
+    texts_dir = paths['text_dir']
     song_strings: Dict[str, str] = {}
-    en_texts = os.path.join(texts_dir, 'en.texts')
-    texts_files = [en_texts] if os.path.isfile(en_texts) else sorted(glob.glob(os.path.join(texts_dir, '*.texts')))
+    en_texts = os.path.join(texts_dir, 'en.texts') if texts_dir else ''
+    texts_files = [en_texts] if (en_texts and os.path.isfile(en_texts)) else (sorted(glob.glob(os.path.join(texts_dir, '*.texts'))) if texts_dir and os.path.isdir(texts_dir) else [])
     if texts_files:
         try:
             for k, v in read_texts(texts_files[0]):
@@ -162,7 +165,7 @@ def list_installed_tracks(game_dir: str) -> List[Dict[str, Any]]:
         except Exception:
             pass
 
-    music_dir = os.path.join(game_dir, 'Data', 'music')
+    music_dir = paths['music_dir']
     tracks: List[Dict[str, Any]] = []
     for label, attrs in sound_map.items():
         if label.startswith('m_outro_'):
@@ -217,8 +220,9 @@ def update_installed_tracks_metadata(game_dir: str, updates: List[Dict[str, str]
     if not updates:
         return {'backup_dir': None, 'texts_updated': 0, 'tracks_updated': 0, 'stations_updated': 0}
 
-    texts_dir = os.path.join(game_dir, 'Data', 'text')
-    if not os.path.isdir(texts_dir):
+    paths = resolve_game_paths(game_dir)
+    texts_dir = paths['text_dir']
+    if not texts_dir or not os.path.isdir(texts_dir):
         raise FileNotFoundError(f"Texts directory not found: {texts_dir}")
 
     backup_dir = create_backup(game_dir, reason='edit_metadata')
@@ -246,8 +250,8 @@ def update_installed_tracks_metadata(game_dir: str, updates: List[Dict[str, str]
 
     stations_updated = 0
     if station_targets:
-        soundpack_path = os.path.join(game_dir, 'Data', 'soundpack', 'soundpack')
-        if os.path.isfile(soundpack_path):
+        soundpack_path = paths['soundpack_path']
+        if soundpack_path and os.path.isfile(soundpack_path):
             tree = ET.parse(soundpack_path)
             root = tree.getroot()
             sounds_elem = root.find('sounds')
@@ -309,10 +313,11 @@ def remove_installed_tracks(game_dir: str, base_ids: List[str], delete_files: bo
     if not base_ids:
         return {'backup_dir': None, 'removed_tracks': 0, 'texts_updated': 0, 'files_deleted': 0}
 
-    soundpack_path = os.path.join(game_dir, 'Data', 'soundpack', 'soundpack')
-    texts_dir = os.path.join(game_dir, 'Data', 'text')
-    music_dir = os.path.join(game_dir, 'Data', 'music')
-    if not os.path.isfile(soundpack_path):
+    paths = resolve_game_paths(game_dir)
+    soundpack_path = paths['soundpack_path']
+    texts_dir = paths['text_dir']
+    music_dir = paths['music_dir']
+    if not soundpack_path or not os.path.isfile(soundpack_path):
         raise FileNotFoundError(f"soundpack not found at: {soundpack_path}")
 
     backup_dir = create_backup(game_dir, reason='remove_tracks')
@@ -439,10 +444,11 @@ def restore_backup(game_dir: str, backup_dir: str) -> Dict[str, Any]:
     if not os.path.isdir(backup_dir):
         raise FileNotFoundError(f"Backup directory does not exist: {backup_dir}")
 
+    paths = resolve_game_paths(game_dir)
     bak_soundpack = os.path.join(backup_dir, 'soundpack')
     bak_texts_dir = os.path.join(backup_dir, 'text')
-    dst_soundpack = os.path.join(game_dir, 'Data', 'soundpack', 'soundpack')
-    dst_texts_dir = os.path.join(game_dir, 'Data', 'text')
+    dst_soundpack = paths['soundpack_path']
+    dst_texts_dir = paths['text_dir']
 
     restored_soundpack = False
     if os.path.isfile(bak_soundpack):
@@ -575,9 +581,10 @@ def save_track_outro(
     if not src_path or not os.path.isfile(src_path):
         raise FileNotFoundError(f"Outro source file not found: {src_path}")
 
-    soundpack_path = os.path.join(game_dir, 'Data', 'soundpack', 'soundpack')
-    music_dir = os.path.join(game_dir, 'Data', 'music')
-    if not os.path.isfile(soundpack_path):
+    paths = resolve_game_paths(game_dir)
+    soundpack_path = paths['soundpack_path']
+    music_dir = paths['music_dir']
+    if not soundpack_path or not os.path.isfile(soundpack_path):
         raise FileNotFoundError(f"soundpack not found at: {soundpack_path}")
 
     tree = ET.parse(soundpack_path)
@@ -657,9 +664,10 @@ def remove_track_outro(game_dir: str, base_id: str, delete_file: bool = False) -
     if not base_id:
         return {'backup_dir': None, 'removed': False, 'files_deleted': 0}
 
-    soundpack_path = os.path.join(game_dir, 'Data', 'soundpack', 'soundpack')
-    music_dir = os.path.join(game_dir, 'Data', 'music')
-    if not os.path.isfile(soundpack_path):
+    paths = resolve_game_paths(game_dir)
+    soundpack_path = paths['soundpack_path']
+    music_dir = paths['music_dir']
+    if not soundpack_path or not os.path.isfile(soundpack_path):
         raise FileNotFoundError(f"soundpack not found at: {soundpack_path}")
 
     backup_dir = create_backup(game_dir, reason='remove_outro')
@@ -710,23 +718,28 @@ def remove_track_outro(game_dir: str, base_id: str, delete_file: bool = False) -
 
 
 def audit_soundpack_health(game_dir: str) -> Dict[str, Any]:
-    """Audits Data/soundpack/soundpack, Data/music/*.mpc, and Data/text/*.texts for integrity issues."""
+    """Audits soundpack, music/*, and text/*.texts for integrity issues."""
     import xml.etree.ElementTree as ET
     from engine.texts_manager import read_texts
 
-    soundpack_path = os.path.join(game_dir, 'Data', 'soundpack', 'soundpack')
-    if not os.path.isfile(soundpack_path):
+    paths = resolve_game_paths(game_dir)
+    soundpack_path = paths['soundpack_path']
+    if not soundpack_path or not os.path.isfile(soundpack_path):
         raise FileNotFoundError(f"Soundpack file not found: {soundpack_path}")
 
-    music_dir = os.path.join(game_dir, 'Data', 'music')
-    texts_dir = os.path.join(game_dir, 'Data', 'text')
+    music_dir = paths['music_dir']
+    texts_dir = paths['text_dir']
 
+    disk_all_lower: Dict[str, str] = {}
     disk_mpc_lower: Dict[str, str] = {}
-    if os.path.isdir(music_dir):
+    if music_dir and os.path.isdir(music_dir):
         for fn in sorted(os.listdir(music_dir)):
             full = os.path.join(music_dir, fn)
-            if os.path.isfile(full) and fn.lower().endswith('.mpc'):
-                disk_mpc_lower[fn.lower()] = fn
+            if os.path.isfile(full):
+                low = fn.lower()
+                disk_all_lower[low] = fn
+                if low.endswith('.mpc'):
+                    disk_mpc_lower[low] = fn
 
     tree = ET.parse(soundpack_path)
     root = tree.getroot()
@@ -754,7 +767,7 @@ def audit_soundpack_health(game_dir: str) -> Dict[str, Any]:
         if not is_music:
             continue
         is_outro = (grp == 'm_outro') or lbl.startswith('m_outro_') or fn.lower().startswith('m_outro_')
-        if fn and fn.lower() not in disk_mpc_lower:
+        if fn and fn.lower() not in disk_all_lower:
             missing_files.append({
                 'label': lbl,
                 'filename': fn,
@@ -901,11 +914,12 @@ def repair_soundpack_health(
             'audit_after': audit,
         }
 
+    paths = resolve_game_paths(game_dir)
     backup_dir = create_backup(game_dir, reason='health_repair')
 
     texts_fixed = 0
     if will_fix_texts:
-        texts_dir = os.path.join(game_dir, 'Data', 'text')
+        texts_dir = paths['text_dir']
         missing_songs = []
         for mt in audit['missing_texts']:
             tid = mt['base_id']
@@ -921,7 +935,7 @@ def repair_soundpack_health(
     events_fixed = 0
     sounds_pruned = 0
     if will_fix_events or will_prune:
-        soundpack_path = os.path.join(game_dir, 'Data', 'soundpack', 'soundpack')
+        soundpack_path = paths['soundpack_path']
         tree = ET.parse(soundpack_path)
         root = tree.getroot()
         sounds_elem = root.find('sounds')
@@ -1002,7 +1016,7 @@ def repair_soundpack_health(
     orphans_deleted = 0
     reclaimed_bytes = 0
     if will_delete_orphans:
-        music_root = os.path.abspath(os.path.join(game_dir, 'Data', 'music'))
+        music_root = os.path.abspath(paths['music_dir'])
         for orph in audit['orphan_files']:
             p = os.path.abspath(orph['path'])
             if p.startswith(music_root + os.sep) and os.path.isfile(p):
@@ -1059,7 +1073,7 @@ def export_mod_pack(
 
     dest_abs = os.path.abspath(dest_path)
     is_zip = dest_abs.lower().endswith('.zip')
-    music_dir = os.path.join(game_dir, 'Data', 'music') if game_dir else None
+    music_dir = resolve_game_paths(game_dir)['music_dir'] if game_dir else None
 
     used_paths = set()
     copy_jobs: List[tuple] = []  # (src_abs, arc_rel)
@@ -1200,9 +1214,10 @@ def save_profile(
     if not clean_name:
         raise ValueError("Profile name is required.")
 
-    soundpack_path = os.path.join(game_dir, 'Data', 'soundpack', 'soundpack')
-    texts_dir = os.path.join(game_dir, 'Data', 'text')
-    if not os.path.isfile(soundpack_path):
+    paths = resolve_game_paths(game_dir)
+    soundpack_path = paths['soundpack_path']
+    texts_dir = paths['text_dir']
+    if not soundpack_path or not os.path.isfile(soundpack_path):
         raise FileNotFoundError(f"Soundpack file not found: {soundpack_path}")
 
     tracks = list_installed_tracks(game_dir)
@@ -1295,10 +1310,11 @@ def apply_profile(
     if not os.path.isfile(src_sp):
         raise FileNotFoundError(f"Profile soundpack not found: {profile_id}")
 
-    dst_sp = os.path.join(game_dir, 'Data', 'soundpack', 'soundpack')
-    dst_texts = os.path.join(game_dir, 'Data', 'text')
-    if not os.path.isdir(os.path.dirname(dst_sp)):
-        raise FileNotFoundError(f"Game Data/soundpack folder not found: {game_dir}")
+    paths = resolve_game_paths(game_dir)
+    dst_sp = paths['soundpack_path']
+    dst_texts = paths['text_dir']
+    if not dst_sp or not os.path.isdir(os.path.dirname(dst_sp)):
+        raise FileNotFoundError(f"Game soundpack folder not found: {game_dir}")
 
     meta: Dict[str, Any] = {'id': profile_id, 'name': profile_id}
     meta_path = os.path.join(pdir, 'profile_meta.json')
