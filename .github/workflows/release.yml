@@ -66,12 +66,35 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $tag = if ("${{ github.event_name }}" -eq "workflow_dispatch") { "${{ inputs.tag }}" } else { "${{ github.ref_name }}" }
+          $notesFile = ""
+          if (Test-Path "CHANGELOG.md") {
+            $lines = Get-Content "CHANGELOG.md"
+            $escaped = [regex]::Escape($tag)
+            $inSection = $false
+            $buf = @()
+            foreach ($line in $lines) {
+              if ($line -match "^##\s+$escaped(\s|$)") { $inSection = $true; continue }
+              if ($inSection -and $line -match "^##\s+") { break }
+              if ($inSection) { $buf += $line }
+            }
+            if (($buf -join "`n").Trim().Length -gt 0) {
+              $notesFile = "release_notes.md"
+              Set-Content -Path $notesFile -Value (($buf -join "`n").Trim()) -Encoding UTF8
+            }
+          }
           $assets = gh release view $tag --json assets --jq '.assets[].name' 2>$null
           if ($LASTEXITCODE -eq 0) {
             if ($assets -contains "A8_Custom_OST_Patcher.exe") {
               gh release delete-asset $tag "A8_Custom_OST_Patcher.exe" --yes
             }
             gh release upload $tag "dist/A8_Custom_OST_Patcher-win64.zip" --clobber
+            if ($notesFile) {
+              gh release edit $tag --notes-file $notesFile
+            }
           } else {
-            gh release create $tag "dist/A8_Custom_OST_Patcher-win64.zip" --title "Asphalt 8 Custom OST Patcher $tag" --generate-notes
+            if ($notesFile) {
+              gh release create $tag "dist/A8_Custom_OST_Patcher-win64.zip" --title "Asphalt 8 Custom OST Patcher $tag" --notes-file $notesFile
+            } else {
+              gh release create $tag "dist/A8_Custom_OST_Patcher-win64.zip" --title "Asphalt 8 Custom OST Patcher $tag" --generate-notes
+            }
           }

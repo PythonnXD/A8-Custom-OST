@@ -147,9 +147,12 @@ def inspect_update_manifest(
         raise ValueError("Update manifest missing 'version' or 'tag_name'.")
 
     download_url = str(data.get('download_url') or '').strip()
+    asset_size = int(data.get('size_bytes') or data.get('size') or 0)
     if not download_url and isinstance(data.get('assets'), list):
         exe_asset = None
+        exe_size = 0
         zip_asset = None
+        zip_size = 0
         for asset in data['assets']:
             if not isinstance(asset, dict):
                 continue
@@ -157,11 +160,22 @@ def inspect_update_manifest(
             burl = str(asset.get('browser_download_url') or asset.get('url') or '').strip()
             if not burl:
                 continue
+            try:
+                asize = int(asset.get('size') or 0)
+            except Exception:
+                asize = 0
             if aname.endswith('.exe') and not exe_asset:
                 exe_asset = burl
+                exe_size = asize
             elif aname.endswith('.zip') and not zip_asset:
                 zip_asset = burl
-        download_url = exe_asset or zip_asset or ''
+                zip_size = asize
+        if exe_asset:
+            download_url = exe_asset
+            asset_size = exe_size
+        elif zip_asset:
+            download_url = zip_asset
+            asset_size = zip_size
     if not download_url and 'assets' not in data:
         download_url = str(data.get('url') or '').strip()
 
@@ -174,6 +188,8 @@ def inspect_update_manifest(
         'latest_version': latest.lstrip('vV'),
         'update_available': is_newer_version(latest, current_version),
         'download_url': download_url,
+        'size_bytes': asset_size,
+        'published_at': str(data.get('published_at') or '').strip(),
         'notes': str(data.get('notes') or data.get('changelog') or data.get('body') or '').strip(),
         'sha256': str(data.get('sha256') or '').strip().lower(),
     }
@@ -645,7 +661,6 @@ class PatcherDesktopAPI:
         status.update({
             'app_version': APP_VERSION,
             'is_frozen': bool(getattr(sys, 'frozen', False)),
-            'update_manifest_url': _resolve_update_manifest_url(prefs),
             'theme': prefs.get('theme', 'dark'),
             'last_music_dir': prefs.get('last_music_dir', ''),
             'backups_count': len(backups),
@@ -1150,47 +1165,18 @@ class PatcherDesktopAPI:
         except Exception as e:
             return {'ok': False, 'error': str(e)}
 
-    def get_update_settings(self) -> Dict[str, Any]:
-        prefs = load_prefs()
-        return {
-            'ok': True,
-            'app_version': APP_VERSION,
-            'is_frozen': bool(getattr(sys, 'frozen', False)),
-            'update_manifest_url': _resolve_update_manifest_url(prefs),
-        }
-
     def check_for_updates(self, manifest_url: str = '') -> Dict[str, Any]:
         url = str(manifest_url or '').strip() or _resolve_update_manifest_url()
-        if not url:
-            return {'ok': False, 'error': 'Enter a release JSON manifest or GitHub Releases API URL.'}
         try:
-            res = inspect_update_manifest(url, current_version=APP_VERSION)
-            save_prefs({'update_manifest_url': url})
-            return res
-        except Exception as e:
-            return {'ok': False, 'error': str(e)}
-
-    def browse_update_package(self) -> Dict[str, Any]:
-        import webview
-        if not self._window:
-            return {'cancelled': True}
-        result = self._window.create_file_dialog(
-            webview.FileDialog.OPEN,
-            allow_multiple=False,
-            file_types=('Patcher Update (*.exe;*.zip)', 'All files (*.*)'),
-        )
-        if not result or not len(result):
-            return {'cancelled': True}
-        pkg = result[0]
-        try:
-            verified_exe = _extract_exe_from_update_package(pkg)
-            return {
-                'ok': True,
-                'package_path': pkg,
-                'file_name': os.path.basename(pkg),
-                'exe_name': os.path.basename(verified_exe),
-                'size_bytes': os.path.getsize(pkg),
-            }
+            return inspect_update_manifest(url, current_version=APP_VERSION)
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                return {'ok': False, 'error': 'No published release was found yet.'}
+            if e.code == 403 or e.code == 429:
+                return {'ok': False, 'error': 'Update service is temporarily rate-limited. Try again in a few minutes.'}
+            return {'ok': False, 'error': f'Update service returned HTTP {e.code}. Try again later.'}
+        except (urllib.error.URLError, TimeoutError, OSError):
+            return {'ok': False, 'error': 'Unable to reach the update server. Check your internet connection and try again.'}
         except Exception as e:
             return {'ok': False, 'error': str(e)}
 

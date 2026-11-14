@@ -1551,6 +1551,173 @@
       white-space: pre-wrap;
     }
 
+    .upd-hero {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-control);
+      background: var(--ground);
+    }
+
+    .upd-status-wrap {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .upd-dot {
+      flex: none;
+      width: 9px;
+      height: 9px;
+      margin-top: 6px;
+      border-radius: 999px;
+      background: var(--faint);
+    }
+
+    .upd-dot.latest {
+      background: var(--positive);
+    }
+
+    .upd-dot.available {
+      background: var(--accent);
+    }
+
+    .upd-dot.error {
+      background: var(--negative);
+    }
+
+    .upd-dot.checking {
+      background: var(--accent-ink);
+      opacity: 0.72;
+    }
+
+    .upd-status-title {
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 20px;
+      color: var(--text);
+    }
+
+    .upd-status-meta {
+      margin-top: 2px;
+      font-size: 12px;
+      line-height: 17px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .upd-ver-pill {
+      flex: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .upd-ver-pill.available {
+      color: var(--accent-ink);
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .upd-ver-pill.latest {
+      color: var(--positive);
+    }
+
+    .upd-changelog-section {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .upd-changelog-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .upd-changelog-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .upd-changelog-ver {
+      font-size: 12px;
+      color: var(--faint);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .upd-changelog-card {
+      max-height: 280px;
+      overflow-y: auto;
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-control);
+      background: var(--ground);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .upd-log-group-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .upd-log-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .upd-log-item {
+      position: relative;
+      padding-left: 14px;
+      font-size: 13px;
+      line-height: 19px;
+      color: var(--muted);
+    }
+
+    .upd-log-item::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 7px;
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    .upd-log-lead {
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .upd-empty-notes {
+      font-size: 12px;
+      color: var(--faint);
+    }
+
     /* ---------- Responsive Tablet & Phone ---------- */
     @media (max-width: 1080px) {
       .radio-deck {
@@ -2094,39 +2261,35 @@
       <div class="sheet-head">
         <div>
           <span id="update-sheet-title" class="sheet-title">App Updates</span>
-          <div id="update-current-sub" style="font-size:12px;color:var(--muted);margin-top:2px;">Current version: v1.2.0</div>
+          <div id="update-current-sub" style="font-size:12px;color:var(--muted);margin-top:2px;">Installed v1.2.0</div>
         </div>
         <button id="btn-close-update" class="btn compact ghost" type="button">Close</button>
       </div>
       <div class="sheet-body">
-        <label class="field-stack" for="update-manifest-url">
-          <span>Release manifest or GitHub Releases API URL (https://...)</span>
-          <div style="display:flex;gap:8px;">
-            <input id="update-manifest-url" class="input" type="url" placeholder="https://api.github.com/repos/PythonnXD/A8-Custom-OST/releases/latest" />
-            <button id="btn-check-manifest" class="btn" type="button" style="flex:none;">Check online</button>
+        <div class="upd-hero">
+          <div class="upd-status-wrap">
+            <span id="upd-status-dot" class="upd-dot"></span>
+            <div style="min-width:0;">
+              <div id="update-remote-status" class="upd-status-title">Checking for updates...</div>
+              <div id="update-remote-meta" class="upd-status-meta"></div>
+            </div>
           </div>
-        </label>
-        <div id="update-remote-result" class="hidden" style="display:flex;flex-direction:column;gap:8px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--ground);">
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-            <span id="update-remote-status" style="font-weight:600;font-size:13px;">Up to date</span>
-            <button id="btn-install-remote-update" class="btn primary compact hidden" type="button">Download &amp; Install</button>
-          </div>
-          <div id="update-remote-notes" class="code-notes hidden"></div>
-        </div>
-
-        <div style="border-top:1px solid var(--rule);padding-top:12px;display:flex;flex-direction:column;gap:8px;">
-          <div style="font-size:13px;font-weight:500;">Or update from a local .exe / .zip package</div>
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-            <span id="update-local-readout" class="sub-filename" style="font-size:12px;color:var(--muted);">No update package selected</span>
-            <button id="btn-browse-update-pkg" class="btn compact" type="button">Choose file</button>
-          </div>
+          <span id="upd-version-pill" class="upd-ver-pill">v1.2.0</span>
         </div>
 
         <div id="update-error-box" class="banner error hidden"><span id="update-error-text"></span></div>
+
+        <div class="upd-changelog-section">
+          <div class="upd-changelog-bar">
+            <span id="upd-changelog-heading" class="upd-changelog-label">Changelog</span>
+            <span id="upd-changelog-ver" class="upd-changelog-ver">v1.2.0</span>
+          </div>
+          <div id="update-changelog-list" class="upd-changelog-card"></div>
+        </div>
       </div>
       <div class="sheet-footer">
-        <button id="btn-close-update-foot" class="btn" type="button">Close</button>
-        <button id="btn-install-local-update" class="btn primary hidden" type="button">Install &amp; Restart</button>
+        <button id="btn-check-updates" class="btn" type="button">Check for updates</button>
+        <button id="btn-install-remote-update" class="btn primary hidden" type="button">Download &amp; Install</button>
       </div>
     </div>
   </div>
@@ -2163,7 +2326,6 @@
         theme: 'dark',
         appVersion: '1.2.0',
         isFrozen: false,
-        updateManifestUrl: 'https://api.github.com/repos/PythonnXD/A8-Custom-OST/releases/latest',
         gameDir: '',
         gameValid: false,
         gameWritable: false,
@@ -2189,7 +2351,6 @@
         audioMetricsCache: {},
         healthAudit: null,
         exportFormat: 'zip',
-        updateLocalPkgPath: '',
         updateRemoteInfo: null,
       };
 
@@ -4077,75 +4238,204 @@
       });
 
       /* ---------- In-App Self-Updater ---------- */
+      const LOCAL_RELEASE_CHANGELOG = {
+        '1.2.0': [
+          {
+            title: 'Highlights',
+            items: [
+              'Desktop Interface & Themes: Dark and Light themes, Asphalt 8 branding, drag-and-drop import queue, and flexible file/folder/.zip scanning.',
+              'Outro Song Editor & Waveform: Interactive 120-bin PCM waveform canvas with draggable trim bounds, fade-in/out controls, and live clip playback.',
+              'Station & Metadata Tools: Batch artist/station assignment, inline Song Title/Artist/Station editing in Queue and Library, plus Peak/RMS loudness badges.',
+              'Health Check, Profiles & Export: Soundpack Health Check & Orphan Cleaner, named MOD Profiles, portable .zip export, and backup restore.',
+              'Windows Permission Helper: Scoped ACL/Read-Only permission fix for mod folders plus Make writable copy fallback for Microsoft Store installs.',
+            ],
+          },
+        ],
+      };
+
+      function cleanChangelogText(raw) {
+        return String(raw || '')
+          .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '$1')
+          .replace(/\*\*([^*]+)\*\*/g, '$1')
+          .replace(/__([^_]+)__/g, '$1')
+          .replace(/`([^`]+)`/g, '$1')
+          .replace(/https?:\/\/\S+/g, '')
+          .replace(/\s{2,}/g, ' ')
+          .trim();
+      }
+
+      function parseChangelogSections(notes, version) {
+        const lines = String(notes || '').replace(/\r\n/g, '\n').split('\n');
+        const sections = [];
+        let cur = { title: '', items: [] };
+        const verClean = String(version || state.appVersion || '').replace(/^[vV]/, '');
+
+        for (const rawLine of lines) {
+          const line = rawLine.trim();
+          if (!line) continue;
+          if (/^<!--.*-->$/.test(line)) continue;
+          if (/^(\*\*Full Changelog\*\*|Full Changelog\s*:)/i.test(line)) continue;
+
+          const hMatch = line.match(/^#{1,4}\s+(.+)$/);
+          if (hMatch) {
+            const heading = cleanChangelogText(hMatch[1]);
+            if (!heading || /^changelog$/i.test(heading) || new RegExp(`^v?${verClean.replace(/\./g, '\\.')}$`, 'i').test(heading)) {
+              continue;
+            }
+            if (cur.items.length) sections.push(cur);
+            cur = { title: heading, items: [] };
+            continue;
+          }
+
+          const bMatch = line.match(/^[-*•]\s+(.+)$/);
+          if (bMatch) {
+            const txt = cleanChangelogText(bMatch[1]).replace(/\s+by\s+@\S+.*$/i, '').trim();
+            if (txt) cur.items.push(txt);
+            continue;
+          }
+
+          const plain = cleanChangelogText(line);
+          if (plain) cur.items.push(plain);
+        }
+        if (cur.items.length) sections.push(cur);
+
+        if (!sections.length && LOCAL_RELEASE_CHANGELOG[verClean]) {
+          return LOCAL_RELEASE_CHANGELOG[verClean];
+        }
+        return sections;
+      }
+
+      function renderChangelog(notes, version) {
+        const host = $('update-changelog-list');
+        host.textContent = '';
+        const verClean = String(version || state.appVersion || '').replace(/^[vV]/, '');
+        $('upd-changelog-ver').textContent = verClean ? `v${verClean}` : '';
+
+        const sections = parseChangelogSections(notes, verClean);
+        if (!sections.length) {
+          const empty = document.createElement('div');
+          empty.className = 'upd-empty-notes';
+          empty.textContent = 'No release notes were published for this version.';
+          host.appendChild(empty);
+          return;
+        }
+
+        for (const sec of sections) {
+          const group = document.createElement('div');
+          if (sec.title) {
+            const heading = document.createElement('div');
+            heading.className = 'upd-log-group-title';
+            heading.textContent = sec.title;
+            group.appendChild(heading);
+          }
+          const ul = document.createElement('ul');
+          ul.className = 'upd-log-list';
+          for (const item of sec.items) {
+            const li = document.createElement('li');
+            li.className = 'upd-log-item';
+            const colonIdx = item.indexOf(':');
+            if (colonIdx > 1 && colonIdx < 42) {
+              const lead = document.createElement('span');
+              lead.className = 'upd-log-lead';
+              lead.textContent = item.slice(0, colonIdx + 1);
+              li.appendChild(lead);
+              li.appendChild(document.createTextNode(item.slice(colonIdx + 1)));
+            } else {
+              li.textContent = item;
+            }
+            ul.appendChild(li);
+          }
+          group.appendChild(ul);
+          host.appendChild(group);
+        }
+      }
+
+      function formatReleaseDate(iso) {
+        if (!iso) return '';
+        const d = new Date(iso);
+        if (Number.isNaN(d.getTime())) return '';
+        return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+      }
+
+      function setUpdateStatusUI(kind, title, meta, verText) {
+        $('upd-status-dot').className = `upd-dot ${kind || ''}`.trim();
+        $('update-remote-status').textContent = title;
+        $('update-remote-meta').textContent = meta || '';
+        const pill = $('upd-version-pill');
+        pill.className = `upd-ver-pill ${kind || ''}`.trim();
+        pill.textContent = verText || `v${state.appVersion}`;
+      }
+
+      async function runUpdateCheck() {
+        $('update-error-box').classList.add('hidden');
+        $('btn-install-remote-update').classList.add('hidden');
+        setUpdateStatusUI('checking', 'Checking for updates...', `Installed v${state.appVersion}`, `v${state.appVersion}`);
+        const btn = $('btn-check-updates');
+        btn.disabled = true;
+        btn.textContent = 'Checking...';
+        const res = await callApi('check_for_updates');
+        btn.disabled = false;
+        btn.textContent = 'Check for updates';
+
+        if (!res || !res.ok) {
+          setUpdateStatusUI('error', 'Could not check updates', `Installed v${state.appVersion}`, `v${state.appVersion}`);
+          $('update-error-text').textContent = (res && res.error) || 'Update check failed.';
+          $('update-error-box').classList.remove('hidden');
+          renderChangelog('', state.appVersion);
+          return;
+        }
+
+        state.updateRemoteInfo = res;
+        const metaParts = [`Installed v${res.current_version}`];
+        const dateTxt = formatReleaseDate(res.published_at);
+        if (dateTxt) metaParts.push(`Released ${dateTxt}`);
+        if (res.size_bytes > 0) metaParts.push(formatBytes(res.size_bytes));
+
+        if (res.update_available) {
+          setUpdateStatusUI(
+            'available',
+            `Update available: v${res.latest_version}`,
+            metaParts.join(' · '),
+            `v${res.current_version} -> v${res.latest_version}`,
+          );
+          $('btn-install-remote-update').classList.toggle('hidden', !res.download_url);
+        } else {
+          setUpdateStatusUI(
+            'latest',
+            'You are up to date',
+            metaParts.join(' · '),
+            `v${res.latest_version}`,
+          );
+          $('btn-install-remote-update').classList.add('hidden');
+        }
+        renderChangelog(res.notes || '', res.latest_version || state.appVersion);
+      }
+
       function openUpdateModal() {
         closeMobileDrawer();
-        $('update-error-box').classList.add('hidden');
-        const modeTxt = state.isFrozen ? 'Standalone EXE' : 'Python Source';
+        const modeTxt = state.isFrozen ? 'Standalone App' : 'Python Source';
         $('update-current-sub').textContent = `Current version: v${state.appVersion} · ${modeTxt}`;
-        if (state.updateManifestUrl) $('update-manifest-url').value = state.updateManifestUrl;
+        renderChangelog('', state.appVersion);
         $('update-scrim').classList.add('open');
+        runUpdateCheck();
       }
 
       $('btn-updates').addEventListener('click', openUpdateModal);
       $('btn-close-update').addEventListener('click', () => $('update-scrim').classList.remove('open'));
-      $('btn-close-update-foot').addEventListener('click', () => $('update-scrim').classList.remove('open'));
+      $('btn-check-updates').addEventListener('click', runUpdateCheck);
 
-      $('btn-check-manifest').addEventListener('click', async () => {
+      $('btn-install-remote-update').addEventListener('click', async () => {
+        if (!state.updateRemoteInfo || !state.updateRemoteInfo.download_url) return;
         $('update-error-box').classList.add('hidden');
-        const url = $('update-manifest-url').value.trim();
-        if (!url) {
-          $('update-error-text').textContent = 'Enter a GitHub Releases API URL or HTTPS manifest JSON URL.';
-          $('update-error-box').classList.remove('hidden');
-          return;
-        }
-        $('btn-check-manifest').disabled = true;
-        $('btn-check-manifest').textContent = 'Checking...';
-        const res = await callApi('check_for_updates', url);
-        $('btn-check-manifest').disabled = false;
-        $('btn-check-manifest').textContent = 'Check online';
-        if (!res || !res.ok) {
-          $('update-error-text').textContent = (res && res.error) || 'Update check failed.';
-          $('update-error-box').classList.remove('hidden');
-          return;
-        }
-        state.updateManifestUrl = url;
-        state.updateRemoteInfo = res;
-        $('update-remote-result').classList.remove('hidden');
-        if (res.update_available) {
-          $('update-remote-status').textContent = `New version available: v${res.latest_version} (current v${res.current_version})`;
-          $('btn-install-remote-update').classList.toggle('hidden', !res.download_url);
-        } else {
-          $('update-remote-status').textContent = `Up to date (latest v${res.latest_version})`;
-          $('btn-install-remote-update').classList.add('hidden');
-        }
-        if (res.notes) {
-          $('update-remote-notes').textContent = res.notes;
-          $('update-remote-notes').classList.remove('hidden');
-        } else {
-          $('update-remote-notes').classList.add('hidden');
-        }
-      });
-
-      $('btn-browse-update-pkg').addEventListener('click', async () => {
-        $('update-error-box').classList.add('hidden');
-        const res = await callApi('browse_update_package');
-        if (!res || res.cancelled) return;
-        if (!res.ok) {
-          $('update-error-text').textContent = res.error || 'Invalid update package.';
-          $('update-error-box').classList.remove('hidden');
-          return;
-        }
-        state.updateLocalPkgPath = res.package_path;
-        $('update-local-readout').textContent = `${res.file_name} -> ${res.exe_name} (${formatBytes(res.size_bytes)})`;
-        $('btn-install-local-update').classList.remove('hidden');
-      });
-
-      async function performAppUpdate(payload, btn) {
-        $('update-error-box').classList.add('hidden');
+        const btn = $('btn-install-remote-update');
         const prevTxt = btn.textContent;
         btn.disabled = true;
         btn.textContent = 'Installing...';
-        const res = await callApi('apply_app_update', payload);
+        const res = await callApi('apply_app_update', {
+          download_url: state.updateRemoteInfo.download_url,
+          sha256: state.updateRemoteInfo.sha256 || '',
+          relaunch: true,
+        });
         btn.disabled = false;
         btn.textContent = prevTxt;
         if (!res || !res.ok) {
@@ -4155,23 +4445,6 @@
         }
         $('update-scrim').classList.remove('open');
         showBanner('Update staged. Restarting A8 Custom OST Patcher...', false);
-      }
-
-      $('btn-install-remote-update').addEventListener('click', () => {
-        if (!state.updateRemoteInfo || !state.updateRemoteInfo.download_url) return;
-        performAppUpdate({
-          download_url: state.updateRemoteInfo.download_url,
-          sha256: state.updateRemoteInfo.sha256 || '',
-          relaunch: true,
-        }, $('btn-install-remote-update'));
-      });
-
-      $('btn-install-local-update').addEventListener('click', () => {
-        if (!state.updateLocalPkgPath) return;
-        performAppUpdate({
-          local_package_path: state.updateLocalPkgPath,
-          relaunch: true,
-        }, $('btn-install-local-update'));
       });
 
       /* ---------- Keyboard Shortcuts ---------- */
@@ -4411,7 +4684,6 @@
         applyTheme(init.theme || 'dark', false);
         state.appVersion = init.app_version || '1.2.0';
         state.isFrozen = !!init.is_frozen;
-        state.updateManifestUrl = init.update_manifest_url || state.updateManifestUrl;
         $('app-version-pill').textContent = `v${state.appVersion}`;
         applyGameStatus(init);
         if (init.tools) {
