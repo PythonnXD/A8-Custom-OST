@@ -1147,6 +1147,51 @@
       color: var(--muted);
     }
 
+    .fade-card {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-control);
+      background: var(--raised);
+    }
+
+    .fade-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .fade-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .fade-toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .num-input:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .quality-select {
+      width: auto;
+      max-width: 196px;
+      height: var(--control-height);
+      padding: 0 8px;
+      font-size: 12px;
+    }
+
     .inline-edit {
       width: 100%;
       min-width: 0;
@@ -1882,7 +1927,7 @@
           <button id="btn-updates" class="nav-item" type="button" title="Check or install app updates">
             <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="m7 10 5 5 5-5" /><path d="M12 15V3" /></svg>
             <span>Updates</span>
-            <span id="app-version-pill" class="nav-count">v1.3.0</span>
+            <span id="app-version-pill" class="nav-count">v1.3.1</span>
           </button>
           <button id="btn-shortcuts" class="btn compact" type="button" title="Keyboard shortcuts (?)">?</button>
         </div>
@@ -1920,6 +1965,12 @@
           </div>
           <div class="title-actions">
             <div id="dock-import-controls" class="dock-controls">
+              <select id="quality-select" class="input quality-select" aria-label="Audio export quality" title="Output sample rate and Musepack quality">
+                <option value="high">High (44.1 kHz · ~240 kbps)</option>
+                <option value="ultra">Ultra (44.1 kHz · ~270 kbps)</option>
+                <option value="standard">Standard (32 kHz · ~210 kbps)</option>
+                <option value="compact">Compact (32 kHz · ~130 kbps)</option>
+              </select>
               <label class="switch-label" for="switch-keep-stock">
                 <button id="switch-keep-stock" class="switch-btn" type="button" role="switch" aria-checked="true"></button>
                 <span>Keep stock</span>
@@ -2092,14 +2143,26 @@
         </div>
 
         <div class="fade-grid">
-          <label class="field-stack" for="outro-fade-in">
-            <span>Fade in (seconds)</span>
+          <div class="fade-card">
+            <div class="fade-head">
+              <label class="fade-title" for="outro-fade-in">Fade in (seconds)</label>
+              <label class="fade-toggle-row" for="switch-outro-fade-in">
+                <span id="lbl-outro-fade-in-state">On</span>
+                <button id="switch-outro-fade-in" class="switch-btn" type="button" role="switch" aria-checked="true" aria-label="Toggle fade in effect"></button>
+              </label>
+            </div>
             <input id="outro-fade-in" class="input num-input" style="text-align:left;" type="number" min="0" max="10" step="0.1" value="0.2" />
-          </label>
-          <label class="field-stack" for="outro-fade-out">
-            <span>Fade out (seconds)</span>
+          </div>
+          <div class="fade-card">
+            <div class="fade-head">
+              <label class="fade-title" for="outro-fade-out">Fade out (seconds)</label>
+              <label class="fade-toggle-row" for="switch-outro-fade-out">
+                <span id="lbl-outro-fade-out-state">On</span>
+                <button id="switch-outro-fade-out" class="switch-btn" type="button" role="switch" aria-checked="true" aria-label="Toggle fade out effect"></button>
+              </label>
+            </div>
             <input id="outro-fade-out" class="input num-input" style="text-align:left;" type="number" min="0" max="10" step="0.1" value="1.2" />
-          </label>
+          </div>
         </div>
 
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:4px;">
@@ -2261,7 +2324,7 @@
       <div class="sheet-head">
         <div>
           <span id="update-sheet-title" class="sheet-title">App Updates</span>
-          <div id="update-current-sub" style="font-size:12px;color:var(--muted);margin-top:2px;">Installed v1.3.0</div>
+          <div id="update-current-sub" style="font-size:12px;color:var(--muted);margin-top:2px;">Installed v1.3.1</div>
         </div>
         <button id="btn-close-update" class="btn compact ghost" type="button">Close</button>
       </div>
@@ -2274,7 +2337,7 @@
               <div id="update-remote-meta" class="upd-status-meta"></div>
             </div>
           </div>
-          <span id="upd-version-pill" class="upd-ver-pill">v1.3.0</span>
+          <span id="upd-version-pill" class="upd-ver-pill">v1.3.1</span>
         </div>
 
         <div id="update-error-box" class="banner error hidden"><span id="update-error-text"></span></div>
@@ -2282,7 +2345,7 @@
         <div class="upd-changelog-section">
           <div class="upd-changelog-bar">
             <span id="upd-changelog-heading" class="upd-changelog-label">Changelog</span>
-            <span id="upd-changelog-ver" class="upd-changelog-ver">v1.3.0</span>
+            <span id="upd-changelog-ver" class="upd-changelog-ver">v1.3.1</span>
           </div>
           <div id="update-changelog-list" class="upd-changelog-card"></div>
         </div>
@@ -2324,7 +2387,7 @@
       const state = {
         view: 'import',
         theme: 'dark',
-        appVersion: '1.3.0',
+        appVersion: '1.3.1',
         isFrozen: false,
         gameDir: '',
         gameValid: false,
@@ -2351,6 +2414,7 @@
         audioMetricsCache: {},
         healthAudit: null,
         exportFormat: 'zip',
+        qualityPreset: 'high',
         updateRemoteInfo: null,
       };
 
@@ -2362,6 +2426,8 @@
         totalDur: 0,
         startSec: 0,
         endSec: 20,
+        fadeInEnabled: true,
+        fadeOutEnabled: true,
         fadeIn: 0.2,
         fadeOut: 1.2,
         busy: false,
@@ -2369,6 +2435,28 @@
         dragMode: null,
         dragAnchorSec: 0,
       };
+
+      function getEffectiveFadeIn() {
+        return outroModalState.fadeInEnabled ? Math.max(0, Number(outroModalState.fadeIn) || 0) : 0;
+      }
+
+      function getEffectiveFadeOut() {
+        return outroModalState.fadeOutEnabled ? Math.max(0, Number(outroModalState.fadeOut) || 0) : 0;
+      }
+
+      function syncOutroFadeControlsUI() {
+        const fiOn = !!outroModalState.fadeInEnabled;
+        const foOn = !!outroModalState.fadeOutEnabled;
+        $('switch-outro-fade-in').setAttribute('aria-checked', String(fiOn));
+        $('lbl-outro-fade-in-state').textContent = fiOn ? 'On' : 'Off';
+        $('outro-fade-in').disabled = !fiOn;
+        $('outro-fade-in').value = String(outroModalState.fadeIn);
+
+        $('switch-outro-fade-out').setAttribute('aria-checked', String(foOn));
+        $('lbl-outro-fade-out-state').textContent = foOn ? 'On' : 'Off';
+        $('outro-fade-out').disabled = !foOn;
+        $('outro-fade-out').value = String(outroModalState.fadeOut);
+      }
 
       const $ = (id) => document.getElementById(id);
       const audioEl = $('audio-player');
@@ -2937,11 +3025,25 @@
 
       async function togglePlayTrack(track, mode) {
         updateHudPreview(track);
+        const trackFiEnabled = track.outro_fade_in_enabled != null
+          ? !!track.outro_fade_in_enabled
+          : ((track.outro_fade_in || 0) > 0);
+        const trackFoEnabled = track.outro_fade_out_enabled != null
+          ? !!track.outro_fade_out_enabled
+          : (track.outro_fade_out == null || Number(track.outro_fade_out) > 0);
+        const effFadeIn = trackFiEnabled ? Number(track.outro_fade_in || 0) : 0;
+        const effFadeOut = trackFoEnabled ? (track.outro_fade_out != null ? Number(track.outro_fade_out) : 1.2) : 0;
         const isCutOutro = (
           mode === 'outro'
           && state.view === 'import'
           && track.has_outro
-          && (track.outro_start != null || track.outro_end != null || (track.outro_fade_in && track.outro_fade_in > 0))
+          && (
+            track.outro_start != null
+            || track.outro_end != null
+            || effFadeIn > 0
+            || !trackFoEnabled
+            || (track.outro_fade_out != null && Number(track.outro_fade_out) === 0)
+          )
         );
         const targetPath = mode === 'outro' ? (track.outro_src_path || track.outro_path) : (track.src_path || track.main_path);
         if (!targetPath) return;
@@ -2975,8 +3077,8 @@
               src_path: targetPath,
               start_sec: track.outro_start,
               end_sec: track.outro_end,
-              fade_in: track.outro_fade_in || 0,
-              fade_out: track.outro_fade_out != null ? track.outro_fade_out : 1.2,
+              fade_in: effFadeIn,
+              fade_out: effFadeOut,
             })
           : await callApi('prepare_preview', targetPath);
 
@@ -3204,7 +3306,9 @@
         $('outro-range-readout').textContent = `Selected: ${formatClock(outroModalState.startSec)} - ${formatClock(outroModalState.endSec)}`;
         $('outro-total-readout').textContent = `Total: ${formatClock(dur)}`;
         const clipLen = Math.max(0.5, outroModalState.endSec - outroModalState.startSec);
-        $('outro-clip-meta').textContent = `Clip: ${clipLen.toFixed(1)}s \u00b7 Fade out ${Number(outroModalState.fadeOut || 0).toFixed(1)}s`;
+        const fiText = outroModalState.fadeInEnabled ? `Fade in ${getEffectiveFadeIn().toFixed(1)}s` : 'Fade in Off';
+        const foText = outroModalState.fadeOutEnabled ? `Fade out ${getEffectiveFadeOut().toFixed(1)}s` : 'Fade out Off';
+        $('outro-clip-meta').textContent = `Clip: ${clipLen.toFixed(1)}s \u00b7 ${fiText} \u00b7 ${foText}`;
         drawOutroWaveform();
       }
 
@@ -3259,21 +3363,30 @@
         if (track.outro_start != null && track.outro_end != null) {
           outroModalState.startSec = Number(track.outro_start);
           outroModalState.endSec = Number(track.outro_end);
-          outroModalState.fadeIn = track.outro_fade_in != null ? Number(track.outro_fade_in) : 0.2;
-          outroModalState.fadeOut = track.outro_fade_out != null ? Number(track.outro_fade_out) : 1.2;
+          const fiRaw = track.outro_fade_in != null ? Number(track.outro_fade_in) : 0.2;
+          const foRaw = track.outro_fade_out != null ? Number(track.outro_fade_out) : 1.2;
+          outroModalState.fadeInEnabled = track.outro_fade_in_enabled != null ? !!track.outro_fade_in_enabled : fiRaw > 0;
+          outroModalState.fadeOutEnabled = track.outro_fade_out_enabled != null ? !!track.outro_fade_out_enabled : foRaw > 0;
+          outroModalState.fadeIn = outroModalState.fadeInEnabled ? fiRaw : (fiRaw > 0 ? fiRaw : 0.3);
+          outroModalState.fadeOut = outroModalState.fadeOutEnabled ? foRaw : (foRaw > 0 ? foRaw : 1.2);
         } else if (outroModalState.mode === 'file') {
           outroModalState.startSec = 0;
           outroModalState.endSec = dur;
-          outroModalState.fadeIn = 0.0;
-          outroModalState.fadeOut = 0.2;
+          const fiRaw = track.outro_fade_in != null ? Number(track.outro_fade_in) : 0.0;
+          const foRaw = track.outro_fade_out != null ? Number(track.outro_fade_out) : 0.2;
+          outroModalState.fadeInEnabled = track.outro_fade_in_enabled != null ? !!track.outro_fade_in_enabled : fiRaw > 0;
+          outroModalState.fadeOutEnabled = track.outro_fade_out_enabled != null ? !!track.outro_fade_out_enabled : foRaw > 0;
+          outroModalState.fadeIn = outroModalState.fadeInEnabled ? fiRaw : (fiRaw > 0 ? fiRaw : 0.3);
+          outroModalState.fadeOut = outroModalState.fadeOutEnabled ? foRaw : (foRaw > 0 ? foRaw : 0.2);
         } else {
           outroModalState.startSec = Math.max(0, Math.floor((dur - 20) * 10) / 10);
           outroModalState.endSec = Math.round(dur * 10) / 10;
-          outroModalState.fadeIn = 0.3;
-          outroModalState.fadeOut = 1.2;
+          outroModalState.fadeInEnabled = track.outro_fade_in_enabled != null ? !!track.outro_fade_in_enabled : true;
+          outroModalState.fadeOutEnabled = track.outro_fade_out_enabled != null ? !!track.outro_fade_out_enabled : true;
+          outroModalState.fadeIn = track.outro_fade_in > 0 ? Number(track.outro_fade_in) : 0.3;
+          outroModalState.fadeOut = track.outro_fade_out > 0 ? Number(track.outro_fade_out) : 1.2;
         }
-        $('outro-fade-in').value = String(outroModalState.fadeIn);
-        $('outro-fade-out').value = String(outroModalState.fadeOut);
+        syncOutroFadeControlsUI();
         syncOutroTimelineUI();
       }
 
@@ -3298,10 +3411,11 @@
           const dur = await loadOutroSourceDuration(outroModalState.srcPath);
           outroModalState.startSec = Math.max(0, Math.floor((dur - 20) * 10) / 10);
           outroModalState.endSec = Math.round(dur * 10) / 10;
+          outroModalState.fadeInEnabled = true;
+          outroModalState.fadeOutEnabled = true;
           outroModalState.fadeIn = 0.3;
           outroModalState.fadeOut = 1.2;
-          $('outro-fade-in').value = '0.3';
-          $('outro-fade-out').value = '1.2';
+          syncOutroFadeControlsUI();
           syncOutroTimelineUI();
         } else {
           if (hasBridge()) {
@@ -3313,11 +3427,12 @@
               outroModalState.totalDur = dur || (res.duration > 0 ? res.duration : 180);
               outroModalState.startSec = 0;
               outroModalState.endSec = outroModalState.totalDur;
-              outroModalState.fadeIn = 0.0;
+              outroModalState.fadeInEnabled = false;
+              outroModalState.fadeOutEnabled = true;
+              outroModalState.fadeIn = 0.3;
               outroModalState.fadeOut = 0.2;
               $('outro-src-readout').textContent = outroModalState.srcPath;
-              $('outro-fade-in').value = '0';
-              $('outro-fade-out').value = '0.2';
+              syncOutroFadeControlsUI();
               syncOutroTimelineUI();
             }
           }
@@ -3581,12 +3696,38 @@
         outroModalState.endSec = Number(e.target.value);
         syncOutroTimelineUI();
       });
+      $('switch-outro-fade-in').addEventListener('click', () => {
+        outroModalState.fadeInEnabled = !outroModalState.fadeInEnabled;
+        if (outroModalState.fadeInEnabled && (!outroModalState.fadeIn || outroModalState.fadeIn <= 0)) {
+          outroModalState.fadeIn = 0.3;
+        }
+        syncOutroFadeControlsUI();
+        syncOutroTimelineUI();
+      });
+      $('switch-outro-fade-out').addEventListener('click', () => {
+        outroModalState.fadeOutEnabled = !outroModalState.fadeOutEnabled;
+        if (outroModalState.fadeOutEnabled && (!outroModalState.fadeOut || outroModalState.fadeOut <= 0)) {
+          outroModalState.fadeOut = 1.2;
+        }
+        syncOutroFadeControlsUI();
+        syncOutroTimelineUI();
+      });
       $('outro-fade-in').addEventListener('input', (e) => {
-        outroModalState.fadeIn = Math.max(0, Number(e.target.value) || 0);
+        const val = Math.max(0, Number(e.target.value) || 0);
+        outroModalState.fadeIn = val;
+        if (val > 0 && !outroModalState.fadeInEnabled) {
+          outroModalState.fadeInEnabled = true;
+          syncOutroFadeControlsUI();
+        }
         syncOutroTimelineUI();
       });
       $('outro-fade-out').addEventListener('input', (e) => {
-        outroModalState.fadeOut = Math.max(0, Number(e.target.value) || 0);
+        const val = Math.max(0, Number(e.target.value) || 0);
+        outroModalState.fadeOut = val;
+        if (val > 0 && !outroModalState.fadeOutEnabled) {
+          outroModalState.fadeOutEnabled = true;
+          syncOutroFadeControlsUI();
+        }
         syncOutroTimelineUI();
       });
 
@@ -3626,8 +3767,8 @@
           src_path: outroModalState.srcPath,
           start_sec: outroModalState.startSec,
           end_sec: outroModalState.endSec,
-          fade_in: outroModalState.fadeIn,
-          fade_out: outroModalState.fadeOut,
+          fade_in: getEffectiveFadeIn(),
+          fade_out: getEffectiveFadeOut(),
         });
         btn.disabled = false;
         btn.textContent = 'Preview clip';
@@ -3652,10 +3793,13 @@
         if (state.view === 'import') {
           const baseKey = (track.base_id || '').replace(/^m_/, '');
           const dur = outroModalState.totalDur || 180;
+          const effFadeIn = getEffectiveFadeIn();
+          const effFadeOut = getEffectiveFadeOut();
           const isFullFile = outroModalState.mode === 'file'
             && outroModalState.startSec <= 0.1
             && Math.abs(outroModalState.endSec - dur) < 0.2
-            && outroModalState.fadeIn <= 0.05;
+            && effFadeIn <= 0.05
+            && effFadeOut > 0;
           track.has_outro = true;
           track.outro_id = `m_outro_${baseKey}`;
           track.outro_file = `${track.outro_id}.mpc`;
@@ -3664,8 +3808,10 @@
           track.outro_mode = outroModalState.mode;
           track.outro_start = isFullFile ? null : outroModalState.startSec;
           track.outro_end = isFullFile ? null : outroModalState.endSec;
-          track.outro_fade_in = outroModalState.fadeIn;
-          track.outro_fade_out = outroModalState.fadeOut;
+          track.outro_fade_in_enabled = !!outroModalState.fadeInEnabled && effFadeIn > 0;
+          track.outro_fade_out_enabled = !!outroModalState.fadeOutEnabled && effFadeOut > 0;
+          track.outro_fade_in = effFadeIn;
+          track.outro_fade_out = effFadeOut;
           closeOutroEditor();
           renderWorkspace();
           return;
@@ -3685,8 +3831,9 @@
           src_path: outroModalState.srcPath,
           start_sec: outroModalState.startSec,
           end_sec: outroModalState.endSec,
-          fade_in: outroModalState.fadeIn,
-          fade_out: outroModalState.fadeOut,
+          fade_in: getEffectiveFadeIn(),
+          fade_out: getEffectiveFadeOut(),
+          quality_preset: state.qualityPreset,
         });
         outroModalState.busy = false;
         $('btn-outro-save').disabled = false;
@@ -3711,6 +3858,10 @@
           track.outro_src_name = null;
           track.outro_start = null;
           track.outro_end = null;
+          track.outro_fade_in = 0.0;
+          track.outro_fade_out = 0.08;
+          track.outro_fade_in_enabled = false;
+          track.outro_fade_out_enabled = true;
           closeOutroEditor();
           renderWorkspace();
           return;
@@ -3829,9 +3980,21 @@
           tracks: selected,
           keep_original: state.keepOriginal,
           on_conflict: state.onConflict,
+          quality_preset: state.qualityPreset,
         });
         if (!res.ok) {
           window.__onInstallComplete({ ok: false, error: res.error || 'Could not start install.' });
+        }
+      });
+
+      $('quality-select').addEventListener('change', async (e) => {
+        state.qualityPreset = e.target.value || 'high';
+        if (hasBridge()) {
+          const res = await callApi('set_export_quality', state.qualityPreset);
+          if (res && res.ok && res.quality_preset) {
+            state.qualityPreset = res.quality_preset;
+            e.target.value = res.quality_preset;
+          }
         }
       });
 
@@ -4243,6 +4406,23 @@
 
       /* ---------- In-App Self-Updater ---------- */
       const LOCAL_RELEASE_CHANGELOG = {
+        '1.3.1': [
+          {
+            title: 'Added',
+            items: [
+              'Added independent Fade In and Fade Out On/Off toggles in the Outro Editor, preserving saved durations when switched off.',
+              'Added an audio quality selector (High, Ultra, Standard, Compact) saved across sessions, plus a matching --quality CLI option.',
+              'Expanded game detection to locate Steam, XboxGames, WindowsApps, Content/Data, and loose Asphalt 8 folders across versions.',
+            ],
+          },
+          {
+            title: 'Changed',
+            items: [
+              'Raised default exported audio quality from 32 kHz (--radio) to 44.1 kHz (--insane) with 64-tap sinc resampling and Shibata dither, and upgraded clip previews to 44.1 kHz.',
+              'Updated soundpack patching and health checks to handle playlist event names across older and newer Asphalt 8 builds.',
+            ],
+          },
+        ],
         '1.3.0': [
           {
             title: 'Changed',
@@ -4704,7 +4884,19 @@
         }
         const init = await callApi('get_initial_state');
         applyTheme(init.theme || 'dark', false);
-        state.appVersion = init.app_version || '1.3.0';
+        if (Array.isArray(init.quality_presets) && init.quality_presets.length) {
+          const sel = $('quality-select');
+          sel.innerHTML = '';
+          for (const p of init.quality_presets) {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = p.label;
+            sel.appendChild(opt);
+          }
+        }
+        state.qualityPreset = init.quality_preset || 'high';
+        $('quality-select').value = state.qualityPreset;
+        state.appVersion = init.app_version || '1.3.1';
         state.isFrozen = !!init.is_frozen;
         $('app-version-pill').textContent = `v${state.appVersion}`;
         applyGameStatus(init);

@@ -4,11 +4,11 @@ Desktop app and engine for managing custom soundtrack mods in Asphalt 8: Airborn
 
 ## Features
 
-The UI converts audio offline with the bundled `tools/ffmpeg.exe` and `tools/mpcenc.exe` encoders into 32 kHz Musepack SV8 normalized to -14 LUFS.
+The UI converts audio offline with the bundled `tools/ffmpeg.exe` and `tools/mpcenc.exe` encoders into Musepack SV8 normalized to -14 LUFS, defaulting to High quality (`44.1 kHz`, `--insane`, ~240 kbps) with selectable Ultra, Standard, and Compact presets.
 
 - Import dropped or browsed audio files, folders (with optional `Rock/`, `Electro/`, `Dubstep/`, `Menu/`, and `Outro/` subfolders), or `.zip` mod packs containing `pack_manifest.json`.
 - Assign artists and stations in batches, edit Song Title, Artist, and Station inline across the Import Queue and In-Game Library (`Data/soundpack/soundpack` and `*.texts`), and flag conflicts with existing game tracks.
-- Trim Outro tracks on a 120-bin PCM waveform with draggable and sweepable bounds, fade-in and fade-out controls, and live clip playback.
+- Trim Outro tracks on a 120-bin PCM waveform with draggable and sweepable bounds, independent Fade In and Fade Out On/Off toggles, and live clip playback.
 - View background `Peak dBFS` and `RMS dBFS` loudness badges on tracks.
 - Audit files with Soundpack Health Check & Orphan Cleaner, switch MOD Profiles (`soundpack` and `*.texts` loadouts), and restore timestamped backups.
 - Export checked Queue or Library tracks as a `.zip` archive or portable folder with `pack_manifest.json`.

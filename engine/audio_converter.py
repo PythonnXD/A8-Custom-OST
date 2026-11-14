@@ -11,6 +11,40 @@ from typing import Dict, Any, Tuple, Optional, List
 VALID_CATEGORIES = ['rock', 'electro', 'dubstep', 'menu']
 OUTRO_FOLDER = 'outro'
 AUDIO_EXTENSIONS = ('.mpc', '.ogg', '.mp3', '.wav', '.flac', '.m4a', '.aac')
+VALID_MPC8_SAMPLE_RATES = ('32000', '37800', '44100', '48000')
+DEFAULT_QUALITY_PRESET = 'high'
+QUALITY_PRESETS: Dict[str, Dict[str, Any]] = {
+    'high': {
+        'label': 'High (44.1 kHz · ~240 kbps)',
+        'sample_rate': 44100,
+        'mpc_flag': '--insane',
+    },
+    'ultra': {
+        'label': 'Ultra (44.1 kHz · ~270 kbps)',
+        'sample_rate': 44100,
+        'mpc_flag': '--braindead',
+    },
+    'standard': {
+        'label': 'Standard (32 kHz · ~210 kbps)',
+        'sample_rate': 32000,
+        'mpc_flag': '--extreme',
+    },
+    'compact': {
+        'label': 'Compact (32 kHz · ~130 kbps)',
+        'sample_rate': 32000,
+        'mpc_flag': '--radio',
+    },
+}
+
+
+def resolve_quality_preset(preset: Optional[str]) -> Tuple[str, Dict[str, Any]]:
+    """Resolves a quality preset name to a normalized key and encoder parameters."""
+    key = str(preset or DEFAULT_QUALITY_PRESET).strip().lower()
+    if key == 'stock':
+        key = 'compact'
+    if key not in QUALITY_PRESETS:
+        key = DEFAULT_QUALITY_PRESET
+    return key, QUALITY_PRESETS[key]
 
 def _subprocess_kwargs() -> Dict[str, Any]:
     """Returns platform-specific subprocess options (suppressing console flashes on Windows)."""
@@ -126,12 +160,20 @@ def is_valid_mpc8(file_path: str) -> bool:
                 streams = data.get('streams', [])
                 if streams:
                     s = streams[0]
-                    return s.get('codec_name') == 'musepack8' and s.get('sample_rate') == '32000' and s.get('channels') == 2
+                    return (
+                        s.get('codec_name') == 'musepack8'
+                        and str(s.get('sample_rate')) in VALID_MPC8_SAMPLE_RATES
+                        and s.get('channels') == 2
+                    )
 
         probed = probe_with_ffmpeg(file_path)
         s = probed.get('stream') or {}
         if s:
-            return s.get('codec_name') == 'musepack8' and s.get('sample_rate') == '32000' and s.get('channels') == 2
+            return (
+                s.get('codec_name') == 'musepack8'
+                and str(s.get('sample_rate')) in VALID_MPC8_SAMPLE_RATES
+                and s.get('channels') == 2
+            )
         return True
     except Exception:
         return False
@@ -584,8 +626,9 @@ def build_ffmpeg_audio_filter_and_trim(
     fade_in: float = 0.0,
     fade_out: Optional[float] = None,
     apply_loudnorm: bool = True,
+    sample_rate: int = 44100,
 ) -> Tuple[List[str], str, bool]:
-    """Builds ffmpeg post-input seek/duration args and normalized audio filter chain."""
+    """Builds ffmpeg post-input seek/duration args and high-precision audio filter chain."""
     start = max(0.0, float(start_sec)) if start_sec is not None else None
     end = max(0.0, float(end_sec)) if end_sec is not None else None
     if start is not None and end is not None and end <= start:
@@ -593,11 +636,14 @@ def build_ffmpeg_audio_filter_and_trim(
 
     fi = max(0.0, float(fade_in or 0.0))
     fo_val = (0.08 if is_outro else 0.0) if fade_out is None else max(0.0, float(fade_out))
+    has_fade_out_change = (
+        abs(fo_val - 0.08) > 1e-4 if is_outro else fo_val > 0.0
+    ) if fade_out is not None else False
     has_custom = (
         (start is not None and start > 0.0)
         or (end is not None and end > 0.0)
         or (fi > 0.0)
-        or (is_outro and fade_out is not None and abs(fo_val - 0.08) > 1e-4)
+        or has_fade_out_change
     )
 
     clip_dur: Optional[float]
@@ -630,6 +676,9 @@ def build_ffmpeg_audio_filter_and_trim(
         fade_start = max(0.0, dur_for_fade - eff_fo)
         filters.append(f"afade=t=out:st={fade_start:.3f}:d={eff_fo:.3f}")
 
+    target_sr = int(sample_rate or 44100)
+    filters.append(f"aresample={target_sr}:filter_size=64:phase_shift=12:cutoff=0.95:dither_method=shibata")
+
     return trim_args, ','.join(filters), has_custom
 
 
@@ -642,9 +691,14 @@ def convert_track(
     end_sec: Optional[float] = None,
     fade_in: float = 0.0,
     fade_out: Optional[float] = None,
+    quality_preset: str = DEFAULT_QUALITY_PRESET,
+    sample_rate: Optional[int] = None,
 ) -> str:
-    """Converts src_path (optionally trimmed and faded) to 32kHz stereo Musepack SV8 at dst_path."""
+    """Converts src_path (optionally trimmed and faded) to stereo Musepack SV8 at dst_path."""
     os.makedirs(os.path.dirname(os.path.abspath(dst_path)), exist_ok=True)
+    _, preset_cfg = resolve_quality_preset(quality_preset)
+    target_sr = int(sample_rate or preset_cfg['sample_rate'])
+    mpc_flag = str(preset_cfg['mpc_flag'])
 
     trim_args, af_chain, has_custom = build_ffmpeg_audio_filter_and_trim(
         src_path,
@@ -654,6 +708,7 @@ def convert_track(
         fade_in=fade_in,
         fade_out=fade_out,
         apply_loudnorm=True,
+        sample_rate=target_sr,
     )
 
     if is_valid_mpc8(src_path) and not has_custom:
@@ -672,16 +727,16 @@ def convert_track(
         tmp_wav_path = tmp_wav.name
 
     try:
-        # Step 1: ffmpeg decode, optional trim, loudness normalize & fade to 32kHz stereo WAV
+        # Step 1: ffmpeg decode, optional trim, loudness normalize, fade & high-precision resample
         cmd_ffmpeg = [ffmpeg, '-y', '-i', src_path] + trim_args
         if af_chain:
             cmd_ffmpeg.extend(['-af', af_chain])
-        cmd_ffmpeg.extend(['-ar', '32000', '-ac', '2', '-c:a', 'pcm_s16le', tmp_wav_path])
+        cmd_ffmpeg.extend(['-ar', str(target_sr), '-ac', '2', '-c:a', 'pcm_s16le', tmp_wav_path])
         subprocess.run(cmd_ffmpeg, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **_subprocess_kwargs())
 
-        # Step 2: mpcenc encode to Musepack SV8
+        # Step 2: mpcenc encode to Musepack SV8 at selected quality tier
         cmd_mpc = [
-            mpcenc, '--silent', '--radio', '--overwrite',
+            mpcenc, '--silent', mpc_flag, '--overwrite',
             tmp_wav_path, dst_path
         ]
         subprocess.run(cmd_mpc, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **_subprocess_kwargs())
@@ -983,6 +1038,9 @@ def _apply_pack_manifests(result: Dict[str, Any], search_dirs: List[str]) -> Non
                     t[k] = float(entry[k])
                 except (TypeError, ValueError):
                     pass
+        for bk in ('outro_fade_in_enabled', 'outro_fade_out_enabled'):
+            if bk in entry and isinstance(entry[bk], bool):
+                t[bk] = entry[bk]
 
     categories_result: Dict[str, List[Dict[str, Any]]] = {}
     for t in tracks:

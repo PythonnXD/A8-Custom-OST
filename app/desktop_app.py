@@ -20,7 +20,7 @@ from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse
 from typing import Any, Dict, List, Optional
 
-APP_VERSION = '1.3.0'
+APP_VERSION = '1.3.1'
 DEFAULT_UPDATE_MANIFEST_URL = 'https://api.github.com/repos/PythonnXD/A8-Custom-OST/releases/latest'
 _LEGACY_UPDATE_URLS = {
     '',
@@ -56,6 +56,7 @@ from engine.detector import (
     diagnose_permission_failure,
     ensure_write_permissions_detailed,
     clone_game_to_loose_folder,
+    resolve_game_paths,
     _get_current_user_sid,
 )
 from engine.audio_converter import (
@@ -67,6 +68,9 @@ from engine.audio_converter import (
     find_tool,
     has_category_subfolders,
     AUDIO_EXTENSIONS,
+    QUALITY_PRESETS,
+    DEFAULT_QUALITY_PRESET,
+    resolve_quality_preset,
 )
 from engine.soundpack_manager import get_existing_track_ids, patch_soundpack
 from engine.texts_manager import add_song_titles
@@ -731,15 +735,37 @@ class PatcherDesktopAPI:
         detected = saved_game if (saved_game and is_valid_game_dir(saved_game)) else find_asphalt8_path()
         status = self._game_status(detected)
         backups = list_backups(detected) if detected else []
+        quality_key, _ = resolve_quality_preset(prefs.get('quality_preset'))
         status.update({
             'app_version': APP_VERSION,
             'is_frozen': bool(getattr(sys, 'frozen', False)),
             'theme': prefs.get('theme', 'dark'),
             'last_music_dir': prefs.get('last_music_dir', ''),
+            'quality_preset': quality_key,
+            'quality_presets': [
+                {
+                    'id': k,
+                    'label': v['label'],
+                    'sample_rate': v['sample_rate'],
+                    'mpc_flag': v['mpc_flag'],
+                }
+                for k, v in QUALITY_PRESETS.items()
+            ],
             'backups_count': len(backups),
             'is_admin': is_user_admin(),
         })
         return status
+
+    def set_export_quality(self, preset: str) -> Dict[str, Any]:
+        key, cfg = resolve_quality_preset(preset)
+        save_prefs({'quality_preset': key})
+        return {
+            'ok': True,
+            'quality_preset': key,
+            'sample_rate': cfg['sample_rate'],
+            'mpc_flag': cfg['mpc_flag'],
+            'label': cfg['label'],
+        }
 
     def set_window_theme(self, theme: str) -> Dict[str, Any]:
         normalized = 'light' if theme == 'light' else 'dark'
@@ -768,6 +794,7 @@ class PatcherDesktopAPI:
                 'error': 'Selected folder is not a valid Asphalt 8 installation (missing Data/soundpack/soundpack and Data/music).',
                 'game_dir': clean,
             }
+        clean = resolve_game_paths(clean)['base_dir']
         save_prefs({'last_game_dir': clean})
         info = self._game_status(clean)
         info['ok'] = True
@@ -942,6 +969,16 @@ class PatcherDesktopAPI:
                 'outro_end': t.get('outro_end'),
                 'outro_fade_in': float(t.get('outro_fade_in') or 0.0),
                 'outro_fade_out': float(t['outro_fade_out']) if t.get('outro_fade_out') is not None else 0.08,
+                'outro_fade_in_enabled': (
+                    bool(t['outro_fade_in_enabled'])
+                    if t.get('outro_fade_in_enabled') is not None
+                    else (float(t.get('outro_fade_in') or 0.0) > 0.0)
+                ),
+                'outro_fade_out_enabled': (
+                    bool(t['outro_fade_out_enabled'])
+                    if t.get('outro_fade_out_enabled') is not None
+                    else (float(t['outro_fade_out']) > 0.0 if t.get('outro_fade_out') is not None else True)
+                ),
                 'conflict': base_id in existing_ids,
                 'selected': True,
             })
@@ -1000,6 +1037,9 @@ class PatcherDesktopAPI:
             err = _ensure_game_writable(game_dir)
             if err:
                 return {'ok': False, 'error': err}
+            quality_key, _ = resolve_quality_preset(
+                payload.get('quality_preset') or load_prefs().get('quality_preset')
+            )
             res = save_track_outro(
                 game_dir=game_dir,
                 base_id=payload.get('base_id', ''),
@@ -1008,6 +1048,7 @@ class PatcherDesktopAPI:
                 end_sec=payload.get('end_sec'),
                 fade_in=float(payload.get('fade_in') or 0.0),
                 fade_out=payload.get('fade_out'),
+                quality_preset=quality_key,
             )
             res['ok'] = True
             return res
@@ -1320,6 +1361,10 @@ class PatcherDesktopAPI:
         tracks = payload.get('tracks', [])
         keep_original = bool(payload.get('keep_original', True))
         on_conflict = 'skip' if payload.get('on_conflict') == 'skip' else 'overwrite'
+        quality_key, quality_cfg = resolve_quality_preset(
+            payload.get('quality_preset') or load_prefs().get('quality_preset')
+        )
+        khz_label = f"{quality_cfg['sample_rate'] / 1000.0:g}"
 
         if not is_valid_game_dir(game_dir):
             with self._install_lock:
@@ -1381,10 +1426,20 @@ class PatcherDesktopAPI:
                         'stage': 'convert',
                         'current': idx,
                         'total': total,
-                        'message': f"Converting {title} ({t['category']}) to 32 kHz Musepack...",
+                        'message': f"Converting {title} ({t['category']}) to {khz_label} kHz Musepack...",
                     })
                     main_dst = os.path.join(music_dir, t['main_file'])
-                    convert_track(t['src_path'], main_dst, is_outro=False, mpcenc_path=mpcenc_path)
+                    main_fade_in = float(t['fade_in']) if t.get('fade_in') is not None else 0.0
+                    main_fade_out = t.get('fade_out')
+                    convert_track(
+                        t['src_path'],
+                        main_dst,
+                        is_outro=False,
+                        mpcenc_path=mpcenc_path,
+                        fade_in=main_fade_in,
+                        fade_out=main_fade_out,
+                        quality_preset=quality_key,
+                    )
                     if t.get('has_outro') and t.get('outro_src_path') and t.get('outro_file'):
                         outro_dst = os.path.join(music_dir, t['outro_file'])
                         convert_track(
@@ -1396,6 +1451,7 @@ class PatcherDesktopAPI:
                             end_sec=t.get('outro_end'),
                             fade_in=float(t.get('outro_fade_in') or 0.0),
                             fade_out=t.get('outro_fade_out'),
+                            quality_preset=quality_key,
                         )
                     converted += 1
 

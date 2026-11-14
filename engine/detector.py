@@ -8,44 +8,168 @@ import subprocess
 import tempfile
 from typing import Any, Dict, List, Optional, Tuple
 
+def _resolve_child_ci(parent_dir: str, target_name: str) -> str:
+    """Resolves a direct child path case-insensitively when parent_dir exists."""
+    if parent_dir and os.path.isdir(parent_dir):
+        low = target_name.lower()
+        try:
+            for entry in os.listdir(parent_dir):
+                if entry.lower() == low:
+                    return os.path.join(parent_dir, entry)
+        except OSError:
+            pass
+    return os.path.join(parent_dir, target_name)
+
+
+def resolve_game_paths(game_dir: str):
+    """Resolves Data/soundpack/music/text paths across old, UWP, Xbox, Steam, and case-varied A8 builds."""
+    abs_dir = os.path.abspath(game_dir) if game_dir else ''
+    base_dir = abs_dir
+    data_dir = _resolve_child_ci(base_dir, 'Data') if base_dir else ''
+    if base_dir and not os.path.isdir(data_dir):
+        content_dir = _resolve_child_ci(base_dir, 'Content')
+        if os.path.isdir(content_dir):
+            content_data = _resolve_child_ci(content_dir, 'Data')
+            if os.path.isdir(content_data):
+                base_dir = content_dir
+                data_dir = content_data
+    soundpack_dir = _resolve_child_ci(data_dir, 'soundpack') if data_dir else ''
+    soundpack_path = _resolve_child_ci(soundpack_dir, 'soundpack') if soundpack_dir else ''
+    music_dir = _resolve_child_ci(data_dir, 'music') if data_dir else ''
+    text_dir = _resolve_child_ci(data_dir, 'text') if data_dir else ''
+    return {
+        'root': abs_dir,
+        'base_dir': base_dir,
+        'data_dir': data_dir,
+        'soundpack_dir': soundpack_dir,
+        'soundpack_path': soundpack_path,
+        'music_dir': music_dir,
+        'text_dir': text_dir,
+    }
+
+
 def is_valid_game_dir(path: str) -> bool:
-    """Checks if the given directory contains Asphalt 8 data files."""
+    """Checks if the given directory contains Asphalt 8 data files (case-insensitive across versions)."""
     if not path or not os.path.isdir(path):
         return False
-    soundpack = os.path.join(path, 'Data', 'soundpack', 'soundpack')
-    music_dir = os.path.join(path, 'Data', 'music')
-    return os.path.isfile(soundpack) and os.path.isdir(music_dir)
+    paths = resolve_game_paths(path)
+    return os.path.isfile(paths['soundpack_path']) and os.path.isdir(paths['music_dir'])
 
-def find_asphalt8_path() -> Optional[str]:
-    """Auto-detects the Asphalt 8 installation directory."""
-    # 1. Try querying UWP AppX package via PowerShell
+
+def _iter_steam_library_paths():
+    import re
+    roots = []
+    try:
+        import winreg
+        for hive, subkey, valname in [
+            (winreg.HKEY_CURRENT_USER, r'Software\Valve\Steam', 'SteamPath'),
+            (winreg.HKEY_LOCAL_MACHINE, r'SOFTWARE\WOW6432Node\Valve\Steam', 'InstallPath'),
+            (winreg.HKEY_LOCAL_MACHINE, r'SOFTWARE\Valve\Steam', 'InstallPath'),
+        ]:
+            try:
+                with winreg.OpenKey(hive, subkey) as k:
+                    val, _ = winreg.QueryValueEx(k, valname)
+                    if val and os.path.isdir(val):
+                        roots.append(os.path.abspath(val))
+            except OSError:
+                pass
+    except Exception:
+        pass
+    for fallback in (r'C:\Program Files (x86)\Steam', r'C:\Program Files\Steam', r'D:\Steam', r'E:\Steam'):
+        if os.path.isdir(fallback):
+            roots.append(fallback)
+    libs = []
+    seen = set()
+    for r in roots:
+        norm = os.path.normcase(os.path.abspath(r))
+        if norm not in seen:
+            seen.add(norm)
+            libs.append(r)
+        vdf = os.path.join(r, 'steamapps', 'libraryfolders.vdf')
+        if os.path.isfile(vdf):
+            try:
+                with open(vdf, 'r', encoding='utf-8', errors='replace') as f:
+                    for m in re.finditer(r'"path"\s+"([^"]+)"', f.read()):
+                        p = m.group(1).replace('\\\\', '\\')
+                        pn = os.path.normcase(os.path.abspath(p))
+                        if os.path.isdir(p) and pn not in seen:
+                            seen.add(pn)
+                            libs.append(p)
+            except OSError:
+                pass
+    return libs
+
+
+def _iter_drive_roots():
+    import string
+    return [f'{d}:\\' for d in string.ascii_uppercase if os.path.isdir(f'{d}:\\')]
+
+
+def find_asphalt8_paths():
+    """Auto-detects all installed Asphalt 8 directories across Store, XboxGames, Steam, and portable folders."""
+    candidates = []
+    # 1. UWP AppX packages (older & current Microsoft Store versions)
     try:
         cmd = [
             'powershell', '-NoProfile', '-Command',
-            '(Get-AppxPackage *Asphalt8*).InstallLocation'
+            '(Get-AppxPackage *Asphalt* | Where-Object { $_.Name -like "*Asphalt8*" -or $_.Name -like "*Airborne*" }).InstallLocation'
         ]
         res = subprocess.run(cmd, capture_output=True, encoding='utf-8', errors='replace', timeout=10)
         if res.returncode == 0:
             for line in res.stdout.strip().splitlines():
                 loc = line.strip()
-                if is_valid_game_dir(loc):
-                    return os.path.abspath(loc)
+                if loc:
+                    candidates.append(loc)
     except Exception:
         pass
 
-    # 2. Check common paths (including WindowsApps and local workspaces)
-    candidates = [
-        r'D:\UmaToAsphalt8_Mod\Asphalt8_Loose',
-    ]
-    # Check WindowsApps folders
-    winapps_glob = r'C:\Program Files\WindowsApps\GAMELOFTSA.Asphalt8Airborne*'
-    candidates.extend(glob.glob(winapps_glob))
+    # 2. Local workspaces / known folders
+    candidates.append(r'D:\UmaToAsphalt8_Mod\Asphalt8_Loose')
 
+    # 3. Steam libraries
+    for lib in _iter_steam_library_paths():
+        common = os.path.join(lib, 'steamapps', 'common')
+        if os.path.isdir(common):
+            candidates.extend(glob.glob(os.path.join(common, '*Asphalt*8*')))
+            candidates.extend(glob.glob(os.path.join(common, '*Asphalt8*')))
+
+    # 4. WindowsApps & XboxGames & common game folders across drives
+    for env_key in ('ProgramFiles', 'ProgramFiles(x86)', 'LOCALAPPDATA'):
+        base = os.environ.get(env_key)
+        if base and os.path.isdir(base):
+            candidates.extend(glob.glob(os.path.join(base, 'WindowsApps', 'GAMELOFTSA.Asphalt8*')))
+            candidates.extend(glob.glob(os.path.join(base, '*Asphalt*8*')))
+
+    for drive in _iter_drive_roots():
+        for pattern in (
+            os.path.join(drive, 'XboxGames', '*Asphalt*8*'),
+            os.path.join(drive, 'WindowsApps', 'GAMELOFTSA.Asphalt8*'),
+            os.path.join(drive, 'Games', '*Asphalt*8*'),
+            os.path.join(drive, 'Games', '*Asphalt8*'),
+            os.path.join(drive, '*Asphalt*8*'),
+            os.path.join(drive, '*Asphalt8*'),
+        ):
+            candidates.extend(glob.glob(pattern))
+
+    found = []
+    seen = set()
     for c in candidates:
-        if is_valid_game_dir(c):
-            return os.path.abspath(c)
+        if not c or not os.path.isdir(c):
+            continue
+        for variant in (c, os.path.join(c, 'Content')):
+            if is_valid_game_dir(variant):
+                resolved = resolve_game_paths(variant)['base_dir']
+                norm = os.path.normcase(os.path.abspath(resolved))
+                if norm not in seen:
+                    seen.add(norm)
+                    found.append(resolved)
+    return found
 
-    return None
+
+def find_asphalt8_path() -> Optional[str]:
+    """Auto-detects the Asphalt 8 installation directory."""
+    found = find_asphalt8_paths()
+    return found[0] if found else None
 
 def is_user_admin() -> bool:
     """Returns True when running with Administrator privileges (or non-Windows)."""

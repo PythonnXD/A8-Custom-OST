@@ -13,7 +13,13 @@ if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
 from engine.detector import find_asphalt8_path, is_valid_game_dir, ensure_write_permissions
-from engine.audio_converter import scan_input_folder, convert_track, detect_input_music_dir
+from engine.audio_converter import (
+    scan_input_folder,
+    convert_track,
+    detect_input_music_dir,
+    DEFAULT_QUALITY_PRESET,
+    resolve_quality_preset,
+)
 from engine.soundpack_manager import patch_soundpack, get_existing_track_ids
 from engine.texts_manager import add_song_titles
 
@@ -119,7 +125,8 @@ def run_patcher(
     auto_select_all: bool = False,
     remove_stock: bool = False,
     skip_conflicts: bool = False,
-    dry_run: bool = False
+    dry_run: bool = False,
+    quality_preset: str = DEFAULT_QUALITY_PRESET,
 ) -> Dict[str, Any]:
     """Full execution pipeline for patching custom soundtracks into Asphalt 8."""
     # 1. Locate game directory
@@ -214,6 +221,7 @@ def run_patcher(
     music_dst_dir = os.path.join(resolved_game_dir, 'Data', 'music')
     os.makedirs(music_dst_dir, exist_ok=True)
 
+    resolved_quality, _ = resolve_quality_preset(quality_preset)
     prepared_tracks = []
     for idx, t in enumerate(selected_tracks, 1):
         main_mpc_name = f"{t['base_id']}.mpc"
@@ -224,14 +232,14 @@ def run_patcher(
             continue
 
         print(f"  [{idx}/{len(selected_tracks)}] Processing '{t['title']}' ({t['category']})...")
-        convert_track(t['file_path'], main_dst, is_outro=False)
+        convert_track(t['file_path'], main_dst, is_outro=False, quality_preset=resolved_quality)
 
         outro_mpc_name = None
         has_outro = False
         if t.get('outro_path'):
             outro_mpc_name = f"{t['outro_id']}.mpc"
             outro_dst = os.path.join(music_dst_dir, outro_mpc_name)
-            convert_track(t['outro_path'], outro_dst, is_outro=True)
+            convert_track(t['outro_path'], outro_dst, is_outro=True, quality_preset=resolved_quality)
             has_outro = True
 
         prepared_tracks.append({
@@ -293,6 +301,7 @@ def main(argv=None) -> int:
     parser.add_argument('--remove-stock', action='store_true', help="Remove original stock game tracks from playlist")
     parser.add_argument('--skip-conflicts', action='store_true', help="Skip existing tracks if ID conflict occurs")
     parser.add_argument('--dry-run', action='store_true', help="Simulate without modifying game files")
+    parser.add_argument('--quality', choices=['high', 'ultra', 'standard', 'compact'], default=DEFAULT_QUALITY_PRESET, help="Musepack audio quality preset (default: high)")
 
     args = parser.parse_args(argv)
 
@@ -308,7 +317,8 @@ def main(argv=None) -> int:
             auto_select_all=args.yes,
             remove_stock=args.remove_stock,
             skip_conflicts=args.skip_conflicts,
-            dry_run=args.dry_run
+            dry_run=args.dry_run,
+            quality_preset=args.quality,
         )
         return 0 if res.get('success') else 1
     except Exception as e:

@@ -9,6 +9,42 @@ CATEGORY_EVENT_MAP = {
     'menu': 'ev_menu_music'
 }
 
+
+def _find_target_playlist_events(events_elem, primary_ev_name: str):
+    """Finds all playlist random events matching a category across old and new A8 builds."""
+    all_events = events_elem.findall('event')
+    primary_low = primary_ev_name.lower()
+    matches = []
+
+    if primary_low == 'ev_menu_music':
+        for ev in all_events:
+            lbl = (ev.get('label') or '').strip()
+            low = lbl.lower()
+            if low == 'ev_menu_music' or (
+                low.startswith('ev_') and 'menu_music' in low and not low.startswith('ev_sfx_')
+            ):
+                matches.append(ev)
+        return matches
+
+    for ev in all_events:
+        if (ev.get('label') or '').strip().lower() == primary_low:
+            matches.append(ev)
+    if matches:
+        return matches
+
+    fallbacks = {
+        'ev_radio_electro': ('ev_radio_electronic', 'ev_radio_full_soundtrack'),
+        'ev_radio_dubstep': ('ev_radio_bass', 'ev_radio_full_soundtrack'),
+        'ev_radio_rock': ('ev_radio_full_soundtrack',),
+    }.get(primary_low, ('ev_radio_full_soundtrack',))
+    for fb in fallbacks:
+        for ev in all_events:
+            if (ev.get('label') or '').strip().lower() == fb:
+                matches.append(ev)
+        if matches:
+            return matches
+    return matches
+
 def get_existing_track_ids(soundpack_path: str) -> Set[str]:
     """Returns a set of all sound labels currently registered in the soundpack XML."""
     if not os.path.isfile(soundpack_path):
@@ -120,13 +156,7 @@ def patch_soundpack(
 
     # Update category random events
     for ev_name, new_ids in cat_new_ids.items():
-        cat_event = None
-        for ev in events_elem.findall('event'):
-            if ev.get('label') == ev_name:
-                cat_event = ev
-                break
-
-        if cat_event is not None:
+        for cat_event in _find_target_playlist_events(events_elem, ev_name):
             old_val = cat_event.get('value', '').strip()
             old_list = [x for x in old_val.split(',') if x] if old_val else []
 

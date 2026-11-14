@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.3.1
+
+### Added
+- Added independent Fade In and Fade Out On/Off switches in the Outro Editor; switching a fade off keeps its entered duration for later and encodes with `0.0s`.
+- Added an audio quality selector (`High`, `Ultra`, `Standard`, and `Compact`) persisted in `prefs.json`, along with a CLI `--quality` option.
+- Expanded game path resolution (`resolve_game_paths`) to detect Steam libraries, `XboxGames`, `WindowsApps`, `Content/Data`, and loose Asphalt 8 folders across versions.
+
+### Changed
+- Raised the default Musepack export quality from `32 kHz` (`--radio`) to `44.1 kHz` (`--insane`) with 64-tap resampling and Shibata dither, and raised audio preview WAVs to `44.1 kHz`.
+- Updated `patch_soundpack`, `audit_soundpack_health`, and `is_valid_mpc8` to support station events across old and new Asphalt 8 builds (`ev_radio_electronic`, `ev_radio_bass`, `ev_UPD25_menu_music`, `ev_radio_full_soundtrack`) and `32000`–`48000 Hz` SV8 streams.
+
 ## v1.3.0
 
 ### Changed

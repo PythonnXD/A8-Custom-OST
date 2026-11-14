@@ -15,6 +15,7 @@ from engine.audio_converter import (
     _subprocess_kwargs,
     convert_track,
     build_ffmpeg_audio_filter_and_trim,
+    DEFAULT_QUALITY_PRESET,
 )
 from engine.soundpack_manager import CATEGORY_EVENT_MAP
 from engine.texts_manager import read_texts, write_texts, add_song_titles
@@ -481,7 +482,7 @@ def prepare_audio_preview(file_path: str, cache_dir: str) -> str:
 
     os.makedirs(cache_dir, exist_ok=True)
     st = os.stat(file_path)
-    sig = f"{os.path.abspath(file_path)}|{st.st_mtime_ns}|{st.st_size}".encode('utf-8', errors='replace')
+    sig = f"{os.path.abspath(file_path)}|{st.st_mtime_ns}|{st.st_size}|44k_shibata".encode('utf-8', errors='replace')
     key = hashlib.md5(sig).hexdigest()[:16]
     wav_path = os.path.join(cache_dir, f"preview_{key}.wav")
     if os.path.isfile(wav_path) and os.path.getsize(wav_path) > 44:
@@ -490,7 +491,11 @@ def prepare_audio_preview(file_path: str, cache_dir: str) -> str:
     tmp_path = wav_path + '.tmp.wav'
     try:
         subprocess.run(
-            [ffmpeg, '-y', '-i', file_path, '-vn', '-ar', '32000', '-ac', '2', '-c:a', 'pcm_s16le', tmp_path],
+            [
+                ffmpeg, '-y', '-i', file_path, '-vn',
+                '-af', 'aresample=44100:filter_size=64:phase_shift=12:cutoff=0.95:dither_method=shibata',
+                '-ar', '44100', '-ac', '2', '-c:a', 'pcm_s16le', tmp_path,
+            ],
             check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30,
             **_subprocess_kwargs()
         )
@@ -526,11 +531,12 @@ def prepare_outro_segment_preview(
         fade_in=fade_in,
         fade_out=fade_out,
         apply_loudnorm=False,
+        sample_rate=44100,
     )
 
     os.makedirs(cache_dir, exist_ok=True)
     st = os.stat(src_path)
-    sig_str = f"{os.path.abspath(src_path)}|{st.st_mtime_ns}|{st.st_size}|{start_sec}|{end_sec}|{fade_in}|{fade_out}"
+    sig_str = f"{os.path.abspath(src_path)}|{st.st_mtime_ns}|{st.st_size}|{start_sec}|{end_sec}|{fade_in}|{fade_out}|44k_shibata"
     key = hashlib.md5(sig_str.encode('utf-8', errors='replace')).hexdigest()[:16]
     wav_path = os.path.join(cache_dir, f"outro_prev_{key}.wav")
     if os.path.isfile(wav_path) and os.path.getsize(wav_path) > 44:
@@ -541,7 +547,7 @@ def prepare_outro_segment_preview(
         cmd = [ffmpeg, '-y', '-i', src_path] + trim_args
         if af_chain:
             cmd.extend(['-af', af_chain])
-        cmd.extend(['-vn', '-ar', '32000', '-ac', '2', '-c:a', 'pcm_s16le', tmp_path])
+        cmd.extend(['-vn', '-ar', '44100', '-ac', '2', '-c:a', 'pcm_s16le', tmp_path])
         subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30, **_subprocess_kwargs())
         os.replace(tmp_path, wav_path)
     finally:
@@ -559,6 +565,7 @@ def save_track_outro(
     end_sec: Optional[float] = None,
     fade_in: float = 0.0,
     fade_out: Optional[float] = None,
+    quality_preset: str = DEFAULT_QUALITY_PRESET,
 ) -> Dict[str, Any]:
     """Encodes a custom or trimmed outro clip to m_outro_<id>.mpc and registers it in soundpack."""
     import tempfile
@@ -600,6 +607,7 @@ def save_track_outro(
             end_sec=end_sec,
             fade_in=fade_in,
             fade_out=fade_out,
+            quality_preset=quality_preset,
         )
         shutil.move(tmp_mpc, outro_dst)
     finally:
@@ -774,6 +782,7 @@ def audit_soundpack_health(game_dir: str) -> Dict[str, Any]:
 
     playlist_lower_set = {e.lower() for e in ALL_PLAYLIST_EVENTS}
     playlist_lower_set.update(k.lower() for k in STATION_EVENT_TO_CATEGORY.keys())
+    playlist_lower_set.update(('ev_radio_electronic', 'ev_radio_bass'))
 
     event_labels = {ev.get('label', '').strip() for ev in all_events if ev.get('label')}
     playlist_track_ids = set()
@@ -781,7 +790,12 @@ def audit_soundpack_health(game_dir: str) -> Dict[str, Any]:
 
     for ev in all_events:
         ev_lbl = ev.get('label', '').strip()
-        if ev_lbl.lower() not in playlist_lower_set:
+        ev_low = ev_lbl.lower()
+        is_playlist_ev = (
+            ev_low in playlist_lower_set
+            or (ev_low.startswith('ev_') and 'menu_music' in ev_low and not ev_low.startswith('ev_sfx_'))
+        )
+        if not is_playlist_ev:
             continue
         raw_val = ev.get('value', '').strip()
         if not raw_val:
@@ -938,13 +952,19 @@ def repair_soundpack_health(
         if events_elem is not None and (will_fix_events or will_prune):
             playlist_lower_set = {e.lower() for e in ALL_PLAYLIST_EVENTS}
             playlist_lower_set.update(k.lower() for k in STATION_EVENT_TO_CATEGORY.keys())
+            playlist_lower_set.update(('ev_radio_electronic', 'ev_radio_bass'))
             existing_ev_labels = set()
 
             for ev in events_elem.findall('event'):
                 ev_lbl = ev.get('label', '').strip()
                 if ev_lbl:
                     existing_ev_labels.add(ev_lbl)
-                if ev_lbl.lower() not in playlist_lower_set:
+                ev_low = ev_lbl.lower()
+                is_playlist_ev = (
+                    ev_low in playlist_lower_set
+                    or (ev_low.startswith('ev_') and 'menu_music' in ev_low and not ev_low.startswith('ev_sfx_'))
+                )
+                if not is_playlist_ev:
                     continue
                 old_val = ev.get('value', '').strip()
                 if not old_val:
@@ -1101,6 +1121,9 @@ def export_mod_pack(
                     entry[k] = float(item[k])
                 except (TypeError, ValueError):
                     pass
+        for b in ('outro_fade_in_enabled', 'outro_fade_out_enabled'):
+            if item.get(b) is not None:
+                entry[b] = bool(item[b])
         manifest_tracks.append(entry)
 
     if not manifest_tracks:
