@@ -2377,9 +2377,13 @@
         return !!(window.pywebview && window.pywebview.api);
       }
 
-      function callApi(method, ...args) {
-        if (!hasBridge()) return Promise.resolve({ ok: false, error: 'Desktop bridge unavailable.' });
-        return window.pywebview.api[method](...args);
+      async function callApi(method, ...args) {
+        if (!hasBridge()) return { ok: false, error: 'Desktop bridge unavailable.' };
+        try {
+          return await window.pywebview.api[method](...args);
+        } catch (err) {
+          return { ok: false, error: (err && err.message) || String(err) || 'Operation failed.' };
+        }
       }
 
       function formatClock(seconds) {
@@ -4243,9 +4247,10 @@
           {
             title: 'Highlights',
             items: [
-              'Redesigned App Updates: Clean release status view with automatic online check, single Close action, and no exposed API or local update controls.',
-              'Structured Release Changelog: Parses and formats release highlights directly inside the Updates window.',
-              'GitHub Release Asset Updater: Resolves downloadable .zip release assets accurately from the public release feed.',
+              'Redesigned App Updates: Streamlined update dialog with automatic release checking, single Close action, and no exposed API URL or local package controls.',
+              'Structured Release Changelog: Formatted highlights and release metadata directly inside the App Updates dialog.',
+              'Reliable Folder Self-Updater & Add Songs Fix: Fixed background PowerShell launch flags so extracted app updates apply cleanly, and fixed the Add Songs file picker filter.',
+              'Portable .zip Packaging: Standardized release archive naming to A8_Custom_OST_Patcher.zip.',
             ],
           },
         ],

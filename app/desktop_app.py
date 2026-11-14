@@ -195,7 +195,7 @@ def inspect_update_manifest(
     }
 
 
-def _extract_exe_from_update_package(pkg_path: str) -> str:
+def _extract_update_package(pkg_path: str) -> tuple[str, Optional[str]]:
     clean = os.path.abspath(str(pkg_path or '').strip())
     if not os.path.isfile(clean):
         raise FileNotFoundError(f"Update package not found: {clean}")
@@ -206,36 +206,48 @@ def _extract_exe_from_update_package(pkg_path: str) -> str:
             magic = f.read(2)
         if magic != b'MZ':
             raise ValueError("Selected .exe is not a valid Windows PE executable.")
-        return clean
+        return clean, None
 
     if low.endswith('.zip'):
-        extract_dir = os.path.join(tempfile.gettempdir(), f"a8_upd_{int(time.time())}")
+        extract_dir = os.path.abspath(os.path.join(tempfile.gettempdir(), f"a8_upd_{int(time.time())}"))
+        if os.path.isdir(extract_dir):
+            shutil.rmtree(extract_dir, ignore_errors=True)
         os.makedirs(extract_dir, exist_ok=True)
         chosen_exe = None
         with zipfile.ZipFile(clean, 'r') as zf:
-            exes = [
-                i for i in zf.infolist()
-                if not i.is_dir() and i.filename.lower().endswith('.exe')
-            ]
+            infos = [i for i in zf.infolist() if not i.is_dir()]
+            exes = [i for i in infos if i.filename.lower().endswith('.exe')]
             if not exes:
                 raise ValueError("Selected .zip package does not contain an .exe file.")
+            for info in infos:
+                rel = info.filename.replace('\\', '/').lstrip('/')
+                parts = [p for p in rel.split('/') if p and p != '.']
+                if not parts or '..' in parts or ':' in parts[0]:
+                    raise ValueError("Unsafe file path inside .zip update archive.")
+                dest_file = os.path.abspath(os.path.join(extract_dir, *parts))
+                if os.path.commonpath([extract_dir, dest_file]) != extract_dir:
+                    raise ValueError("Unsafe path traversal inside .zip update archive.")
+                os.makedirs(os.path.dirname(dest_file), exist_ok=True)
+                with zf.open(info, 'r') as src_f, open(dest_file, 'wb') as dst_f:
+                    shutil.copyfileobj(src_f, dst_f)
+
             preferred = [i for i in exes if 'a8_custom_ost_patcher' in os.path.basename(i.filename).lower()]
             target_info = preferred[0] if preferred else exes[0]
-            rel = target_info.filename.replace('\\', '/').lstrip('/')
-            parts = [p for p in rel.split('/') if p and p != '.']
-            if not parts or '..' in parts or ':' in parts[0]:
-                raise ValueError("Unsafe executable path inside .zip update archive.")
-            dest_exe = os.path.abspath(os.path.join(extract_dir, os.path.basename(target_info.filename)))
-            with zf.open(target_info, 'r') as src_f, open(dest_exe, 'wb') as dst_f:
-                shutil.copyfileobj(src_f, dst_f)
-            chosen_exe = dest_exe
+            rel_exe = target_info.filename.replace('\\', '/').lstrip('/')
+            exe_parts = [p for p in rel_exe.split('/') if p and p != '.']
+            chosen_exe = os.path.abspath(os.path.join(extract_dir, *exe_parts))
 
         with open(chosen_exe, 'rb') as f:
             if f.read(2) != b'MZ':
                 raise ValueError("Extracted .exe is not a valid Windows PE executable.")
-        return chosen_exe
+        return chosen_exe, os.path.dirname(chosen_exe)
 
     raise ValueError("Update package must be a .exe or .zip file.")
+
+
+def _extract_exe_from_update_package(pkg_path: str) -> str:
+    exe_path, _ = _extract_update_package(pkg_path)
+    return exe_path
 
 
 def apply_local_exe_update(
@@ -243,7 +255,7 @@ def apply_local_exe_update(
     target_exe_path: Optional[str] = None,
     relaunch: bool = True,
 ) -> Dict[str, Any]:
-    exe_src = _extract_exe_from_update_package(new_pkg_path)
+    exe_src, pkg_dir = _extract_update_package(new_pkg_path)
     frozen = bool(getattr(sys, 'frozen', False))
     dst_exe = os.path.abspath(target_exe_path) if target_exe_path else (os.path.abspath(sys.executable) if frozen else '')
 
@@ -266,37 +278,98 @@ def apply_local_exe_update(
             'will_restart': False,
         }
 
-    # Frozen self-update: stage and replace after current process exits
+    # Frozen self-update: stage full payload (including tools/README when from .zip) and apply via background pwsh
     stage_dir = os.path.join(tempfile.gettempdir(), 'a8_ost_update_stage')
-    os.makedirs(stage_dir, exist_ok=True)
-    staged_exe = os.path.join(stage_dir, 'A8_Custom_OST_Patcher_new.exe')
-    shutil.copy2(exe_src, staged_exe)
-    ps_script = os.path.join(stage_dir, 'apply_update.ps1')
-    pid = os.getpid()
+    stage_payload = os.path.join(stage_dir, 'payload')
+    shutil.rmtree(stage_payload, ignore_errors=True)
+    os.makedirs(stage_payload, exist_ok=True)
 
-    esc_src = staged_exe.replace("'", "''")
-    esc_dst = dst_exe.replace("'", "''")
-    relaunch_line = f"Start-Process -FilePath '{esc_dst}'" if relaunch else ""
+    if pkg_dir and os.path.isdir(pkg_dir):
+        shutil.copytree(pkg_dir, stage_payload, dirs_exist_ok=True)
+        staged_exe = os.path.join(stage_payload, os.path.basename(exe_src))
+    else:
+        staged_exe = os.path.join(stage_payload, os.path.basename(dst_exe))
+        shutil.copy2(exe_src, staged_exe)
+
+    ps_script = os.path.join(stage_dir, 'apply_update.ps1')
+    err_log = os.path.join(stage_dir, 'apply_update_error.log')
+    pid = os.getpid()
+    ppid = os.getppid() if hasattr(os, 'getppid') else 0
+    dst_dir = os.path.dirname(dst_exe)
+
+    esc_payload = stage_payload.replace("'", "''")
+    esc_src_exe = staged_exe.replace("'", "''")
+    esc_dst_exe = dst_exe.replace("'", "''")
+    esc_dst_dir = dst_dir.replace("'", "''")
+    esc_err_log = err_log.replace("'", "''")
+    relaunch_line = (
+        f"Start-Process -FilePath '{esc_dst_exe}' -WorkingDirectory '{esc_dst_dir}'"
+        if relaunch else ""
+    )
+
+    #Wait both Python worker PID and PyInstaller --onefile bootloader parent PID if same binary.
     script_body = (
-        f"try {{ Wait-Process -Id {pid} -Timeout 15 -ErrorAction SilentlyContinue }} catch {{}}\n"
-        f"Start-Sleep -Milliseconds 400\n"
-        f"for ($i = 0; $i -lt 15; $i++) {{\n"
-        f"    try {{\n"
-        f"        Copy-Item -LiteralPath '{esc_src}' -Destination '{esc_dst}' -Force\n"
-        f"        Remove-Item -LiteralPath '{esc_src}' -Force -ErrorAction SilentlyContinue\n"
-        f"        {relaunch_line}\n"
-        f"        break\n"
-        f"    }} catch {{\n"
-        f"        Start-Sleep -Milliseconds 350\n"
-        f"    }}\n"
-        f"}}\n"
+        "$ErrorActionPreference = 'Stop'\n"
+        f"$childPid = {pid}\n"
+        f"$parentPid = {ppid}\n"
+        f"$dstExe = '{esc_dst_exe}'\n"
+        f"$dstDir = '{esc_dst_dir}'\n"
+        f"$srcExe = '{esc_src_exe}'\n"
+        f"$payloadDir = '{esc_payload}'\n"
+        f"$errLog = '{esc_err_log}'\n"
+        "Remove-Item -LiteralPath $errLog -Force -ErrorAction SilentlyContinue\n"
+        "try { Wait-Process -Id $childPid -Timeout 20 -ErrorAction SilentlyContinue } catch {}\n"
+        "if ($parentPid -gt 0 -and $parentPid -ne $childPid) {\n"
+        "    try {\n"
+        "        $pp = Get-Process -Id $parentPid -ErrorAction SilentlyContinue\n"
+        "        if ($pp -and $pp.Path -and ($pp.Path -ieq $dstExe)) {\n"
+        "            Wait-Process -Id $parentPid -Timeout 20 -ErrorAction SilentlyContinue\n"
+        "        }\n"
+        "    } catch {}\n"
+        "}\n"
+        "Start-Sleep -Milliseconds 350\n"
+        "$applied = $false\n"
+        "$lastErr = ''\n"
+        "for ($i = 0; $i -lt 40; $i++) {\n"
+        "    try {\n"
+        "        if (Test-Path -LiteralPath $dstExe) {\n"
+        "            $item = Get-Item -LiteralPath $dstExe -Force\n"
+        "            if ($item.Attributes -band [IO.FileAttributes]::ReadOnly) {\n"
+        "                $item.Attributes = ($item.Attributes -bxor [IO.FileAttributes]::ReadOnly)\n"
+        "            }\n"
+        "        }\n"
+        "        Copy-Item -LiteralPath $srcExe -Destination $dstExe -Force\n"
+        "        $srcName = [IO.Path]::GetFileName($srcExe)\n"
+        "        Get-ChildItem -LiteralPath $payloadDir -Force | Where-Object { $_.Name -ine $srcName } | ForEach-Object {\n"
+        "            Copy-Item -LiteralPath $_.FullName -Destination $dstDir -Recurse -Force\n"
+        "        }\n"
+        "        $applied = $true\n"
+        "        break\n"
+        "    } catch {\n"
+        "        $lastErr = $_.Exception.Message\n"
+        "        Start-Sleep -Milliseconds 300\n"
+        "    }\n"
+        "}\n"
+        "if ($applied) {\n"
+        "    Remove-Item -LiteralPath $payloadDir -Recurse -Force -ErrorAction SilentlyContinue\n"
+        f"    {relaunch_line}\n"
+        "} else {\n"
+        "    Set-Content -LiteralPath $errLog -Value $lastErr -Encoding UTF8 -ErrorAction SilentlyContinue\n"
+        "}\n"
     )
     with open(ps_script, 'w', encoding='utf-8') as f:
         f.write(script_body)
 
-    creationflags = getattr(subprocess, 'CREATE_NO_WINDOW', 0x08000000) | getattr(subprocess, 'DETACHED_PROCESS', 0x00000008)
+    # Never combine DETACHED_PROCESS with powershell.exe; it exits immediately without running scripts.
+    creationflags = (
+        getattr(subprocess, 'CREATE_NO_WINDOW', 0x08000000)
+        | getattr(subprocess, 'CREATE_NEW_PROCESS_GROUP', 0x00000200)
+    )
     subprocess.Popen(
         ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ps_script],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
         close_fds=True,
         creationflags=creationflags,
     )
@@ -765,12 +838,15 @@ class PatcherDesktopAPI:
         if not self._window:
             return {'cancelled': True}
         initial = load_prefs().get('last_music_dir') or os.path.expanduser('~')
-        result = self._window.create_file_dialog(
-            webview.FileDialog.OPEN,
-            directory=initial if os.path.isdir(initial) else '',
-            allow_multiple=True,
-            file_types=('Audio & Mod Packs (*.mp3;*.ogg;*.wav;*.flac;*.m4a;*.aac;*.mpc;*.zip)', 'All files (*.*)')
-        )
+        try:
+            result = self._window.create_file_dialog(
+                webview.FileDialog.OPEN,
+                directory=initial if os.path.isdir(initial) else '',
+                allow_multiple=True,
+                file_types=('Audio and Mod Packs (*.mp3;*.ogg;*.wav;*.flac;*.m4a;*.aac;*.mpc;*.zip)', 'All files (*.*)')
+            )
+        except Exception as e:
+            return {'ok': False, 'error': str(e)}
         if not result or not len(result):
             return {'cancelled': True}
         return self.add_music_paths(list(result), game_dir=game_dir)
@@ -1181,6 +1257,9 @@ class PatcherDesktopAPI:
             return {'ok': False, 'error': str(e)}
 
     def _graceful_exit(self) -> None:
+        watchdog = threading.Timer(2.5, os._exit, args=(0,))
+        watchdog.daemon = True
+        watchdog.start()
         try:
             if self._window:
                 self._window.destroy()
@@ -1226,7 +1305,7 @@ class PatcherDesktopAPI:
 
             res = apply_local_exe_update(pkg_path, target_exe_path=target_exe, relaunch=relaunch)
             if res.get('ok') and res.get('mode') == 'scheduled_restart' and not target_exe:
-                threading.Timer(0.6, self._graceful_exit).start()
+                threading.Timer(0.3, self._graceful_exit).start()
             return res
         except Exception as e:
             return {'ok': False, 'error': str(e)}

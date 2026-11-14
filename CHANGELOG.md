@@ -5,7 +5,8 @@
 ### Highlights
 - **Redesigned App Updates**: Streamlined update dialog with automatic release checking, single Close action, and no exposed API URL or local package controls.
 - **Structured Release Changelog**: Formatted highlights and release metadata (`Published` date and package size) directly inside the App Updates dialog.
-- **Portable `.zip` Release Packaging**: Standardized automated releases on `A8_Custom_OST_Patcher-win64.zip` and fixed asset resolution against the public GitHub Release feed.
+- **Reliable Folder Self-Updater & Add Songs Fix**: Fixed background PowerShell launch flags so extracted app updates apply cleanly and restart the app, and fixed the Add Songs file picker filter.
+- **Portable `.zip` Packaging**: Standardized release archive naming to `A8_Custom_OST_Patcher.zip`.
 
 ## v1.2.0
 

@@ -58,7 +58,7 @@ jobs:
           Copy-Item "README.md" "$stage/README.md"
           $p = Start-Process -FilePath "$stage/A8_Custom_OST_Patcher.exe" -ArgumentList "--smoke-test" -Wait -PassThru
           if ($p.ExitCode -ne 0) { throw "Smoke test failed with exit code $($p.ExitCode)" }
-          Compress-Archive -Path "$stage/*" -DestinationPath "dist/A8_Custom_OST_Patcher-win64.zip" -Force
+          Compress-Archive -Path "$stage/*" -DestinationPath "dist/A8_Custom_OST_Patcher.zip" -Force
 
       - name: Publish GitHub Release
         shell: pwsh
@@ -84,17 +84,19 @@ jobs:
           }
           $assets = gh release view $tag --json assets --jq '.assets[].name' 2>$null
           if ($LASTEXITCODE -eq 0) {
-            if ($assets -contains "A8_Custom_OST_Patcher.exe") {
-              gh release delete-asset $tag "A8_Custom_OST_Patcher.exe" --yes
+            foreach ($oldAsset in @("A8_Custom_OST_Patcher.exe", "A8_Custom_OST_Patcher-win64.zip")) {
+              if ($assets -contains $oldAsset) {
+                gh release delete-asset $tag $oldAsset --yes
+              }
             }
-            gh release upload $tag "dist/A8_Custom_OST_Patcher-win64.zip" --clobber
+            gh release upload $tag "dist/A8_Custom_OST_Patcher.zip" --clobber
             if ($notesFile) {
               gh release edit $tag --notes-file $notesFile
             }
           } else {
             if ($notesFile) {
-              gh release create $tag "dist/A8_Custom_OST_Patcher-win64.zip" --title "Asphalt 8 Custom OST Patcher $tag" --notes-file $notesFile
+              gh release create $tag "dist/A8_Custom_OST_Patcher.zip" --title "Asphalt 8 Custom OST Patcher $tag" --notes-file $notesFile
             } else {
-              gh release create $tag "dist/A8_Custom_OST_Patcher-win64.zip" --title "Asphalt 8 Custom OST Patcher $tag" --generate-notes
+              gh release create $tag "dist/A8_Custom_OST_Patcher.zip" --title "Asphalt 8 Custom OST Patcher $tag" --generate-notes
             }
           }
