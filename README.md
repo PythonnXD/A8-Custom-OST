@@ -31,6 +31,6 @@ pyinstaller --noconfirm --onefile --windowed --name A8_Custom_OST_Patcher --path
 
 ## In-App Updates with a Private Source Repo
 Unauthenticated in-app update checks (`Updates` modal) cannot query a **Private** GitHub repository API or download private release assets without embedding credentials. To keep source code private:
-1. Keep this source repository (`A8-Custom-OST`) **Private**.
-2. Create a separate **Public** releases-only repository (e.g., `A8-Custom-OST-Releases`) with GitHub Releases containing built `A8_Custom_OST_Patcher.exe` / `.zip` assets.
-3. Point the app's release URL to `https://api.github.com/repos/<owner>/<releases-repo>/releases/latest` (or host a public HTTPS `manifest.json`).
+1. Keep this source repository (`PythonnXD/A8-Custom-OST`) **Private**.
+2. Use the separate **Public** releases-only repository (`PythonnXD/A8-Custom-OST-Releases`) with GitHub Releases containing built `A8_Custom_OST_Patcher.exe` / `.zip` assets.
+3. The app defaults to `https://api.github.com/repos/PythonnXD/A8-Custom-OST-Releases/releases/latest` (overrideable per install with any HTTPS `manifest.json` or GitHub Releases API URL).

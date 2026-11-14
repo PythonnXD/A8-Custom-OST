@@ -21,6 +21,7 @@ from urllib.parse import urlparse
 from typing import Any, Dict, List, Optional
 
 APP_VERSION = '1.2.0'
+DEFAULT_UPDATE_MANIFEST_URL = 'https://api.github.com/repos/PythonnXD/A8-Custom-OST-Releases/releases/latest'
 
 # Ensure A8_Custom_OST_Patcher root is importable both in source and frozen modes
 if getattr(sys, 'frozen', False):
@@ -117,8 +118,16 @@ def inspect_update_manifest(
             'Accept': 'application/json',
         },
     )
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        raw = resp.read().decode('utf-8', errors='replace')
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            raw = resp.read().decode('utf-8', errors='replace')
+    except urllib.error.HTTPError as e:
+        if e.code == 404 and '/releases/latest' in clean_url:
+            raise ValueError(
+                "No published GitHub Release found yet (HTTP 404). "
+                "Publish a release in the public releases repository with an .exe or .zip asset."
+            ) from e
+        raise
     data = json.loads(raw)
     if not isinstance(data, dict):
         raise ValueError("Update manifest response must be a JSON object.")
@@ -624,7 +633,7 @@ class PatcherDesktopAPI:
         status.update({
             'app_version': APP_VERSION,
             'is_frozen': bool(getattr(sys, 'frozen', False)),
-            'update_manifest_url': prefs.get('update_manifest_url', ''),
+            'update_manifest_url': prefs.get('update_manifest_url') or DEFAULT_UPDATE_MANIFEST_URL,
             'theme': prefs.get('theme', 'dark'),
             'last_music_dir': prefs.get('last_music_dir', ''),
             'backups_count': len(backups),
@@ -1135,11 +1144,11 @@ class PatcherDesktopAPI:
             'ok': True,
             'app_version': APP_VERSION,
             'is_frozen': bool(getattr(sys, 'frozen', False)),
-            'update_manifest_url': prefs.get('update_manifest_url', ''),
+            'update_manifest_url': prefs.get('update_manifest_url') or DEFAULT_UPDATE_MANIFEST_URL,
         }
 
     def check_for_updates(self, manifest_url: str = '') -> Dict[str, Any]:
-        url = str(manifest_url or '').strip() or load_prefs().get('update_manifest_url', '')
+        url = str(manifest_url or '').strip() or load_prefs().get('update_manifest_url') or DEFAULT_UPDATE_MANIFEST_URL
         if not url:
             return {'ok': False, 'error': 'Enter a release JSON manifest or GitHub Releases API URL.'}
         try:
