@@ -1,0 +1,15 @@
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Compiled standalone binary & build artifacts (attach .exe to GitHub Releases)
+A8_Custom_OST_Patcher.exe
+build/
+dist/
+*.spec
+
+# Local logs, temp directories & backups
+*.log
+.taste-skill/
+backups/

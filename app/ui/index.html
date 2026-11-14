@@ -1,0 +1,4431 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Asphalt 8 Custom OST Patcher</title>
+  <style>
+    :root, :root[data-theme="dark"] {
+      color-scheme: dark;
+      --ground: #000000;
+      --sidebar: #090909;
+      --surface: #111111;
+      --raised: #1c1c1c;
+      --active: #242424;
+      --border: #232323;
+      --rule: #191919;
+      --control: #3a3a3a;
+      --text: #ffffff;
+      --muted: #b4b4b4;
+      --faint: #949494;
+      --primary: #ffffff;
+      --primary-ink: #000000;
+      --accent: #e58f12;
+      --accent-ink: #ffaa2b;
+      --accent-on: #110b02;
+      --accent-soft: #211708;
+      --positive: #39b96d;
+      --negative: #e05252;
+      --scrim: rgba(0, 0, 0, 0.78);
+
+      --font: "Segoe UI", system-ui, -apple-system, sans-serif;
+      --sidebar-width: 248px;
+      --pad: 24px;
+      --gap: 16px;
+      --radius-card: 8px;
+      --radius-control: 6px;
+      --control-height: 32px;
+      --row-height: 52px;
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    :root[data-theme="light"] {
+      color-scheme: light;
+      --ground: #f6f6f7;
+      --sidebar: #efeff1;
+      --surface: #ffffff;
+      --raised: #ededf0;
+      --active: #e4e4e8;
+      --border: #dfdfe4;
+      --rule: #ececf0;
+      --control: #c5c5ce;
+      --text: #111113;
+      --muted: #52525b;
+      --faint: #67676f;
+      --primary: #141416;
+      --primary-ink: #ffffff;
+      --accent: #b85800;
+      --accent-ink: #9c4700;
+      --accent-on: #ffffff;
+      --accent-soft: #fdf1e4;
+      --positive: #1d7a47;
+      --negative: #c2292f;
+      --scrim: rgba(17, 17, 19, 0.56);
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--control) transparent;
+    }
+
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--control);
+      border-radius: 999px;
+      border: 2px solid transparent;
+      background-clip: content-box;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--faint);
+      border: 2px solid transparent;
+      background-clip: content-box;
+    }
+
+    html {
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--ground);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 14px;
+      line-height: 20px;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    h1, h2, h3, p {
+      margin: 0;
+    }
+
+    button, input, select {
+      font: inherit;
+      color: inherit;
+    }
+
+    svg {
+      display: block;
+      flex: none;
+    }
+
+    :focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .num {
+      font-variant-numeric: tabular-nums;
+    }
+
+    .icon {
+      width: 16px;
+      height: 16px;
+      stroke: currentColor;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* ---------- App Shell ---------- */
+    .app-shell {
+      display: grid;
+      grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: var(--sidebar);
+      border-right: 1px solid var(--border);
+      padding: 20px 16px;
+      gap: 20px;
+      overflow-y: auto;
+      z-index: 30;
+    }
+
+    .brand-lockup {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
+      padding: 2px 4px;
+    }
+
+    .brand-logo {
+      display: block;
+      width: 174px;
+      max-width: 100%;
+      height: auto;
+      object-fit: contain;
+    }
+
+    .brand-logo-sm {
+      display: block;
+      height: 24px;
+      width: auto;
+      object-fit: contain;
+    }
+
+    .brand-meta {
+      font-size: 12px;
+      line-height: 16px;
+      color: var(--faint);
+      font-weight: 500;
+    }
+
+    .nav-section {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .sidebar-label {
+      font-size: 12px;
+      line-height: 16px;
+      font-weight: 500;
+      color: var(--faint);
+      padding: 0 8px 4px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      height: 34px;
+      width: 100%;
+      padding: 0 8px;
+      border: 0;
+      border-radius: var(--radius-control);
+      background: transparent;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 400;
+      text-align: left;
+      cursor: pointer;
+      transition: background-color 140ms ease, color 140ms ease;
+    }
+
+    .nav-item:hover {
+      background: var(--raised);
+      color: var(--text);
+    }
+
+    .nav-item.active {
+      background: var(--active);
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    .nav-item .nav-count {
+      margin-left: auto;
+      font-size: 13px;
+      color: var(--faint);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .nav-item.active .nav-count {
+      color: var(--muted);
+    }
+
+    /* Sidebar Source Groups */
+    .source-rack {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      border-top: 1px solid var(--border);
+      padding-top: 16px;
+    }
+
+    .source-block {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 12px;
+      border-radius: var(--radius-card);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      transition: border-color 150ms ease, background-color 150ms ease;
+    }
+
+    .source-block.drop-target {
+      border-style: dashed;
+      border-color: var(--control);
+    }
+
+    .source-block.drag-over {
+      border-style: solid;
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .source-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .source-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .source-state {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--faint);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .state-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--faint);
+      flex: none;
+    }
+
+    .source-state.ok {
+      color: var(--positive);
+    }
+
+    .source-state.ok .state-dot {
+      background: var(--positive);
+    }
+
+    .source-state.warn {
+      color: var(--accent-ink);
+    }
+
+    .source-state.warn .state-dot {
+      background: var(--accent-ink);
+    }
+
+    .source-path {
+      font-size: 12px;
+      line-height: 16px;
+      color: var(--faint);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      word-break: break-word;
+    }
+
+    .source-actions {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .sidebar-foot {
+      margin-top: auto;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .tool-readout {
+      font-size: 12px;
+      color: var(--faint);
+      padding: 0 8px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Mobile top bar (hidden on desktop) */
+    .mobile-bar {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      height: 48px;
+      padding: 0 16px;
+      background: var(--sidebar);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 25;
+    }
+
+    .mobile-bar-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .mobile-scrim {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: var(--scrim);
+      z-index: 28;
+    }
+
+    .mobile-scrim.open {
+      display: block;
+    }
+
+    /* ---------- Canvas ---------- */
+    .canvas {
+      min-width: 0;
+      padding: var(--pad);
+      display: flex;
+      flex-direction: column;
+      gap: var(--gap);
+    }
+
+    .banner {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: var(--radius-card);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--positive);
+      background: var(--surface);
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    .banner.visible {
+      display: flex;
+    }
+
+    .banner.error {
+      border-left-color: var(--negative);
+    }
+
+    /* Title Row */
+    .title-row {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .title-group {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .title-group h1 {
+      font-size: 24px;
+      line-height: 28px;
+      font-weight: 600;
+      letter-spacing: -0.015em;
+    }
+
+    .title-sub {
+      font-size: 14px;
+      line-height: 20px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .title-actions {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .dock-controls {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    /* Buttons & Inputs (zero shadow, flat contrast steps) */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      height: var(--control-height);
+      padding: 0 12px;
+      border-radius: var(--radius-control);
+      border: 1px solid var(--control);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 500;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: background-color 140ms ease, border-color 140ms ease, transform 120ms var(--ease);
+    }
+
+    .btn:hover:not(:disabled) {
+      background: var(--raised);
+    }
+
+    .btn:active:not(:disabled) {
+      transform: translateY(1px);
+    }
+
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .btn.primary {
+      background: var(--primary);
+      color: var(--primary-ink);
+      border-color: var(--primary);
+    }
+
+    .btn.primary:hover:not(:disabled) {
+      opacity: 0.9;
+      background: var(--primary);
+    }
+
+    .btn.ghost {
+      border-color: transparent;
+      background: transparent;
+      color: var(--muted);
+    }
+
+    .btn.ghost:hover:not(:disabled) {
+      background: var(--raised);
+      color: var(--text);
+    }
+
+    .btn.danger-outline {
+      border-color: var(--control);
+      color: var(--negative);
+      background: transparent;
+    }
+
+    .btn.danger-outline:hover:not(:disabled) {
+      background: var(--raised);
+      border-color: var(--negative);
+    }
+
+    .btn.compact {
+      height: 28px;
+      padding: 0 10px;
+      font-size: 13px;
+    }
+
+    .switch-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--muted);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .switch-btn {
+      position: relative;
+      width: 34px;
+      height: 20px;
+      padding: 0;
+      border-radius: 999px;
+      border: 1px solid var(--control);
+      background: var(--raised);
+      cursor: pointer;
+      transition: background-color 160ms var(--ease), border-color 160ms var(--ease);
+    }
+
+    .switch-btn::after {
+      content: "";
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--muted);
+      transition: transform 160ms var(--ease), background-color 160ms var(--ease);
+    }
+
+    .switch-btn[aria-checked="true"] {
+      background: var(--text);
+      border-color: var(--text);
+    }
+
+    .switch-btn[aria-checked="true"]::after {
+      transform: translateX(14px);
+      background: var(--ground);
+    }
+
+    .segmented {
+      display: inline-flex;
+      padding: 2px;
+      border-radius: var(--radius-control);
+      border: 1px solid var(--border);
+      background: var(--raised);
+      gap: 2px;
+    }
+
+    .segmented-btn {
+      height: 26px;
+      padding: 0 10px;
+      border: 0;
+      border-radius: 4px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 140ms ease, color 140ms ease;
+    }
+
+    .segmented-btn.active {
+      background: var(--surface);
+      color: var(--text);
+    }
+
+    .input {
+      height: var(--control-height);
+      padding: 0 12px;
+      border-radius: var(--radius-control);
+      border: 1px solid var(--control);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+      transition: border-color 140ms ease;
+    }
+
+    .input:focus {
+      border-color: var(--accent);
+    }
+
+    .input::placeholder {
+      color: var(--faint);
+    }
+
+    input[type="checkbox"] {
+      accent-color: var(--accent);
+      width: 15px;
+      height: 15px;
+      cursor: pointer;
+    }
+
+    /* ---------- Signature Component: Asphalt 8 Radio Deck ---------- */
+    .radio-deck {
+      display: grid;
+      grid-template-columns: minmax(220px, 1.4fr) minmax(180px, 1fr) auto;
+      align-items: center;
+      gap: 16px;
+      padding: 12px 16px;
+      border-radius: var(--radius-card);
+      border: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .deck-track {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .deck-play-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      border: 1px solid var(--control);
+      background: var(--raised);
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex: none;
+      transition: background-color 140ms ease, border-color 140ms ease;
+    }
+
+    .deck-play-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--accent-on);
+    }
+
+    .deck-info {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .deck-status {
+      font-size: 12px;
+      line-height: 16px;
+      color: var(--faint);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .deck-song {
+      font-size: 14px;
+      line-height: 18px;
+      font-weight: 500;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .deck-transport {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .deck-scrub-wrap {
+      flex: 1;
+      height: 16px;
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    .deck-scrub-track {
+      width: 100%;
+      height: 4px;
+      border-radius: 999px;
+      background: var(--control);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .deck-scrub-fill {
+      width: 0%;
+      height: 100%;
+      background: var(--accent);
+      transition: width 80ms linear;
+    }
+
+    .deck-time {
+      font-size: 13px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .deck-stations {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(66px, auto));
+      gap: 4px;
+      border: 1px solid var(--border);
+      background: var(--ground);
+      padding: 3px;
+      border-radius: var(--radius-control);
+    }
+
+    .hud-station {
+      height: 26px;
+      padding: 0 10px;
+      border: 0;
+      border-radius: 4px;
+      background: transparent;
+      color: var(--faint);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background-color 140ms ease, color 140ms ease;
+    }
+
+    .hud-station:hover {
+      color: var(--text);
+    }
+
+    .hud-station.active {
+      background: var(--accent);
+      color: var(--accent-on);
+    }
+
+    /* ---------- Workspace Table Surface ---------- */
+    .workspace-panel {
+      align-self: flex-start;
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      overflow: hidden;
+    }
+
+    .scope-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 0 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .cat-tabs {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      overflow-x: auto;
+    }
+
+    .cat-tab {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 44px;
+      padding: 0 2px;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 400;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: color 140ms ease;
+    }
+
+    .cat-tab:hover {
+      color: var(--text);
+    }
+
+    .cat-tab.active {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    .cat-tab.active::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 2px;
+      background: var(--text);
+    }
+
+    .cat-count {
+      font-size: 13px;
+      color: var(--faint);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .scope-tools {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 8px 0;
+    }
+
+    .search-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 10px;
+      color: var(--faint);
+      pointer-events: none;
+    }
+
+    .search-input {
+      width: 210px;
+      padding-left: 32px;
+    }
+
+    .batch-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .batch-input {
+      width: 150px;
+    }
+
+    /* Table (natural height up to viewport limit, zero dead void) */
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      max-height: calc(100vh - 252px);
+      overflow-y: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      height: 36px;
+      padding: 0 12px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--faint);
+      white-space: nowrap;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid var(--rule);
+      transition: background-color 120ms ease;
+    }
+
+    tbody tr:last-child {
+      border-bottom: 0;
+    }
+
+    tbody tr.is-selected {
+      background: var(--raised);
+    }
+
+    tbody tr.is-playing {
+      background: var(--accent-soft);
+    }
+
+    tbody td {
+      padding: 8px 12px;
+      vertical-align: middle;
+    }
+
+    .col-chk { width: 40px; text-align: center; }
+    .col-num { width: 44px; text-align: right; color: var(--faint); font-size: 13px; font-variant-numeric: tabular-nums; }
+    .col-play { width: 52px; text-align: center; }
+    .col-title { width: 32%; }
+    .col-artist { width: 19%; }
+    .col-cat { width: 96px; }
+    .col-outro { width: 158px; }
+    .col-status { width: 96px; text-align: right; }
+
+    th.num, td.num {
+      text-align: right;
+    }
+
+    th.col-status {
+      text-align: right;
+    }
+
+    .play-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .play-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      border: 1px solid var(--control);
+      background: transparent;
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background-color 130ms ease, border-color 130ms ease;
+    }
+
+    .play-btn:hover:not(:disabled) {
+      background: var(--raised);
+    }
+
+    .play-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--accent-on);
+    }
+
+    .play-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .outro-cell {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      max-width: 100%;
+    }
+
+    .outro-play-btn {
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      border-radius: 999px;
+      border: 1px solid var(--control);
+      background: transparent;
+      color: var(--muted);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex: none;
+    }
+
+    .outro-play-btn:hover:not(:disabled) {
+      background: var(--raised);
+      color: var(--text);
+    }
+
+    .outro-play-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--accent-on);
+    }
+
+    .outro-play-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .outro-tag-btn {
+      height: 26px;
+      padding: 0 9px;
+      border-radius: var(--radius-control);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--faint);
+      font-size: 12px;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: border-color 130ms ease, color 130ms ease, background-color 130ms ease;
+    }
+
+    .outro-tag-btn:hover {
+      border-color: var(--control);
+      background: var(--raised);
+      color: var(--text);
+    }
+
+    .outro-tag-btn.active {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      color: var(--accent-ink);
+    }
+
+    .outro-tag-btn.missing {
+      border-color: var(--negative);
+      color: var(--negative);
+    }
+
+    .outro-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: currentColor;
+      flex: none;
+    }
+
+    /* Outro Song Editor Modal Controls */
+    .outro-timeline-card {
+      padding: 12px 14px;
+      border-radius: var(--radius-control);
+      border: 1px solid var(--border);
+      background: var(--ground);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .outro-timeline-bar {
+      position: relative;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--raised);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .outro-timeline-fill {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      background: var(--accent);
+      border-radius: 999px;
+    }
+
+    .outro-slider-row {
+      display: grid;
+      grid-template-columns: 76px minmax(0, 1fr) 74px;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .outro-slider-label {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .range-slider {
+      width: 100%;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .num-input {
+      height: 28px;
+      padding: 0 8px;
+      font-size: 13px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .preset-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .fade-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .field-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .inline-edit {
+      width: 100%;
+      min-width: 0;
+      height: 28px;
+      padding: 0 6px;
+      margin: 0 -6px;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      background: transparent;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 500;
+      outline: none;
+    }
+
+    .inline-edit:hover {
+      border-color: var(--border);
+      background: var(--ground);
+    }
+
+    .inline-edit:focus {
+      border-color: var(--accent);
+      background: var(--ground);
+    }
+
+    .inline-edit.dirty {
+      border-color: var(--accent);
+    }
+
+    .sub-filename {
+      display: block;
+      font-size: 12px;
+      line-height: 16px;
+      color: var(--faint);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .cat-select {
+      width: 100%;
+      height: 28px;
+      padding: 0 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--ground);
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .cat-select:focus {
+      border-color: var(--accent);
+    }
+
+    .row-status {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .row-status.ok {
+      color: var(--positive);
+    }
+
+    .row-status.warn {
+      color: var(--accent-ink);
+    }
+
+    .row-status.neg {
+      color: var(--negative);
+    }
+
+    .row-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: currentColor;
+      flex: none;
+    }
+
+    /* Empty state */
+    .empty-state {
+      padding: 44px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 12px;
+    }
+
+    .empty-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .empty-desc {
+      max-width: 440px;
+      font-size: 13px;
+      line-height: 20px;
+      color: var(--muted);
+    }
+
+    /* Drop overlay (opaque flat, no blur) */
+    .drop-overlay {
+      display: none;
+      position: fixed;
+      inset: 16px;
+      z-index: 80;
+      border: 2px dashed var(--accent);
+      border-radius: var(--radius-card);
+      background: var(--surface);
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .drop-overlay.visible {
+      display: flex;
+    }
+
+    /* Modal dialogs */
+    .scrim {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 90;
+      background: var(--scrim);
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .scrim.open {
+      display: flex;
+    }
+
+    .sheet {
+      width: 100%;
+      max-width: 520px;
+      max-height: 84vh;
+      display: flex;
+      flex-direction: column;
+      border-radius: var(--radius-card);
+      border: 1px solid var(--control);
+      background: var(--surface);
+      overflow: hidden;
+    }
+
+    .sheet-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sheet-title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .sheet-body {
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .sheet-footer {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      padding: 12px 20px;
+      border-top: 1px solid var(--border);
+      background: var(--ground);
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--raised);
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--accent);
+      transition: width 160ms var(--ease);
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      border: 1px solid var(--border);
+      border-radius: var(--radius-control);
+      overflow: hidden;
+    }
+
+    .stat-cell {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--rule);
+      border-right: 1px solid var(--rule);
+    }
+
+    .stat-cell:nth-child(2n) {
+      border-right: 0;
+    }
+
+    .stat-cell:nth-last-child(-n+2) {
+      border-bottom: 0;
+    }
+
+    .stat-k {
+      font-size: 12px;
+      color: var(--faint);
+    }
+
+    .stat-v {
+      margin-top: 4px;
+      font-size: 20px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .backup-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--rule);
+    }
+
+    .backup-row:last-child {
+      border-bottom: 0;
+    }
+
+    /* Interactive waveform + loudness chip + new feature panels */
+    .outro-wave-wrap {
+      position: relative;
+      height: 76px;
+      border-radius: var(--radius-control);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      overflow: hidden;
+      cursor: ew-resize;
+      user-select: none;
+      touch-action: none;
+    }
+
+    .outro-wave-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .sub-meta-line {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+      margin-top: 2px;
+    }
+
+    .sub-meta-line .sub-filename {
+      flex: 0 1 auto;
+      min-width: 0;
+    }
+
+    .loud-chip {
+      display: inline-flex;
+      align-items: center;
+      flex: none;
+      padding: 0 5px;
+      height: 16px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: var(--ground);
+      color: var(--faint);
+      font-size: 11px;
+      line-height: 14px;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .loud-chip.balanced {
+      color: var(--positive);
+      border-color: var(--border);
+    }
+
+    .loud-chip.hot,
+    .loud-chip.quiet {
+      color: var(--accent-ink);
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .loud-chip.clip,
+    .loud-chip.silent {
+      color: var(--negative);
+      border-color: var(--negative);
+    }
+
+    tbody tr.is-focused td {
+      background: var(--raised);
+    }
+
+    tbody tr.is-focused td:first-child {
+      border-left: 2px solid var(--accent);
+    }
+
+    .sheet.wide {
+      max-width: 640px;
+    }
+
+    .sidebar-foot-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .kbd-key {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 24px;
+      height: 22px;
+      padding: 0 6px;
+      border: 1px solid var(--control);
+      border-radius: 4px;
+      background: var(--ground);
+      color: var(--text);
+      font-size: 11px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .shortcut-row,
+    .health-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--rule);
+      font-size: 13px;
+    }
+
+    .shortcut-row:last-child,
+    .health-item:last-child {
+      border-bottom: 0;
+    }
+
+    .check-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-control);
+      background: var(--ground);
+    }
+
+    .check-option {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    .check-option input {
+      margin-top: 2px;
+    }
+
+    .code-notes {
+      max-height: 120px;
+      overflow-y: auto;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-control);
+      background: var(--ground);
+      font-size: 12px;
+      line-height: 18px;
+      color: var(--muted);
+      white-space: pre-wrap;
+    }
+
+    /* ---------- Responsive Tablet & Phone ---------- */
+    @media (max-width: 1080px) {
+      .radio-deck {
+        grid-template-columns: minmax(0, 1fr) auto;
+      }
+      .deck-transport {
+        grid-column: 1 / -1;
+        order: 3;
+      }
+    }
+
+    @media (max-width: 860px) {
+      .app-shell {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .mobile-bar {
+        display: flex;
+      }
+      .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 280px;
+        max-width: 86vw;
+        transform: translateX(-100%);
+        transition: transform 200ms var(--ease);
+      }
+      .sidebar.open {
+        transform: translateX(0);
+      }
+      .canvas {
+        padding: 16px;
+      }
+      .table-wrap {
+        max-height: none;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .radio-deck {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .deck-stations {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+      .scope-tools {
+        width: 100%;
+      }
+      .search-wrap, .search-input, .batch-group, .batch-input {
+        width: 100%;
+      }
+      .table-wrap {
+        overflow-x: visible;
+      }
+      table, thead, tbody, th, td, tr {
+        display: block;
+        width: 100%;
+      }
+      thead {
+        display: none;
+      }
+      tbody tr {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        grid-template-areas:
+          "chk title status"
+          "play artist cat"
+          "outro outro outro";
+        gap: 6px 10px;
+        padding: 12px 16px;
+        align-items: center;
+      }
+      .col-chk { grid-area: chk; padding: 0; width: auto; text-align: left; }
+      .col-num { display: none; }
+      .col-play { grid-area: play; padding: 0; width: auto; }
+      .col-title { grid-area: title; padding: 0; width: auto; min-width: 0; }
+      .col-artist { grid-area: artist; padding: 0; width: auto; min-width: 0; }
+      .col-cat { grid-area: cat; padding: 0; width: auto; }
+      .col-outro { grid-area: outro; padding: 4px 0 0; width: auto; }
+      .col-status { grid-area: status; padding: 0; width: auto; text-align: right; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        transition-duration: 0.01ms !important;
+        animation: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="mobile-scrim" class="mobile-scrim"></div>
+
+  <div class="app-shell">
+    <aside id="sidebar" class="sidebar" aria-label="Workbench navigation">
+      <div class="brand-lockup">
+        <img id="brand-logo" class="brand-logo" src="assets/a8_logo_dark.png" alt="Asphalt 8: Airborne" />
+        <div class="brand-meta">Custom OST Patcher · 32 kHz SV8</div>
+      </div>
+
+      <nav class="nav-section" aria-label="Primary views">
+        <div class="sidebar-label">Views</div>
+        <button id="nav-import" class="nav-item active" type="button" aria-current="page">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 20h14" /></svg>
+          <span>Import Queue</span>
+          <span id="nav-import-count" class="nav-count">0</span>
+        </button>
+        <button id="nav-library" class="nav-item" type="button">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M4 6h16" /><path d="M4 12h16" /><path d="M4 18h10" /></svg>
+          <span>In-Game Library</span>
+          <span id="nav-library-count" class="nav-count">0</span>
+        </button>
+        <button id="nav-profiles" class="nav-item" type="button">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M4 6h16v4H4z" /><path d="M4 14h16v4H4z" /></svg>
+          <span>MOD Profiles</span>
+          <span id="profiles-count" class="nav-count">0</span>
+        </button>
+        <button id="nav-health" class="nav-item" type="button">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" /><path d="m9 12 2 2 4-4" /></svg>
+          <span>Health Check</span>
+          <span id="health-issue-count" class="nav-count">-</span>
+        </button>
+        <button id="btn-backups" class="nav-item" type="button">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /><path d="M12 7v5l3 2" /></svg>
+          <span>Backups</span>
+          <span id="backups-count" class="nav-count">0</span>
+        </button>
+      </nav>
+
+      <div class="source-rack">
+        <div class="source-block">
+          <div class="source-head">
+            <span class="source-name">Asphalt 8 folder</span>
+            <span id="game-status-chip" class="source-state"><span class="state-dot"></span><span>Detecting</span></span>
+          </div>
+          <div id="game-dir-path" class="source-path" title="">No folder selected</div>
+          <div class="source-actions">
+            <button id="btn-browse-game" class="btn compact" type="button">Browse</button>
+            <button id="btn-grant-access" class="btn compact hidden" type="button">Grant access</button>
+            <button id="btn-clone-game" class="btn compact hidden" type="button">Make writable copy</button>
+          </div>
+        </div>
+
+        <div id="music-drop-card" class="source-block drop-target">
+          <div class="source-head">
+            <span class="source-name">Music sources</span>
+            <span id="music-status-chip" class="source-state"><span class="state-dot"></span><span>Waiting</span></span>
+          </div>
+          <div id="music-dir-path" class="source-path">Drop audio files, folders, or .zip packs</div>
+          <div class="source-actions">
+            <button id="btn-add-files" class="btn compact" type="button">+ Songs</button>
+            <button id="btn-browse-music" class="btn compact" type="button">+ Folder</button>
+            <button id="btn-rescan-music" class="btn compact hidden" type="button">Rescan</button>
+            <button id="btn-clear-music" class="btn compact ghost hidden" type="button">Clear</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-foot">
+        <div class="sidebar-foot-row">
+          <button id="btn-updates" class="nav-item" type="button" title="Check or install app updates">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="m7 10 5 5 5-5" /><path d="M12 15V3" /></svg>
+            <span>Updates</span>
+            <span id="app-version-pill" class="nav-count">v1.2.0</span>
+          </button>
+          <button id="btn-shortcuts" class="btn compact" type="button" title="Keyboard shortcuts (?)">?</button>
+        </div>
+        <button id="btn-theme" class="nav-item" type="button" title="Switch Light or Dark mode">
+          <svg id="theme-icon" class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" /></svg>
+          <span id="theme-label">Light mode</span>
+        </button>
+        <div id="tools-readout" class="tool-readout">Offline encoder ready</div>
+      </div>
+    </aside>
+
+    <div class="main-col">
+      <header class="mobile-bar">
+        <button id="btn-mobile-menu" class="btn compact ghost" type="button" aria-label="Open menu">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+        </button>
+        <div class="mobile-bar-title">
+          <img id="mobile-logo" class="brand-logo-sm" src="assets/a8_logo_dark.png" alt="Asphalt 8" />
+        </div>
+        <button id="btn-theme-mobile" class="btn compact ghost" type="button" aria-label="Toggle theme">
+          <svg id="theme-icon-mobile" class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" /></svg>
+        </button>
+      </header>
+
+      <main class="canvas">
+        <div id="status-banner" class="banner" role="alert">
+          <span id="banner-text"></span>
+          <button id="btn-close-banner" class="btn compact ghost" type="button">Dismiss</button>
+        </div>
+
+        <section class="title-row">
+          <div class="title-group">
+            <h1 id="page-title">Import Queue</h1>
+            <p id="page-sub" class="title-sub">Add songs or folders from anywhere to inspect, trim outros, and patch into Asphalt 8</p>
+          </div>
+          <div class="title-actions">
+            <div id="dock-import-controls" class="dock-controls">
+              <label class="switch-label" for="switch-keep-stock">
+                <button id="switch-keep-stock" class="switch-btn" type="button" role="switch" aria-checked="true"></button>
+                <span>Keep stock</span>
+              </label>
+              <div class="segmented" role="group" aria-label="When track exists in game">
+                <button id="btn-conflict-overwrite" class="segmented-btn active" type="button">Overwrite</button>
+                <button id="btn-conflict-skip" class="segmented-btn" type="button">Skip</button>
+              </div>
+              <button id="btn-install" class="btn primary" type="button" disabled>
+                <span id="btn-install-label">Install 0 tracks</span>
+              </button>
+            </div>
+
+            <div id="dock-library-controls" class="dock-controls hidden">
+              <label class="switch-label" for="chk-delete-mpc">
+                <input id="chk-delete-mpc" type="checkbox" />
+                <span>Delete .mpc files</span>
+              </label>
+              <button id="btn-remove-selected" class="btn danger-outline" type="button" disabled>
+                <span id="btn-remove-label">Remove (0)</span>
+              </button>
+              <button id="btn-save-library" class="btn primary" type="button" disabled>
+                <span id="btn-save-label">Save edits (0)</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Signature Asphalt 8 Radio Monitor -->
+        <section class="radio-deck" aria-label="Asphalt 8 soundtrack deck preview">
+          <div class="deck-track">
+            <button id="btn-hud-play" class="deck-play-btn" type="button" aria-label="Play or pause preview">
+              <svg id="hud-play-icon" class="icon" viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4" fill="currentColor" stroke="none" /></svg>
+            </button>
+            <div class="deck-info">
+              <div class="deck-status">
+                <span>NOW PLAYING</span>
+                <span id="hud-mode-text">Main mix</span>
+              </div>
+              <div id="hud-song-text" class="deck-song">"Select a Track" - Custom Artist</div>
+            </div>
+          </div>
+
+          <div class="deck-transport">
+            <div id="hud-scrub-wrap" class="deck-scrub-wrap" role="slider" aria-label="Audio playback progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0">
+              <div class="deck-scrub-track">
+                <div id="hud-scrub-fill" class="deck-scrub-fill"></div>
+              </div>
+            </div>
+            <span id="hud-time" class="deck-time">0:00 / 0:00</span>
+          </div>
+
+          <div class="deck-stations" aria-label="Asphalt 8 in-game station">
+            <button class="hud-station" data-station="Dubstep" type="button">BASS</button>
+            <button class="hud-station active" data-station="Rock" type="button">ROCK</button>
+            <button class="hud-station" data-station="Electro" type="button">ELECTRO</button>
+            <button class="hud-station" data-station="Menu" type="button">MENU</button>
+          </div>
+        </section>
+
+        <section class="workspace-panel" aria-label="Track list editor">
+          <div class="scope-bar">
+            <div id="cat-tabs" class="cat-tabs" role="tablist" aria-label="Filter by station"></div>
+            <div class="scope-tools">
+              <div class="search-wrap">
+                <svg class="icon search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+                <input id="search-input" class="input search-input" type="search" placeholder="Search tracks (Ctrl+F)" aria-label="Search tracks" />
+              </div>
+              <div id="batch-artist-group" class="batch-group">
+                <input id="batch-artist-input" class="input batch-input" type="text" placeholder="Set batch artist" aria-label="Batch artist name" />
+                <button id="btn-apply-artist" class="btn" type="button">Apply</button>
+              </div>
+              <div id="batch-station-group" class="batch-group">
+                <select id="batch-station-select" class="input" style="width:auto;" aria-label="Batch station category">
+                  <option value="Rock">Rock</option>
+                  <option value="Electro">Electro</option>
+                  <option value="Dubstep">Dubstep</option>
+                  <option value="Menu">Menu</option>
+                </select>
+                <button id="btn-apply-station" class="btn" type="button">Set station</button>
+              </div>
+              <button id="btn-select-all" class="btn" type="button">Select all</button>
+              <button id="btn-select-none" class="btn ghost" type="button">Clear</button>
+              <button id="btn-export-pack" class="btn" type="button" title="Export checked tracks as .zip or portable folder">Export Pack</button>
+            </div>
+          </div>
+
+          <div id="table-container" class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th class="col-chk"><input id="chk-header-all" type="checkbox" aria-label="Toggle all visible tracks" /></th>
+                  <th class="col-num num">#</th>
+                  <th class="col-play">Play</th>
+                  <th class="col-title">Song title</th>
+                  <th class="col-artist">Artist</th>
+                  <th class="col-cat">Station</th>
+                  <th class="col-outro">Outro</th>
+                  <th class="col-status">Status</th>
+                </tr>
+              </thead>
+              <tbody id="track-tbody"></tbody>
+            </table>
+            <div id="empty-state" class="empty-state">
+              <div id="empty-title" class="empty-title">Drop music files or folders to start</div>
+              <div id="empty-desc" class="empty-desc">
+                Add songs from any location on your PC, edit titles or stations, and trim custom outros before patching
+              </div>
+              <div id="empty-cta-row" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+                <button id="btn-empty-files" class="btn primary" type="button">Add songs</button>
+                <button id="btn-empty-browse" class="btn" type="button">Add folder</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div id="drop-overlay" class="drop-overlay">
+    <svg class="icon" style="width:28px;height:28px;color:var(--accent);" viewBox="0 0 24 24"><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 20h14" /></svg>
+    <div style="font-size:16px;font-weight:600;">Drop music files, folders, or Asphalt 8 directory</div>
+    <div style="font-size:13px;color:var(--muted);">Adds audio tracks from any location directly to your Import Queue</div>
+  </div>
+
+  <div id="outro-scrim" class="scrim" role="dialog" aria-modal="true" aria-labelledby="outro-sheet-title">
+    <div class="sheet">
+      <div class="sheet-head">
+        <div>
+          <div id="outro-sheet-title" class="sheet-title">Outro Song Editor</div>
+          <div id="outro-sheet-sub" style="font-size:12px;color:var(--muted);margin-top:2px;"></div>
+        </div>
+        <button id="btn-close-outro" class="btn compact ghost" type="button">Close</button>
+      </div>
+      <div class="sheet-body">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+          <div class="segmented" role="group" aria-label="Outro audio source">
+            <button id="btn-outro-mode-trim" class="segmented-btn active" type="button">Trim main track</button>
+            <button id="btn-outro-mode-file" class="segmented-btn" type="button">Custom audio file</button>
+          </div>
+          <button id="btn-outro-pick-file" class="btn compact hidden" type="button">Choose file</button>
+        </div>
+
+        <div id="outro-src-readout" class="sub-filename" style="font-size:12px;color:var(--muted);"></div>
+
+        <div class="outro-timeline-card">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);" class="num">
+            <span id="outro-range-readout">Selected: 0:00 - 0:20</span>
+            <span id="outro-total-readout">Total: 0:00</span>
+          </div>
+          <div id="outro-wave-wrap" class="outro-wave-wrap" title="Click or drag handles to select outro range">
+            <canvas id="outro-wave-canvas" class="outro-wave-canvas" aria-label="Interactive outro audio waveform"></canvas>
+          </div>
+          <div class="outro-slider-row">
+            <label class="outro-slider-label" for="outro-start-num">Start (s)</label>
+            <input id="outro-start-range" class="range-slider" type="range" min="0" max="300" step="0.5" value="0" aria-label="Outro start time slider" />
+            <input id="outro-start-num" class="input num-input" type="number" min="0" step="0.5" value="0" />
+          </div>
+          <div class="outro-slider-row">
+            <label class="outro-slider-label" for="outro-end-num">End (s)</label>
+            <input id="outro-end-range" class="range-slider" type="range" min="0" max="300" step="0.5" value="20" aria-label="Outro end time slider" />
+            <input id="outro-end-num" class="input num-input" type="number" min="0" step="0.5" value="20" />
+          </div>
+          <div class="preset-row">
+            <button id="btn-preset-last20" class="btn compact" type="button">Last 20s</button>
+            <button id="btn-preset-last30" class="btn compact" type="button">Last 30s</button>
+            <button id="btn-preset-first25" class="btn compact" type="button">First 25s</button>
+            <button id="btn-preset-full" class="btn compact" type="button">Full track</button>
+          </div>
+        </div>
+
+        <div class="fade-grid">
+          <label class="field-stack" for="outro-fade-in">
+            <span>Fade in (seconds)</span>
+            <input id="outro-fade-in" class="input num-input" style="text-align:left;" type="number" min="0" max="10" step="0.1" value="0.2" />
+          </label>
+          <label class="field-stack" for="outro-fade-out">
+            <span>Fade out (seconds)</span>
+            <input id="outro-fade-out" class="input num-input" style="text-align:left;" type="number" min="0" max="10" step="0.1" value="1.2" />
+          </label>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:4px;">
+          <button id="btn-outro-preview" class="btn" type="button">Preview clip</button>
+          <span id="outro-clip-meta" class="num" style="font-size:12px;color:var(--muted);">Clip: 20.0s</span>
+        </div>
+
+        <div id="outro-error-box" class="banner error hidden">
+          <span id="outro-error-text"></span>
+        </div>
+      </div>
+      <div class="sheet-footer">
+        <button id="btn-outro-remove" class="btn danger-outline" type="button" style="margin-right:auto;">Remove outro</button>
+        <button id="btn-outro-cancel" class="btn" type="button">Cancel</button>
+        <button id="btn-outro-save" class="btn primary" type="button">Save outro</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="install-scrim" class="scrim" role="dialog" aria-modal="true" aria-labelledby="install-sheet-title">
+    <div class="sheet">
+      <div class="sheet-head">
+        <span id="install-sheet-title" class="sheet-title">Installing soundtracks</span>
+        <button id="btn-close-install" class="btn compact ghost hidden" type="button">Close</button>
+      </div>
+      <div class="sheet-body">
+        <div id="install-progress-block" style="display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;">
+            <span id="install-stage-text" style="font-weight:500;">Preparing</span>
+            <span id="install-count-text" class="num" style="color:var(--muted);font-size:12px;">0 / 0</span>
+          </div>
+          <div class="progress-bar"><div id="install-progress-fill" class="progress-fill"></div></div>
+        </div>
+
+        <div id="install-result-block" class="hidden" style="display:flex;flex-direction:column;gap:12px;">
+          <div class="stat-grid">
+            <div class="stat-cell"><div class="stat-k">Tracks added</div><div id="res-added" class="stat-v">0</div></div>
+            <div class="stat-cell"><div class="stat-k">Skipped</div><div id="res-skipped" class="stat-v">0</div></div>
+            <div class="stat-cell"><div class="stat-k">Total sounds</div><div id="res-sounds" class="stat-v">0</div></div>
+            <div class="stat-cell"><div class="stat-k">Languages updated</div><div id="res-texts" class="stat-v">0</div></div>
+          </div>
+          <div id="res-backup-path" style="font-size:12px;color:var(--muted);word-break:break-all;"></div>
+        </div>
+
+        <div id="install-error-block" class="banner error visible hidden">
+          <span id="install-error-text"></span>
+        </div>
+      </div>
+      <div id="install-sheet-footer" class="sheet-footer hidden">
+        <button id="btn-open-backup" class="btn" type="button">Open backup folder</button>
+        <button id="btn-done-install" class="btn primary" type="button">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="backups-scrim" class="scrim" role="dialog" aria-modal="true" aria-labelledby="backups-sheet-title">
+    <div class="sheet">
+      <div class="sheet-head">
+        <span id="backups-sheet-title" class="sheet-title">Restore game backup</span>
+        <button id="btn-close-backups" class="btn compact ghost" type="button">Close</button>
+      </div>
+      <div id="backups-list" class="sheet-body" style="gap:0;"></div>
+      <div class="sheet-footer">
+        <button id="btn-refresh-backups" class="btn" type="button">Refresh</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="health-scrim" class="scrim" role="dialog" aria-modal="true" aria-labelledby="health-sheet-title">
+    <div class="sheet wide">
+      <div class="sheet-head">
+        <div>
+          <span id="health-sheet-title" class="sheet-title">Soundpack Health Check &amp; Orphan Cleaner</span>
+          <div id="health-sheet-sub" style="font-size:12px;color:var(--muted);margin-top:2px;">Inspect soundpack XML, Data/music .mpc files, and language keys</div>
+        </div>
+        <button id="btn-close-health" class="btn compact ghost" type="button">Close</button>
+      </div>
+      <div class="sheet-body">
+        <div class="stat-grid">
+          <div class="stat-cell"><div class="stat-k">Missing .mpc files</div><div id="hl-missing-mpc" class="stat-v">-</div></div>
+          <div class="stat-cell"><div class="stat-k">Orphan .mpc files</div><div id="hl-orphan-mpc" class="stat-v">-</div></div>
+          <div class="stat-cell"><div class="stat-k">Broken playlist refs / events</div><div id="hl-broken-refs" class="stat-v">-</div></div>
+          <div class="stat-cell"><div class="stat-k">Missing song texts</div><div id="hl-missing-texts" class="stat-v">-</div></div>
+        </div>
+        <div id="health-findings-list" class="code-notes" style="max-height:140px;">Run scan on your Asphalt 8 folder to inspect soundtrack integrity.</div>
+        <div class="check-stack">
+          <label class="check-option"><input id="chk-fix-texts" type="checkbox" checked /><span>Fill missing STR_SONG_ entries across game .texts localization files</span></label>
+          <label class="check-option"><input id="chk-fix-events" type="checkbox" checked /><span>Remove dangling playlist refs and recreate missing track events</span></label>
+          <label class="check-option"><input id="chk-delete-orphans" type="checkbox" /><span id="lbl-delete-orphans">Delete unreferenced orphan .mpc files in Data/music</span></label>
+          <label class="check-option"><input id="chk-prune-missing" type="checkbox" /><span>Prune sound entries whose .mpc file is missing from Data/music</span></label>
+        </div>
+        <div id="health-error-box" class="banner error hidden"><span id="health-error-text"></span></div>
+      </div>
+      <div class="sheet-footer">
+        <button id="btn-health-rescan" class="btn" type="button">Re-scan</button>
+        <button id="btn-health-repair" class="btn primary" type="button">Repair selected</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="profiles-scrim" class="scrim" role="dialog" aria-modal="true" aria-labelledby="profiles-sheet-title">
+    <div class="sheet wide">
+      <div class="sheet-head">
+        <div>
+          <span id="profiles-sheet-title" class="sheet-title">MOD Profiles (Soundtrack Loadouts)</span>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;">Save and switch named soundpack + title loadouts with automatic backup</div>
+        </div>
+        <button id="btn-close-profiles" class="btn compact ghost" type="button">Close</button>
+      </div>
+      <div class="sheet-body">
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input id="profile-name-input" class="input" type="text" placeholder="Loadout name (e.g. Stock Vanilla, Anime Rock)" aria-label="New profile name" />
+          <button id="btn-save-profile" class="btn primary" type="button" style="flex:none;">Save current loadout</button>
+        </div>
+        <div id="profiles-error-box" class="banner error hidden"><span id="profiles-error-text"></span></div>
+        <div id="profiles-list" style="display:flex;flex-direction:column;"></div>
+      </div>
+      <div class="sheet-footer">
+        <button id="btn-refresh-profiles" class="btn" type="button">Refresh</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="export-scrim" class="scrim" role="dialog" aria-modal="true" aria-labelledby="export-sheet-title">
+    <div class="sheet">
+      <div class="sheet-head">
+        <div>
+          <span id="export-sheet-title" class="sheet-title">Export / Share Mod Pack</span>
+          <div id="export-sheet-sub" style="font-size:12px;color:var(--muted);margin-top:2px;">0 tracks selected</div>
+        </div>
+        <button id="btn-close-export" class="btn compact ghost" type="button">Close</button>
+      </div>
+      <div class="sheet-body">
+        <label class="field-stack" for="export-pack-name">
+          <span>Pack name</span>
+          <input id="export-pack-name" class="input" type="text" value="Asphalt 8 Custom OST Pack" />
+        </label>
+        <div class="field-stack">
+          <span>Output format</span>
+          <div class="segmented" role="group" aria-label="Export output format">
+            <button id="btn-export-fmt-zip" class="segmented-btn active" type="button">.zip archive</button>
+            <button id="btn-export-fmt-folder" class="segmented-btn" type="button">Portable folder</button>
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--muted);line-height:18px;">
+          Exports audio organized into Rock/, Electro/, Dubstep/, Menu/, Outro/ alongside a pack_manifest.json keeping song titles, artists, and Outro trim timings intact when re-imported.
+        </div>
+        <div id="export-error-box" class="banner error hidden"><span id="export-error-text"></span></div>
+      </div>
+      <div class="sheet-footer">
+        <button id="btn-export-cancel" class="btn" type="button">Cancel</button>
+        <button id="btn-export-confirm" class="btn primary" type="button">Export Pack</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="update-scrim" class="scrim" role="dialog" aria-modal="true" aria-labelledby="update-sheet-title">
+    <div class="sheet wide">
+      <div class="sheet-head">
+        <div>
+          <span id="update-sheet-title" class="sheet-title">App Updates</span>
+          <div id="update-current-sub" style="font-size:12px;color:var(--muted);margin-top:2px;">Current version: v1.2.0</div>
+        </div>
+        <button id="btn-close-update" class="btn compact ghost" type="button">Close</button>
+      </div>
+      <div class="sheet-body">
+        <label class="field-stack" for="update-manifest-url">
+          <span>Release manifest or GitHub Releases API URL (https://...)</span>
+          <div style="display:flex;gap:8px;">
+            <input id="update-manifest-url" class="input" type="url" placeholder="https://api.github.com/repos/owner/repo/releases/latest" />
+            <button id="btn-check-manifest" class="btn" type="button" style="flex:none;">Check online</button>
+          </div>
+        </label>
+        <div id="update-remote-result" class="hidden" style="display:flex;flex-direction:column;gap:8px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--ground);">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+            <span id="update-remote-status" style="font-weight:600;font-size:13px;">Up to date</span>
+            <button id="btn-install-remote-update" class="btn primary compact hidden" type="button">Download &amp; Install</button>
+          </div>
+          <div id="update-remote-notes" class="code-notes hidden"></div>
+        </div>
+
+        <div style="border-top:1px solid var(--rule);padding-top:12px;display:flex;flex-direction:column;gap:8px;">
+          <div style="font-size:13px;font-weight:500;">Or update from a local .exe / .zip package</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <span id="update-local-readout" class="sub-filename" style="font-size:12px;color:var(--muted);">No update package selected</span>
+            <button id="btn-browse-update-pkg" class="btn compact" type="button">Choose file</button>
+          </div>
+        </div>
+
+        <div id="update-error-box" class="banner error hidden"><span id="update-error-text"></span></div>
+      </div>
+      <div class="sheet-footer">
+        <button id="btn-close-update-foot" class="btn" type="button">Close</button>
+        <button id="btn-install-local-update" class="btn primary hidden" type="button">Install &amp; Restart</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="shortcuts-scrim" class="scrim" role="dialog" aria-modal="true" aria-labelledby="shortcuts-sheet-title">
+    <div class="sheet">
+      <div class="sheet-head">
+        <span id="shortcuts-sheet-title" class="sheet-title">Keyboard Shortcuts</span>
+        <button id="btn-close-shortcuts" class="btn compact ghost" type="button">Close</button>
+      </div>
+      <div class="sheet-body" style="gap:0;">
+        <div class="shortcut-row"><span>Play / pause focused track</span><span class="kbd-key">Space</span></div>
+        <div class="shortcut-row"><span>Move focus up / down</span><span><span class="kbd-key">Up</span> / <span class="kbd-key">Down</span></span></div>
+        <div class="shortcut-row"><span>Open Outro Song Editor for focused track</span><span class="kbd-key">Enter</span></div>
+        <div class="shortcut-row"><span>Focus track search box</span><span class="kbd-key">Ctrl + F</span></div>
+        <div class="shortcut-row"><span>Save edited Library metadata &amp; stations</span><span class="kbd-key">Ctrl + S</span></div>
+        <div class="shortcut-row"><span>Toggle select all visible tracks</span><span class="kbd-key">Ctrl + A</span></div>
+        <div class="shortcut-row"><span>Close active modal or dialog</span><span class="kbd-key">Esc</span></div>
+        <div class="shortcut-row"><span>Show keyboard shortcuts</span><span class="kbd-key">?</span></div>
+      </div>
+    </div>
+  </div>
+
+  <audio id="audio-player" preload="none"></audio>
+
+  <script>
+    (function () {
+      'use strict';
+
+      const CATEGORIES = ['Rock', 'Electro', 'Dubstep', 'Menu'];
+
+      const state = {
+        view: 'import',
+        theme: 'dark',
+        appVersion: '1.2.0',
+        isFrozen: false,
+        updateManifestUrl: '',
+        gameDir: '',
+        gameValid: false,
+        gameWritable: false,
+        needsElevation: false,
+        isAdmin: false,
+        isWindowsApps: false,
+        installedCount: 0,
+        musicDir: '',
+        musicSources: [],
+        uidSeq: 0,
+        importTracks: [],
+        libraryTracks: [],
+        dirtyLibraryIds: new Set(),
+        categoryFilter: 'All',
+        searchQuery: '',
+        keepOriginal: true,
+        onConflict: 'overwrite',
+        focusedUid: null,
+        playingUid: null,
+        playingMode: 'main',
+        isPlaying: false,
+        lastBackupDir: '',
+        audioMetricsCache: {},
+        healthAudit: null,
+        exportFormat: 'zip',
+        updateLocalPkgPath: '',
+        updateRemoteInfo: null,
+      };
+
+      const outroModalState = {
+        track: null,
+        mode: 'trim',
+        srcPath: '',
+        srcName: '',
+        totalDur: 0,
+        startSec: 0,
+        endSec: 20,
+        fadeIn: 0.2,
+        fadeOut: 1.2,
+        busy: false,
+        peaks: [],
+        dragMode: null,
+        dragAnchorSec: 0,
+      };
+
+      const $ = (id) => document.getElementById(id);
+      const audioEl = $('audio-player');
+
+      function hasBridge() {
+        return !!(window.pywebview && window.pywebview.api);
+      }
+
+      function callApi(method, ...args) {
+        if (!hasBridge()) return Promise.resolve({ ok: false, error: 'Desktop bridge unavailable.' });
+        return window.pywebview.api[method](...args);
+      }
+
+      function formatClock(seconds) {
+        const s = Math.max(0, Math.floor(Number(seconds) || 0));
+        const mins = Math.floor(s / 60);
+        const rem = s % 60;
+        const secStr = rem < 10 ? '0' + String(rem) : String(rem);
+        return `${mins}:${secStr}`;
+      }
+
+      function showBanner(msg, isError) {
+        const banner = $('status-banner');
+        $('banner-text').textContent = msg;
+        banner.classList.toggle('error', !!isError);
+        banner.classList.add('visible');
+      }
+
+      function hideBanner() {
+        $('status-banner').classList.remove('visible');
+      }
+
+      function closeMobileDrawer() {
+        $('sidebar').classList.remove('open');
+        $('mobile-scrim').classList.remove('open');
+      }
+
+      const PLAY_ICON_SVG = '<svg class="icon" style="width:12px;height:12px" viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4" fill="currentColor" stroke="none"/></svg>';
+      const PAUSE_ICON_SVG = '<svg class="icon" style="width:12px;height:12px" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" fill="currentColor" stroke="none"/><rect x="14" y="4" width="4" height="16" fill="currentColor" stroke="none"/></svg>';
+
+      function applyTheme(theme, persist) {
+        state.theme = theme === 'light' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', state.theme);
+        $('theme-label').textContent = state.theme === 'dark' ? 'Light mode' : 'Dark mode';
+        const svgMarkup = state.theme === 'dark'
+          ? '<circle cx="12" cy="12" r="4" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" />'
+          : '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />';
+        $('theme-icon').innerHTML = svgMarkup;
+        if ($('theme-icon-mobile')) $('theme-icon-mobile').innerHTML = svgMarkup;
+        const logoSrc = state.theme === 'light' ? 'assets/a8_logo_light.png' : 'assets/a8_logo_dark.png';
+        if ($('brand-logo')) $('brand-logo').src = logoSrc;
+        if ($('mobile-logo')) $('mobile-logo').src = logoSrc;
+        if (persist && hasBridge()) {
+          callApi('set_window_theme', state.theme);
+        }
+        if ($('outro-scrim') && $('outro-scrim').classList.contains('open')) {
+          drawOutroWaveform();
+        }
+      }
+
+      function formatBytes(bytes) {
+        const b = Number(bytes) || 0;
+        if (b < 1024) return `${b} B`;
+        if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
+        return `${(b / (1024 * 1024)).toFixed(2)} MB`;
+      }
+
+      function getTrackAudioPath(track) {
+        if (!track) return '';
+        return track.src_path || track.main_path || '';
+      }
+
+      function renderLoudnessChip(chipEl, info) {
+        if (!chipEl) return;
+        if (!info || !info.badge || info.badge === 'Unknown') {
+          chipEl.textContent = '';
+          chipEl.className = 'loud-chip hidden';
+          return;
+        }
+        const badge = String(info.badge);
+        const low = badge.toLowerCase();
+        let tone = '';
+        if (low === 'balanced') tone = 'balanced';
+        else if (low === 'hot mix') tone = 'hot';
+        else if (low === 'clip risk') tone = 'clip';
+        else if (low === 'quiet') tone = 'quiet';
+        else if (low === 'silent') tone = 'silent';
+        chipEl.className = 'loud-chip' + (tone ? ' ' + tone : '');
+        const peakTxt = info.peak_db != null ? ` ${Number(info.peak_db).toFixed(1)}dB` : '';
+        chipEl.textContent = `${badge}${peakTxt}`;
+        const rmsTxt = info.rms_db != null ? ` · RMS ${Number(info.rms_db).toFixed(1)} dBFS` : '';
+        chipEl.title = `Peak ${info.peak_db} dBFS${rmsTxt} — Auto-loudnorm (-14 LUFS) runs on install`;
+      }
+
+      function generateFallbackPeaks(seedText, count = 120) {
+        let seed = 2166136261;
+        const txt = String(seedText || 'track');
+        for (let i = 0; i < txt.length; i += 1) {
+          seed ^= txt.charCodeAt(i);
+          seed = Math.imul(seed, 16777619);
+        }
+        const out = [];
+        for (let i = 0; i < count; i += 1) {
+          seed ^= seed << 13;
+          seed ^= seed >>> 17;
+          seed ^= seed << 5;
+          const rnd = ((seed >>> 0) % 1000) / 1000;
+          const env = 0.35 + 0.45 * Math.sin((i / count) * Math.PI);
+          out.push(Math.max(0.08, Math.min(0.96, env * (0.45 + 0.55 * rnd))));
+        }
+        return out;
+      }
+
+      async function triggerBackgroundAudioAnalysis(tracks) {
+        if (!tracks || !tracks.length) return;
+        const missing = [];
+        const seen = new Set();
+        for (const t of tracks) {
+          const p = getTrackAudioPath(t);
+          if (!p || seen.has(p) || state.audioMetricsCache[p]) continue;
+          seen.add(p);
+          missing.push(p);
+        }
+        if (!missing.length || !hasBridge()) return;
+
+        for (let i = 0; i < missing.length; i += 8) {
+          const batch = missing.slice(i, i + 8);
+          const res = await callApi('analyze_tracks_audio', batch);
+          if (!res || !res.ok || !res.results) continue;
+          Object.assign(state.audioMetricsCache, res.results);
+          document.querySelectorAll('.loud-slot').forEach((el) => {
+            const p = el.getAttribute('data-audio-path');
+            if (p && res.results[p]) {
+              renderLoudnessChip(el, res.results[p]);
+            }
+          });
+        }
+      }
+
+      function setStateBadge(el, tone, label) {
+        el.className = 'source-state' + (tone ? ' ' + tone : '');
+        el.innerHTML = `<span class="state-dot"></span><span>${label}</span>`;
+      }
+
+      function applyGameStatus(info) {
+        if (!info) return;
+        if (typeof info.game_dir === 'string') state.gameDir = info.game_dir;
+        state.gameValid = !!info.valid;
+        state.gameWritable = !!info.writable;
+        state.needsElevation = !!info.needs_elevation;
+        state.isAdmin = !!info.is_admin;
+        state.isWindowsApps = !!info.is_windowsapps;
+        if (typeof info.installed_count === 'number') state.installedCount = info.installed_count;
+      }
+
+      function updateSourceUI() {
+        const chip = $('game-status-chip');
+        const pathEl = $('game-dir-path');
+        const accessBtn = $('btn-grant-access');
+        const cloneBtn = $('btn-clone-game');
+        pathEl.textContent = state.gameDir || 'No Asphalt 8 folder detected';
+        pathEl.title = state.gameDir || '';
+
+        if (!state.gameDir || !state.gameValid) {
+          setStateBadge(chip, 'warn', 'Select game');
+          accessBtn.classList.add('hidden');
+          cloneBtn.classList.add('hidden');
+        } else if (state.needsElevation) {
+          setStateBadge(chip, 'warn', state.isAdmin ? 'Read-only' : 'Admin needed');
+          accessBtn.textContent = state.isAdmin ? 'Fix permissions' : 'Grant access';
+          accessBtn.classList.remove('hidden');
+          cloneBtn.classList.remove('hidden');
+        } else {
+          setStateBadge(chip, 'ok', 'Ready');
+          accessBtn.classList.add('hidden');
+          cloneBtn.classList.add('hidden');
+        }
+
+        const mChip = $('music-status-chip');
+        const mPath = $('music-dir-path');
+        const rescanBtn = $('btn-rescan-music');
+        const clearBtn = $('btn-clear-music');
+        const srcList = state.musicSources || [];
+        if (state.importTracks.length > 0 || srcList.length > 0) {
+          const primaryLabel = state.musicDir || srcList[0] || 'Selected songs';
+          mPath.textContent = srcList.length > 1 ? `${primaryLabel} (+${srcList.length - 1} more)` : primaryLabel;
+          mPath.title = srcList.join('\n') || primaryLabel;
+          setStateBadge(mChip, state.importTracks.length > 0 ? 'ok' : '', `${state.importTracks.length} tracks`);
+          rescanBtn.classList.toggle('hidden', srcList.length === 0 && !state.musicDir);
+          clearBtn.classList.toggle('hidden', state.importTracks.length === 0 && srcList.length === 0);
+        } else {
+          mPath.textContent = 'Drop audio files or folders from anywhere';
+          mPath.title = '';
+          setStateBadge(mChip, '', 'Waiting');
+          rescanBtn.classList.add('hidden');
+          clearBtn.classList.add('hidden');
+        }
+
+        $('nav-import-count').textContent = state.importTracks.length;
+        $('nav-library-count').textContent = state.installedCount;
+      }
+
+      function getCurrentList() {
+        return state.view === 'import' ? state.importTracks : state.libraryTracks;
+      }
+
+      function getFilteredTracks() {
+        const q = state.searchQuery.trim().toLowerCase();
+        return getCurrentList().filter((t) => {
+          if (state.categoryFilter !== 'All' && t.category !== state.categoryFilter) return false;
+          if (!q) return true;
+          return (
+            (t.title || '').toLowerCase().includes(q) ||
+            (t.artist || '').toLowerCase().includes(q) ||
+            (t.src_name || t.main_file || '').toLowerCase().includes(q)
+          );
+        });
+      }
+
+      function updateHudPreview(track) {
+        const active = track || getCurrentList().find((t) => t.uid === state.focusedUid) || getCurrentList()[0];
+        if (!active) {
+          $('hud-song-text').textContent = '"Select a Track" - Custom Artist';
+          $('hud-mode-text').textContent = 'Idle';
+          document.querySelectorAll('.hud-station').forEach((el) => {
+            el.classList.toggle('active', el.dataset.station === 'Rock');
+          });
+          return;
+        }
+        state.focusedUid = active.uid;
+        $('hud-song-text').textContent = `"${active.title || 'Untitled'}" - ${active.artist || 'Custom Artist'}`;
+        $('hud-mode-text').textContent = state.playingUid === active.uid && state.playingMode === 'outro'
+          ? 'OUTRO CLIP'
+          : (active.has_outro ? 'Main + outro' : 'Main mix');
+        document.querySelectorAll('.hud-station').forEach((el) => {
+          el.classList.toggle('active', el.dataset.station === active.category);
+        });
+      }
+
+      function renderCategoryTabs() {
+        const list = getCurrentList();
+        const counts = { All: list.length, Rock: 0, Electro: 0, Dubstep: 0, Menu: 0 };
+        for (const t of list) {
+          if (counts[t.category] !== undefined) counts[t.category] += 1;
+        }
+        const tabsEl = $('cat-tabs');
+        tabsEl.innerHTML = '';
+        for (const cat of ['All', ...CATEGORIES]) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'cat-tab' + (state.categoryFilter === cat ? ' active' : '');
+          btn.innerHTML = `<span>${cat}</span><span class="cat-count">${counts[cat]}</span>`;
+          btn.addEventListener('click', () => {
+            state.categoryFilter = cat;
+            renderWorkspace();
+          });
+          tabsEl.appendChild(btn);
+        }
+      }
+
+      function setFocusedTrack(uid) {
+        state.focusedUid = uid;
+        document.querySelectorAll('#track-tbody tr').forEach((row) => {
+          row.classList.toggle('is-focused', row.dataset.uid === uid);
+        });
+      }
+
+      function updateTitleAndActions() {
+        const isImport = state.view === 'import';
+        const curList = getCurrentList();
+        const checkedInView = curList.filter((t) => t.selected).length;
+        $('page-title').textContent = isImport ? 'Import Queue' : 'In-Game Library';
+        $('dock-import-controls').classList.toggle('hidden', !isImport);
+        $('dock-library-controls').classList.toggle('hidden', isImport);
+        const showBatch = isImport || state.libraryTracks.length > 0;
+        $('batch-artist-group').classList.toggle('hidden', !showBatch);
+        $('batch-station-group').classList.toggle('hidden', !showBatch);
+        $('btn-export-pack').disabled = checkedInView === 0;
+
+        if (isImport) {
+          const total = state.importTracks.length;
+          const selected = state.importTracks.filter((t) => t.selected);
+          const conflicts = selected.filter((t) => t.conflict).length;
+          if (total === 0) {
+            $('page-sub').textContent = 'Add songs, folders, or .zip mod packs from anywhere to inspect, trim outros, and patch into Asphalt 8';
+          } else {
+            const parts = [`${selected.length} of ${total} selected`];
+            if (conflicts > 0) parts.push(`${conflicts} existing in game`);
+            $('page-sub').textContent = parts.join(' \u00b7 ');
+          }
+          const installCount = state.onConflict === 'skip' ? selected.length - conflicts : selected.length;
+          const label = conflicts > 0 && state.onConflict === 'skip'
+            ? `Install ${installCount} tracks (${conflicts} skipped)`
+            : `Install ${selected.length} tracks`;
+          $('btn-install-label').textContent = label;
+          $('btn-install').disabled = !state.gameValid || selected.length === 0 || (conflicts === selected.length && state.onConflict === 'skip');
+        } else {
+          const selLib = state.libraryTracks.filter((t) => t.selected).length;
+          const dirty = state.dirtyLibraryIds.size;
+          $('page-sub').textContent = state.gameValid
+            ? `${state.libraryTracks.length} custom tracks in soundpack \u00b7 ${dirty} modified`
+            : 'Select an Asphalt 8 folder to manage installed songs';
+          $('btn-remove-label').textContent = `Remove (${selLib})`;
+          $('btn-remove-selected').disabled = !state.gameValid || selLib === 0;
+          $('btn-save-label').textContent = `Save edits (${dirty})`;
+          $('btn-save-library').disabled = !state.gameValid || dirty === 0;
+        }
+      }
+
+      function formatOutroBadgeText(track) {
+        if (state.view === 'library') {
+          return track.outro_exists ? 'Outro' : 'Missing outro';
+        }
+        if (track.outro_start != null || track.outro_end != null) {
+          const s = formatClock(track.outro_start || 0);
+          const e = track.outro_end != null ? formatClock(track.outro_end) : 'End';
+          return `Cut ${s}-${e}`;
+        }
+        return 'Outro';
+      }
+
+      function renderWorkspace() {
+        updateSourceUI();
+        renderCategoryTabs();
+        updateTitleAndActions();
+
+        const tbody = $('track-tbody');
+        const empty = $('empty-state');
+        const filtered = getFilteredTracks();
+        const total = getCurrentList().length;
+
+        if (filtered.length === 0) {
+          tbody.innerHTML = '';
+          empty.classList.remove('hidden');
+          if (total > 0) {
+            $('empty-title').textContent = 'No tracks match your filter';
+            $('empty-desc').textContent = 'Clear the search box or switch back to All stations to view every track.';
+            $('empty-cta-row').classList.add('hidden');
+          } else if (state.view === 'import') {
+            $('empty-title').textContent = 'Drop music files or folders to start';
+            $('empty-desc').textContent = 'Add songs from any location on your PC, edit titles or stations, and trim custom outros before patching';
+            $('empty-cta-row').classList.remove('hidden');
+          } else {
+            $('empty-title').textContent = state.gameValid ? 'No songs found in soundpack' : 'Select an Asphalt 8 folder first';
+            $('empty-desc').textContent = state.gameValid
+              ? 'No station music entries were found inside Data/soundpack/soundpack.'
+              : 'Browse to your Asphalt 8 game folder in the left sidebar to inspect and edit installed tracks.';
+            $('empty-cta-row').classList.add('hidden');
+          }
+          $('chk-header-all').checked = false;
+          $('chk-header-all').indeterminate = false;
+          updateHudPreview(null);
+          return;
+        }
+
+        empty.classList.add('hidden');
+        tbody.innerHTML = '';
+
+        const checkedCount = filtered.filter((t) => t.selected).length;
+        const headerChk = $('chk-header-all');
+        headerChk.checked = filtered.length > 0 && checkedCount === filtered.length;
+        headerChk.indeterminate = checkedCount > 0 && checkedCount < filtered.length;
+
+        filtered.forEach((track, idx) => {
+          const tr = document.createElement('tr');
+          tr.dataset.uid = track.uid;
+          const playingMain = state.isPlaying && state.playingUid === track.uid && state.playingMode === 'main';
+          const playingOutro = state.isPlaying && state.playingUid === track.uid && state.playingMode === 'outro';
+          if (track.selected) tr.classList.add('is-selected');
+          if (playingMain || playingOutro) tr.classList.add('is-playing');
+          if (state.focusedUid === track.uid) tr.classList.add('is-focused');
+
+          const tdChk = document.createElement('td');
+          tdChk.className = 'col-chk';
+          const chk = document.createElement('input');
+          chk.type = 'checkbox';
+          chk.checked = !!track.selected;
+          chk.setAttribute('aria-label', `Select ${track.title}`);
+          chk.addEventListener('change', () => {
+            track.selected = chk.checked;
+            tr.classList.toggle('is-selected', track.selected);
+            updateTitleAndActions();
+            const curFiltered = getFilteredTracks();
+            const curChecked = curFiltered.filter((x) => x.selected).length;
+            headerChk.checked = curFiltered.length > 0 && curChecked === curFiltered.length;
+            headerChk.indeterminate = curChecked > 0 && curChecked < curFiltered.length;
+          });
+          tdChk.appendChild(chk);
+
+          const tdNum = document.createElement('td');
+          tdNum.className = 'col-num num';
+          tdNum.textContent = String(idx + 1);
+
+          const tdPlay = document.createElement('td');
+          tdPlay.className = 'col-play';
+          const playBtn = document.createElement('button');
+          playBtn.type = 'button';
+          playBtn.className = 'play-btn' + (playingMain ? ' active' : '');
+          playBtn.title = playingMain ? 'Pause track' : 'Preview track';
+          playBtn.innerHTML = playingMain ? PAUSE_ICON_SVG : PLAY_ICON_SVG;
+          playBtn.disabled = state.view === 'library' && !track.main_exists;
+          playBtn.addEventListener('click', () => togglePlayTrack(track, 'main'));
+          tdPlay.appendChild(playBtn);
+
+          const tdTitle = document.createElement('td');
+          tdTitle.className = 'col-title';
+          const titleInp = document.createElement('input');
+          titleInp.type = 'text';
+          titleInp.className = 'inline-edit' + (track._dirty ? ' dirty' : '');
+          titleInp.value = track.title || '';
+          titleInp.placeholder = 'Song title';
+          titleInp.setAttribute('aria-label', 'Song title');
+          titleInp.addEventListener('focus', () => {
+            setFocusedTrack(track.uid);
+            updateHudPreview(track);
+          });
+          titleInp.addEventListener('input', () => {
+            track.title = titleInp.value;
+            if (state.view === 'library') {
+              track._dirty = true;
+              titleInp.classList.add('dirty');
+              state.dirtyLibraryIds.add(track.base_id);
+              updateTitleAndActions();
+            }
+            updateHudPreview(track);
+          });
+          const subMeta = document.createElement('div');
+          subMeta.className = 'sub-meta-line';
+          const subFile = document.createElement('span');
+          subFile.className = 'sub-filename';
+          const baseFile = track.src_name || track.main_file || '';
+          const trackAudioPath = getTrackAudioPath(track);
+          subFile.textContent = baseFile;
+          subFile.title = trackAudioPath || baseFile;
+          const loudChip = document.createElement('span');
+          loudChip.className = 'loud-chip loud-slot hidden';
+          if (trackAudioPath) loudChip.setAttribute('data-audio-path', trackAudioPath);
+          const cachedAudioInfo = trackAudioPath ? state.audioMetricsCache[trackAudioPath] : null;
+          if (cachedAudioInfo) renderLoudnessChip(loudChip, cachedAudioInfo);
+          subMeta.append(subFile, loudChip);
+          tdTitle.append(titleInp, subMeta);
+
+          const tdArtist = document.createElement('td');
+          tdArtist.className = 'col-artist';
+          const artistInp = document.createElement('input');
+          artistInp.type = 'text';
+          artistInp.className = 'inline-edit' + (track._dirty ? ' dirty' : '');
+          artistInp.value = track.artist || '';
+          artistInp.placeholder = 'Artist';
+          artistInp.setAttribute('aria-label', 'Artist');
+          artistInp.addEventListener('focus', () => {
+            setFocusedTrack(track.uid);
+            updateHudPreview(track);
+          });
+          artistInp.addEventListener('input', () => {
+            track.artist = artistInp.value;
+            if (state.view === 'library') {
+              track._dirty = true;
+              artistInp.classList.add('dirty');
+              state.dirtyLibraryIds.add(track.base_id);
+              updateTitleAndActions();
+            }
+            updateHudPreview(track);
+          });
+          tdArtist.appendChild(artistInp);
+
+          const tdCat = document.createElement('td');
+          tdCat.className = 'col-cat';
+          const catSel = document.createElement('select');
+          catSel.className = 'cat-select';
+          catSel.setAttribute('aria-label', 'Station category');
+          for (const c of CATEGORIES) {
+            const opt = document.createElement('option');
+            opt.value = c;
+            opt.textContent = c;
+            if (track.category === c) opt.selected = true;
+            catSel.appendChild(opt);
+          }
+          catSel.addEventListener('change', () => {
+            track.category = catSel.value;
+            if (state.view === 'library') {
+              track._dirty = true;
+              state.dirtyLibraryIds.add(track.base_id);
+              updateTitleAndActions();
+            }
+            updateHudPreview(track);
+            renderCategoryTabs();
+          });
+          tdCat.appendChild(catSel);
+
+          const tdOutro = document.createElement('td');
+          tdOutro.className = 'col-outro';
+          const outroCell = document.createElement('div');
+          outroCell.className = 'outro-cell';
+          if (track.has_outro) {
+            const outroPlayBtn = document.createElement('button');
+            outroPlayBtn.type = 'button';
+            outroPlayBtn.className = 'outro-play-btn' + (playingOutro ? ' active' : '');
+            outroPlayBtn.title = playingOutro ? 'Pause outro' : 'Play outro clip';
+            outroPlayBtn.innerHTML = playingOutro ? PAUSE_ICON_SVG : PLAY_ICON_SVG;
+            outroPlayBtn.disabled = state.view === 'library' && !track.outro_exists;
+            outroPlayBtn.addEventListener('click', () => togglePlayTrack(track, 'outro'));
+            outroCell.appendChild(outroPlayBtn);
+
+            const editOutroBtn = document.createElement('button');
+            editOutroBtn.type = 'button';
+            const missingOutro = state.view === 'library' && !track.outro_exists;
+            editOutroBtn.className = 'outro-tag-btn ' + (missingOutro ? 'missing' : 'active');
+            editOutroBtn.title = 'Edit outro song';
+            editOutroBtn.innerHTML = `<span class="outro-dot"></span><span>${formatOutroBadgeText(track)}</span>`;
+            editOutroBtn.addEventListener('click', () => openOutroEditor(track));
+            outroCell.appendChild(editOutroBtn);
+          } else {
+            const setOutroBtn = document.createElement('button');
+            setOutroBtn.type = 'button';
+            setOutroBtn.className = 'outro-tag-btn';
+            setOutroBtn.title = 'Assign or trim an outro song';
+            setOutroBtn.textContent = '+ Set outro';
+            setOutroBtn.disabled = state.view === 'library' && !track.main_exists && !state.gameValid;
+            setOutroBtn.addEventListener('click', () => openOutroEditor(track));
+            outroCell.appendChild(setOutroBtn);
+          }
+          tdOutro.appendChild(outroCell);
+
+          const tdStatus = document.createElement('td');
+          tdStatus.className = 'col-status';
+          const statusWrap = document.createElement('span');
+          statusWrap.className = 'row-status';
+          if (state.view === 'import') {
+            if (track.conflict) {
+              statusWrap.classList.add('warn');
+              statusWrap.innerHTML = `<span class="row-dot"></span><span>${state.onConflict === 'skip' ? 'Will skip' : 'Exists'}</span>`;
+            } else {
+              statusWrap.classList.add('ok');
+              statusWrap.innerHTML = '<span class="row-dot"></span><span>New</span>';
+            }
+          } else {
+            if (track._dirty) {
+              statusWrap.classList.add('warn');
+              statusWrap.innerHTML = '<span class="row-dot"></span><span>Edited</span>';
+            } else if (!track.main_exists) {
+              statusWrap.classList.add('neg');
+              statusWrap.innerHTML = '<span class="row-dot"></span><span>Missing file</span>';
+            } else {
+              statusWrap.innerHTML = '<span class="row-dot"></span><span>Installed</span>';
+            }
+          }
+          tdStatus.appendChild(statusWrap);
+
+          tr.append(tdChk, tdNum, tdPlay, tdTitle, tdArtist, tdCat, tdOutro, tdStatus);
+          tr.addEventListener('click', (e) => {
+            if (!['INPUT', 'SELECT', 'BUTTON'].includes(e.target.tagName)) {
+              setFocusedTrack(track.uid);
+              updateHudPreview(track);
+            }
+          });
+          tbody.appendChild(tr);
+        });
+
+        updateHudPreview(getCurrentList().find((t) => t.uid === state.focusedUid) || filtered[0]);
+      }
+
+      async function togglePlayTrack(track, mode) {
+        updateHudPreview(track);
+        const isCutOutro = (
+          mode === 'outro'
+          && state.view === 'import'
+          && track.has_outro
+          && (track.outro_start != null || track.outro_end != null || (track.outro_fade_in && track.outro_fade_in > 0))
+        );
+        const targetPath = mode === 'outro' ? (track.outro_src_path || track.outro_path) : (track.src_path || track.main_path);
+        if (!targetPath) return;
+
+        if (state.playingUid === track.uid && state.playingMode === mode && !isCutOutro) {
+          if (audioEl.paused) {
+            await audioEl.play().catch(() => {});
+            state.isPlaying = true;
+          } else {
+            audioEl.pause();
+            state.isPlaying = false;
+          }
+          updatePlayIcons();
+          return;
+        }
+        if (state.playingUid === track.uid && state.playingMode === mode && isCutOutro && !audioEl.paused) {
+          audioEl.pause();
+          state.isPlaying = false;
+          updatePlayIcons();
+          return;
+        }
+
+        state.playingUid = track.uid;
+        state.playingMode = mode;
+        state.isPlaying = true;
+        updatePlayIcons();
+
+        if (!hasBridge()) return;
+        const res = isCutOutro
+          ? await callApi('preview_outro_segment', {
+              src_path: targetPath,
+              start_sec: track.outro_start,
+              end_sec: track.outro_end,
+              fade_in: track.outro_fade_in || 0,
+              fade_out: track.outro_fade_out != null ? track.outro_fade_out : 1.2,
+            })
+          : await callApi('prepare_preview', targetPath);
+
+        if (!res.ok) {
+          state.isPlaying = false;
+          updatePlayIcons();
+          showBanner(`Could not preview audio: ${res.error}`, true);
+          return;
+        }
+        audioEl.src = res.url;
+        await audioEl.play().catch((err) => {
+          state.isPlaying = false;
+          showBanner(`Playback failed: ${err && err.message ? err.message : 'unsupported format'}`, true);
+        });
+        updatePlayIcons();
+      }
+
+      function updatePlayIcons() {
+        const icon = state.isPlaying
+          ? '<rect x="6" y="4" width="4" height="16" fill="currentColor" stroke="none"/><rect x="14" y="4" width="4" height="16" fill="currentColor" stroke="none"/>'
+          : '<polygon points="6 4 20 12 6 20 6 4" fill="currentColor" stroke="none"/>';
+        $('hud-play-icon').innerHTML = icon;
+        $('btn-hud-play').classList.toggle('active', state.isPlaying);
+        const rows = $('track-tbody').children;
+        const filtered = getFilteredTracks();
+        for (let i = 0; i < rows.length; i++) {
+          const t = filtered[i];
+          if (!t) continue;
+          const pMain = state.isPlaying && state.playingUid === t.uid && state.playingMode === 'main';
+          const pOutro = state.isPlaying && state.playingUid === t.uid && state.playingMode === 'outro';
+          rows[i].classList.toggle('is-playing', pMain || pOutro);
+          const btnMain = rows[i].querySelector('.play-btn');
+          if (btnMain) {
+            btnMain.classList.toggle('active', pMain);
+            btnMain.innerHTML = pMain ? PAUSE_ICON_SVG : PLAY_ICON_SVG;
+          }
+          const btnOutro = rows[i].querySelector('.outro-play-btn');
+          if (btnOutro) {
+            btnOutro.classList.toggle('active', pOutro);
+            btnOutro.innerHTML = pOutro ? PAUSE_ICON_SVG : PLAY_ICON_SVG;
+          }
+        }
+        updateHudPreview();
+      }
+
+      audioEl.addEventListener('timeupdate', () => {
+        const cur = audioEl.currentTime || 0;
+        const dur = Number.isFinite(audioEl.duration) ? audioEl.duration : 0;
+        const pct = dur > 0 ? Math.min(100, (cur / dur) * 100) : 0;
+        $('hud-time').textContent = `${formatClock(cur)} / ${formatClock(dur)}`;
+        $('hud-scrub-fill').style.width = `${pct}%`;
+        $('hud-scrub-wrap').setAttribute('aria-valuenow', String(Math.round(pct)));
+      });
+      audioEl.addEventListener('loadedmetadata', () => {
+        const dur = Number.isFinite(audioEl.duration) ? audioEl.duration : 0;
+        $('hud-time').textContent = `${formatClock(audioEl.currentTime || 0)} / ${formatClock(dur)}`;
+      });
+      audioEl.addEventListener('ended', () => {
+        state.isPlaying = false;
+        $('hud-scrub-fill').style.width = '0%';
+        $('hud-time').textContent = `0:00 / ${formatClock(audioEl.duration || 0)}`;
+        updatePlayIcons();
+      });
+
+      $('hud-scrub-wrap').addEventListener('click', (e) => {
+        if (!Number.isFinite(audioEl.duration) || audioEl.duration <= 0) return;
+        const rect = $('hud-scrub-wrap').getBoundingClientRect();
+        const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+        audioEl.currentTime = ratio * audioEl.duration;
+      });
+
+      async function refreshConflicts() {
+        if (!state.gameValid || state.importTracks.length === 0 || !hasBridge()) return;
+        const map = await callApi('check_conflicts', state.gameDir, state.importTracks.map((t) => t.base_id));
+        for (const t of state.importTracks) {
+          t.conflict = !!map[t.base_id];
+        }
+      }
+
+      function switchNav(view) {
+        state.view = view;
+        state.categoryFilter = 'All';
+        $('nav-import').classList.toggle('active', view === 'import');
+        $('nav-import').setAttribute('aria-current', view === 'import' ? 'page' : 'false');
+        $('nav-library').classList.toggle('active', view === 'library');
+        $('nav-library').setAttribute('aria-current', view === 'library' ? 'page' : 'false');
+        closeMobileDrawer();
+      }
+
+      function applyScanResult(res, append) {
+        const incoming = res.tracks || [];
+        if (append && state.importTracks.length > 0) {
+          const existingPaths = new Set(state.importTracks.map((t) => (t.src_path || '').toLowerCase()));
+          for (const t of incoming) {
+            const p = (t.src_path || '').toLowerCase();
+            if (p && existingPaths.has(p)) continue;
+            state.uidSeq += 1;
+            t.uid = `imp_${state.uidSeq}_${t.base_id}`;
+            state.importTracks.push(t);
+            if (p) existingPaths.add(p);
+          }
+          for (const s of (res.sources || [])) {
+            if (s && !state.musicSources.includes(s)) state.musicSources.push(s);
+          }
+          if (!state.musicDir && res.root) state.musicDir = res.root;
+        } else {
+          state.importTracks = incoming.map((t) => {
+            state.uidSeq += 1;
+            return { ...t, uid: `imp_${state.uidSeq}_${t.base_id}` };
+          });
+          state.musicDir = res.root || '';
+          state.musicSources = (res.sources || []).slice();
+          if (!state.musicSources.length && state.musicDir) state.musicSources = [state.musicDir];
+        }
+        triggerBackgroundAudioAnalysis(state.importTracks);
+      }
+
+      async function loadMusicFolder(folderPath, append) {
+        hideBanner();
+        const res = folderPath
+          ? await callApi('add_music_paths', [folderPath], state.gameDir)
+          : await callApi('browse_music_folder', state.gameDir);
+        if (!res || res.cancelled) return;
+        if (!res.ok) {
+          showBanner(res.error || 'Could not scan audio source.', true);
+          return;
+        }
+        applyScanResult(res, !!append);
+        await refreshConflicts();
+        switchNav('import');
+        renderWorkspace();
+      }
+
+      async function addMusicFiles(append) {
+        hideBanner();
+        const res = await callApi('browse_music_files', state.gameDir);
+        if (!res || res.cancelled) return;
+        if (!res.ok) {
+          showBanner(res.error || 'Could not load selected audio files.', true);
+          return;
+        }
+        applyScanResult(res, !!append);
+        await refreshConflicts();
+        switchNav('import');
+        renderWorkspace();
+      }
+
+      function drawOutroWaveform() {
+        const canvas = $('outro-wave-canvas');
+        if (!canvas) return;
+        const rect = canvas.getBoundingClientRect();
+        const w = Math.max(240, Math.round(rect.width || 460));
+        const h = Math.max(60, Math.round(rect.height || 74));
+        const dpr = window.devicePixelRatio || 1;
+        if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+          canvas.width = Math.round(w * dpr);
+          canvas.height = Math.round(h * dpr);
+        }
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.save();
+        ctx.scale(dpr, dpr);
+
+        const styles = getComputedStyle(document.documentElement);
+        const colBg = styles.getPropertyValue('--surface').trim() || '#111111';
+        const colSelSoft = styles.getPropertyValue('--accent-soft').trim() || '#211708';
+        const colAccent = styles.getPropertyValue('--accent').trim() || '#e58f12';
+        const colBarDim = styles.getPropertyValue('--control').trim() || '#3a3a3a';
+        const colText = styles.getPropertyValue('--text').trim() || '#ffffff';
+
+        ctx.fillStyle = colBg;
+        ctx.fillRect(0, 0, w, h);
+
+        const dur = Math.max(1, Number(outroModalState.totalDur) || 180);
+        const sFrac = Math.max(0, Math.min(1, (outroModalState.startSec || 0) / dur));
+        const eFrac = Math.max(sFrac, Math.min(1, (outroModalState.endSec || dur) / dur));
+        const sx = sFrac * w;
+        const ex = eFrac * w;
+
+        ctx.fillStyle = colSelSoft;
+        ctx.fillRect(sx, 0, Math.max(2, ex - sx), h);
+
+        const peaks = (outroModalState.peaks && outroModalState.peaks.length)
+          ? outroModalState.peaks
+          : generateFallbackPeaks(outroModalState.srcName || 'outro', 120);
+        const n = peaks.length;
+        const step = w / n;
+        const barW = Math.max(1.5, step * 0.62);
+        const midY = h * 0.5;
+        const maxBarHalf = (h - 14) * 0.5;
+
+        for (let i = 0; i < n; i += 1) {
+          const x = i * step + (step - barW) * 0.5;
+          const frac = (i + 0.5) / n;
+          const amp = Math.max(0.06, Math.min(1, Number(peaks[i]) || 0.08));
+          const bh = Math.max(3, amp * maxBarHalf * 2);
+          ctx.fillStyle = (frac >= sFrac && frac <= eFrac) ? colAccent : colBarDim;
+          ctx.fillRect(x, midY - bh * 0.5, barW, bh);
+        }
+
+        // Start / End handles
+        ctx.fillStyle = colText;
+        ctx.fillRect(Math.max(0, sx - 1), 0, 2, h);
+        ctx.fillRect(Math.min(w - 2, ex - 1), 0, 2, h);
+        ctx.fillStyle = colAccent;
+        ctx.fillRect(Math.max(0, sx - 4), 0, 8, 6);
+        ctx.fillRect(Math.min(w - 8, ex - 4), 0, 8, 6);
+        ctx.restore();
+      }
+
+      function syncOutroTimelineUI() {
+        const dur = Math.max(1, Number(outroModalState.totalDur) || 180);
+        const start = Math.max(0, Math.min(dur - 0.5, Number(outroModalState.startSec) || 0));
+        const end = Math.max(start + 0.5, Math.min(dur, Number(outroModalState.endSec) || dur));
+        outroModalState.startSec = Math.round(start * 10) / 10;
+        outroModalState.endSec = Math.round(end * 10) / 10;
+
+        $('outro-start-range').max = String(Math.ceil(dur * 10) / 10);
+        $('outro-end-range').max = String(Math.ceil(dur * 10) / 10);
+        $('outro-start-range').value = String(outroModalState.startSec);
+        $('outro-start-num').value = String(outroModalState.startSec);
+        $('outro-end-range').value = String(outroModalState.endSec);
+        $('outro-end-num').value = String(outroModalState.endSec);
+
+        $('outro-range-readout').textContent = `Selected: ${formatClock(outroModalState.startSec)} - ${formatClock(outroModalState.endSec)}`;
+        $('outro-total-readout').textContent = `Total: ${formatClock(dur)}`;
+        const clipLen = Math.max(0.5, outroModalState.endSec - outroModalState.startSec);
+        $('outro-clip-meta').textContent = `Clip: ${clipLen.toFixed(1)}s \u00b7 Fade out ${Number(outroModalState.fadeOut || 0).toFixed(1)}s`;
+        drawOutroWaveform();
+      }
+
+      async function loadOutroSourceDuration(filePath) {
+        if (!filePath || !hasBridge()) {
+          outroModalState.totalDur = 180;
+          outroModalState.peaks = generateFallbackPeaks(filePath || outroModalState.srcName || 'demo', 120);
+          return 180;
+        }
+        const info = await callApi('get_audio_info', filePath, true);
+        const dur = info && info.ok && info.duration > 0 ? Number(info.duration) : 180;
+        outroModalState.totalDur = dur;
+        outroModalState.peaks = (info && info.ok && Array.isArray(info.peaks) && info.peaks.length)
+          ? info.peaks
+          : generateFallbackPeaks(filePath, 120);
+        return dur;
+      }
+
+      async function openOutroEditor(track) {
+        if (!track) return;
+        $('outro-error-box').classList.add('hidden');
+        outroModalState.track = track;
+        outroModalState.busy = false;
+        $('outro-sheet-sub').textContent = `"${track.title || 'Untitled'}" - ${track.artist || 'Custom Artist'}`;
+
+        const mainPath = track.src_path || track.main_path || '';
+        const existingOutroPath = track.outro_src_path || track.outro_path || '';
+        const isExistingFileOutro = !!(
+          track.has_outro
+          && existingOutroPath
+          && existingOutroPath !== mainPath
+          && (state.view === 'import' || track.outro_exists)
+        );
+
+        outroModalState.mode = isExistingFileOutro ? 'file' : 'trim';
+        outroModalState.srcPath = isExistingFileOutro ? existingOutroPath : mainPath;
+        outroModalState.srcName = outroModalState.srcPath
+          ? outroModalState.srcPath.split(/[\\/]/).pop()
+          : (track.src_name || track.main_file || 'Track audio');
+
+        $('btn-outro-mode-trim').classList.toggle('active', outroModalState.mode === 'trim');
+        $('btn-outro-mode-file').classList.toggle('active', outroModalState.mode === 'file');
+        $('btn-outro-pick-file').classList.toggle('hidden', outroModalState.mode !== 'file');
+        $('outro-src-readout').textContent = outroModalState.srcPath || 'Demo track audio';
+        $('btn-outro-remove').classList.toggle('hidden', !track.has_outro);
+        $('btn-outro-save').textContent = state.view === 'library' ? 'Save outro to game' : 'Apply outro';
+        $('btn-outro-save').disabled = false;
+
+        $('outro-scrim').classList.add('open');
+        const dur = await loadOutroSourceDuration(outroModalState.srcPath);
+
+        if (track.outro_start != null && track.outro_end != null) {
+          outroModalState.startSec = Number(track.outro_start);
+          outroModalState.endSec = Number(track.outro_end);
+          outroModalState.fadeIn = track.outro_fade_in != null ? Number(track.outro_fade_in) : 0.2;
+          outroModalState.fadeOut = track.outro_fade_out != null ? Number(track.outro_fade_out) : 1.2;
+        } else if (outroModalState.mode === 'file') {
+          outroModalState.startSec = 0;
+          outroModalState.endSec = dur;
+          outroModalState.fadeIn = 0.0;
+          outroModalState.fadeOut = 0.2;
+        } else {
+          outroModalState.startSec = Math.max(0, Math.floor((dur - 20) * 10) / 10);
+          outroModalState.endSec = Math.round(dur * 10) / 10;
+          outroModalState.fadeIn = 0.3;
+          outroModalState.fadeOut = 1.2;
+        }
+        $('outro-fade-in').value = String(outroModalState.fadeIn);
+        $('outro-fade-out').value = String(outroModalState.fadeOut);
+        syncOutroTimelineUI();
+      }
+
+      function closeOutroEditor() {
+        $('outro-scrim').classList.remove('open');
+        outroModalState.track = null;
+      }
+
+      async function switchOutroMode(mode) {
+        if (!outroModalState.track) return;
+        const track = outroModalState.track;
+        outroModalState.mode = mode;
+        $('btn-outro-mode-trim').classList.toggle('active', mode === 'trim');
+        $('btn-outro-mode-file').classList.toggle('active', mode === 'file');
+        $('btn-outro-pick-file').classList.toggle('hidden', mode !== 'file');
+        $('outro-error-box').classList.add('hidden');
+
+        if (mode === 'trim') {
+          outroModalState.srcPath = track.src_path || track.main_path || '';
+          outroModalState.srcName = track.src_name || track.main_file || 'Main track';
+          $('outro-src-readout').textContent = outroModalState.srcPath || 'Main track';
+          const dur = await loadOutroSourceDuration(outroModalState.srcPath);
+          outroModalState.startSec = Math.max(0, Math.floor((dur - 20) * 10) / 10);
+          outroModalState.endSec = Math.round(dur * 10) / 10;
+          outroModalState.fadeIn = 0.3;
+          outroModalState.fadeOut = 1.2;
+          $('outro-fade-in').value = '0.3';
+          $('outro-fade-out').value = '1.2';
+          syncOutroTimelineUI();
+        } else {
+          if (hasBridge()) {
+            const res = await callApi('browse_single_audio_file');
+            if (res && res.ok) {
+              outroModalState.srcPath = res.file_path;
+              outroModalState.srcName = res.file_name;
+              const dur = await loadOutroSourceDuration(res.file_path);
+              outroModalState.totalDur = dur || (res.duration > 0 ? res.duration : 180);
+              outroModalState.startSec = 0;
+              outroModalState.endSec = outroModalState.totalDur;
+              outroModalState.fadeIn = 0.0;
+              outroModalState.fadeOut = 0.2;
+              $('outro-src-readout').textContent = outroModalState.srcPath;
+              $('outro-fade-in').value = '0';
+              $('outro-fade-out').value = '0.2';
+              syncOutroTimelineUI();
+            }
+          }
+        }
+      }
+
+      async function loadLibrary() {
+        hideBanner();
+        if (!state.gameValid) {
+          state.libraryTracks = [];
+          renderWorkspace();
+          return;
+        }
+        const res = await callApi('get_installed_tracks', state.gameDir);
+        if (!res.ok) {
+          showBanner(res.error || 'Could not read in-game library.', true);
+          return;
+        }
+        state.libraryTracks = (res.tracks || []).map((t) => ({
+          ...t,
+          uid: `lib_${t.base_id}`,
+          selected: false,
+          _dirty: false,
+        }));
+        state.dirtyLibraryIds.clear();
+        state.installedCount = state.libraryTracks.length;
+        renderWorkspace();
+        triggerBackgroundAudioAnalysis(state.libraryTracks);
+      }
+
+      async function refreshBackupsCount() {
+        if (!hasBridge()) return;
+        const res = await callApi('list_backups', state.gameDir);
+        if (res.ok) {
+          $('backups-count').textContent = (res.backups || []).length;
+        }
+      }
+
+      // Wire events
+      $('btn-mobile-menu').addEventListener('click', () => {
+        $('sidebar').classList.add('open');
+        $('mobile-scrim').classList.add('open');
+      });
+      $('mobile-scrim').addEventListener('click', closeMobileDrawer);
+      $('btn-theme').addEventListener('click', () => applyTheme(state.theme === 'dark' ? 'light' : 'dark', true));
+      $('btn-theme-mobile').addEventListener('click', () => applyTheme(state.theme === 'dark' ? 'light' : 'dark', true));
+
+      $('nav-import').addEventListener('click', () => {
+        switchNav('import');
+        renderWorkspace();
+      });
+
+      $('nav-library').addEventListener('click', async () => {
+        switchNav('library');
+        if (!new URLSearchParams(window.location.search).has('demo')) {
+          await loadLibrary();
+        } else {
+          renderWorkspace();
+        }
+      });
+
+      document.querySelectorAll('.hud-station').forEach((el) => {
+        el.addEventListener('click', () => {
+          const station = el.dataset.station;
+          if (!station) return;
+          state.categoryFilter = state.categoryFilter === station ? 'All' : station;
+          renderWorkspace();
+        });
+      });
+
+      $('btn-browse-game').addEventListener('click', async () => {
+        hideBanner();
+        const res = await callApi('browse_game_dir');
+        if (!res || res.cancelled) return;
+        if (!res.ok) {
+          showBanner(res.error || 'Invalid Asphalt 8 directory.', true);
+          return;
+        }
+        applyGameStatus(res);
+        await refreshConflicts();
+        await refreshBackupsCount();
+        await refreshHealthBadge();
+        if (state.view === 'library') await loadLibrary();
+        else renderWorkspace();
+      });
+
+      $('btn-grant-access').addEventListener('click', async () => {
+        hideBanner();
+        const btn = $('btn-grant-access');
+        btn.disabled = true;
+        btn.textContent = 'Checking...';
+        try {
+          const res = await callApi('request_game_permissions', state.gameDir);
+          if (!res || !res.ok) {
+            if (res) applyGameStatus(res);
+            updateSourceUI();
+            showBanner((res && res.error) || 'Permission elevation failed.', true);
+            return;
+          }
+          applyGameStatus(res);
+          showBanner('Write access granted on game folder.', false);
+          updateSourceUI();
+        } finally {
+          btn.disabled = false;
+          btn.textContent = state.isAdmin ? 'Fix permissions' : 'Grant access';
+        }
+      });
+
+      $('btn-clone-game').addEventListener('click', async () => {
+        hideBanner();
+        const btn = $('btn-clone-game');
+        btn.disabled = true;
+        btn.textContent = 'Copying...';
+        try {
+          const res = await callApi('clone_game_to_loose_dialog', state.gameDir);
+          if (!res || res.cancelled) return;
+          if (!res.ok) {
+            showBanner((res && res.error) || 'Could not create writable copy.', true);
+            return;
+          }
+          applyGameStatus(res);
+          await refreshConflicts();
+          await refreshBackupsCount();
+          await refreshHealthBadge();
+          if (state.view === 'library') await loadLibrary();
+          else renderWorkspace();
+          const tip = res.register_cmd
+            ? ` To launch this loose copy instead of the Store version, enable Windows Developer Mode and run: ${res.register_cmd}`
+            : '';
+          showBanner(`Writable copy ready: ${res.dest_dir}.${tip}`, false);
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Make writable copy';
+        }
+      });
+
+      $('btn-browse-music').addEventListener('click', () => loadMusicFolder(null, state.importTracks.length > 0));
+      $('btn-empty-browse').addEventListener('click', () => loadMusicFolder(null, false));
+      $('btn-add-files').addEventListener('click', () => addMusicFiles(state.importTracks.length > 0));
+      $('btn-empty-files').addEventListener('click', () => addMusicFiles(state.importTracks.length > 0));
+      $('btn-clear-music').addEventListener('click', () => {
+        state.importTracks = [];
+        state.musicDir = '';
+        state.musicSources = [];
+        renderWorkspace();
+      });
+      $('btn-rescan-music').addEventListener('click', async () => {
+        const srcs = state.musicSources && state.musicSources.length
+          ? state.musicSources
+          : (state.musicDir ? [state.musicDir] : []);
+        if (!srcs.length) return;
+        const res = await callApi('add_music_paths', srcs, state.gameDir);
+        if (res && res.ok) {
+          applyScanResult(res, false);
+          await refreshConflicts();
+          renderWorkspace();
+        }
+      });
+
+      $('btn-close-outro').addEventListener('click', closeOutroEditor);
+      $('btn-outro-cancel').addEventListener('click', closeOutroEditor);
+      $('btn-outro-mode-trim').addEventListener('click', () => switchOutroMode('trim'));
+      $('btn-outro-mode-file').addEventListener('click', () => switchOutroMode('file'));
+      $('btn-outro-pick-file').addEventListener('click', async () => {
+        if (!hasBridge()) return;
+        const res = await callApi('browse_single_audio_file');
+        if (res && res.ok) {
+          outroModalState.mode = 'file';
+          outroModalState.srcPath = res.file_path;
+          outroModalState.srcName = res.file_name;
+          const dur = await loadOutroSourceDuration(res.file_path);
+          outroModalState.totalDur = dur || (res.duration > 0 ? res.duration : 180);
+          outroModalState.startSec = 0;
+          outroModalState.endSec = outroModalState.totalDur;
+          $('outro-src-readout').textContent = outroModalState.srcPath;
+          syncOutroTimelineUI();
+        }
+      });
+
+      function waveClientXToSec(clientX) {
+        const canvas = $('outro-wave-canvas');
+        const rect = canvas.getBoundingClientRect();
+        const dur = Math.max(1, Number(outroModalState.totalDur) || 180);
+        const frac = Math.max(0, Math.min(1, (clientX - rect.left) / Math.max(1, rect.width)));
+        return Math.round(frac * dur * 10) / 10;
+      }
+
+      $('outro-wave-canvas').addEventListener('pointerdown', (e) => {
+        const canvas = $('outro-wave-canvas');
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const w = Math.max(1, rect.width);
+        const dur = Math.max(1, Number(outroModalState.totalDur) || 180);
+        const sx = ((outroModalState.startSec || 0) / dur) * w;
+        const ex = ((outroModalState.endSec || dur) / dur) * w;
+        if (Math.abs(x - sx) <= 12) {
+          outroModalState.dragMode = 'start';
+        } else if (Math.abs(x - ex) <= 12) {
+          outroModalState.dragMode = 'end';
+        } else {
+          outroModalState.dragMode = 'range';
+          outroModalState.dragAnchorSec = waveClientXToSec(e.clientX);
+        }
+        try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+      });
+
+      $('outro-wave-canvas').addEventListener('pointermove', (e) => {
+        if (!outroModalState.dragMode) return;
+        const sec = waveClientXToSec(e.clientX);
+        if (outroModalState.dragMode === 'start') {
+          outroModalState.startSec = Math.max(0, Math.min(sec, outroModalState.endSec - 0.5));
+        } else if (outroModalState.dragMode === 'end') {
+          outroModalState.endSec = Math.max(outroModalState.startSec + 0.5, Math.min(outroModalState.totalDur || 180, sec));
+        } else if (outroModalState.dragMode === 'range') {
+          const anchor = outroModalState.dragAnchorSec;
+          if (Math.abs(sec - anchor) >= 0.5) {
+            outroModalState.startSec = Math.min(anchor, sec);
+            outroModalState.endSec = Math.max(anchor, sec);
+          }
+        }
+        syncOutroTimelineUI();
+      });
+
+      const endWaveDrag = (e) => {
+        if (!outroModalState.dragMode) return;
+        if (outroModalState.dragMode === 'range' && e && typeof e.clientX === 'number') {
+          const sec = waveClientXToSec(e.clientX);
+          if (Math.abs(sec - outroModalState.dragAnchorSec) < 0.5) {
+            if (Math.abs(sec - outroModalState.startSec) <= Math.abs(sec - outroModalState.endSec)) {
+              outroModalState.startSec = Math.min(sec, outroModalState.endSec - 0.5);
+            } else {
+              outroModalState.endSec = Math.max(sec, outroModalState.startSec + 0.5);
+            }
+            syncOutroTimelineUI();
+          }
+        }
+        outroModalState.dragMode = null;
+      };
+      $('outro-wave-canvas').addEventListener('pointerup', endWaveDrag);
+      $('outro-wave-canvas').addEventListener('pointercancel', () => { outroModalState.dragMode = null; });
+
+      $('outro-start-range').addEventListener('input', (e) => {
+        outroModalState.startSec = Number(e.target.value);
+        if (outroModalState.startSec >= outroModalState.endSec - 0.5) {
+          outroModalState.endSec = Math.min(outroModalState.totalDur || 180, outroModalState.startSec + 1);
+        }
+        syncOutroTimelineUI();
+      });
+      $('outro-start-num').addEventListener('change', (e) => {
+        outroModalState.startSec = Number(e.target.value);
+        syncOutroTimelineUI();
+      });
+      $('outro-end-range').addEventListener('input', (e) => {
+        outroModalState.endSec = Number(e.target.value);
+        if (outroModalState.endSec <= outroModalState.startSec + 0.5) {
+          outroModalState.startSec = Math.max(0, outroModalState.endSec - 1);
+        }
+        syncOutroTimelineUI();
+      });
+      $('outro-end-num').addEventListener('change', (e) => {
+        outroModalState.endSec = Number(e.target.value);
+        syncOutroTimelineUI();
+      });
+      $('outro-fade-in').addEventListener('input', (e) => {
+        outroModalState.fadeIn = Math.max(0, Number(e.target.value) || 0);
+        syncOutroTimelineUI();
+      });
+      $('outro-fade-out').addEventListener('input', (e) => {
+        outroModalState.fadeOut = Math.max(0, Number(e.target.value) || 0);
+        syncOutroTimelineUI();
+      });
+
+      $('btn-preset-last20').addEventListener('click', () => {
+        const d = outroModalState.totalDur || 180;
+        outroModalState.startSec = Math.max(0, Math.floor((d - 20) * 10) / 10);
+        outroModalState.endSec = Math.round(d * 10) / 10;
+        syncOutroTimelineUI();
+      });
+      $('btn-preset-last30').addEventListener('click', () => {
+        const d = outroModalState.totalDur || 180;
+        outroModalState.startSec = Math.max(0, Math.floor((d - 30) * 10) / 10);
+        outroModalState.endSec = Math.round(d * 10) / 10;
+        syncOutroTimelineUI();
+      });
+      $('btn-preset-first25').addEventListener('click', () => {
+        const d = outroModalState.totalDur || 180;
+        outroModalState.startSec = 0;
+        outroModalState.endSec = Math.min(25, d);
+        syncOutroTimelineUI();
+      });
+      $('btn-preset-full').addEventListener('click', () => {
+        const d = outroModalState.totalDur || 180;
+        outroModalState.startSec = 0;
+        outroModalState.endSec = d;
+        syncOutroTimelineUI();
+      });
+
+      $('btn-outro-preview').addEventListener('click', async () => {
+        if (!outroModalState.track) return;
+        $('outro-error-box').classList.add('hidden');
+        if (!hasBridge()) return;
+        const btn = $('btn-outro-preview');
+        btn.disabled = true;
+        btn.textContent = 'Rendering clip...';
+        const res = await callApi('preview_outro_segment', {
+          src_path: outroModalState.srcPath,
+          start_sec: outroModalState.startSec,
+          end_sec: outroModalState.endSec,
+          fade_in: outroModalState.fadeIn,
+          fade_out: outroModalState.fadeOut,
+        });
+        btn.disabled = false;
+        btn.textContent = 'Preview clip';
+        if (!res || !res.ok) {
+          $('outro-error-text').textContent = (res && res.error) || 'Failed to render outro preview.';
+          $('outro-error-box').classList.remove('hidden');
+          return;
+        }
+        state.playingUid = outroModalState.track.uid;
+        state.playingMode = 'outro';
+        state.isPlaying = true;
+        audioEl.src = res.url;
+        await audioEl.play().catch(() => {});
+        updatePlayIcons();
+      });
+
+      $('btn-outro-save').addEventListener('click', async () => {
+        const track = outroModalState.track;
+        if (!track || outroModalState.busy) return;
+        $('outro-error-box').classList.add('hidden');
+
+        if (state.view === 'import') {
+          const baseKey = (track.base_id || '').replace(/^m_/, '');
+          const dur = outroModalState.totalDur || 180;
+          const isFullFile = outroModalState.mode === 'file'
+            && outroModalState.startSec <= 0.1
+            && Math.abs(outroModalState.endSec - dur) < 0.2
+            && outroModalState.fadeIn <= 0.05;
+          track.has_outro = true;
+          track.outro_id = `m_outro_${baseKey}`;
+          track.outro_file = `${track.outro_id}.mpc`;
+          track.outro_src_path = outroModalState.srcPath;
+          track.outro_src_name = outroModalState.srcName;
+          track.outro_mode = outroModalState.mode;
+          track.outro_start = isFullFile ? null : outroModalState.startSec;
+          track.outro_end = isFullFile ? null : outroModalState.endSec;
+          track.outro_fade_in = outroModalState.fadeIn;
+          track.outro_fade_out = outroModalState.fadeOut;
+          closeOutroEditor();
+          renderWorkspace();
+          return;
+        }
+
+        if (!state.gameValid) {
+          $('outro-error-text').textContent = 'Select a valid Asphalt 8 folder first.';
+          $('outro-error-box').classList.remove('hidden');
+          return;
+        }
+        outroModalState.busy = true;
+        $('btn-outro-save').disabled = true;
+        $('btn-outro-save').textContent = 'Encoding outro...';
+        const res = await callApi('save_library_track_outro', {
+          game_dir: state.gameDir,
+          base_id: track.base_id,
+          src_path: outroModalState.srcPath,
+          start_sec: outroModalState.startSec,
+          end_sec: outroModalState.endSec,
+          fade_in: outroModalState.fadeIn,
+          fade_out: outroModalState.fadeOut,
+        });
+        outroModalState.busy = false;
+        $('btn-outro-save').disabled = false;
+        $('btn-outro-save').textContent = 'Save outro to game';
+        if (!res || !res.ok) {
+          $('outro-error-text').textContent = (res && res.error) || 'Failed to save outro to game.';
+          $('outro-error-box').classList.remove('hidden');
+          return;
+        }
+        closeOutroEditor();
+        showBanner(`Saved outro ${res.outro_file} to game. Backup saved to ${res.backup_dir}.`, false);
+        await refreshBackupsCount();
+        await loadLibrary();
+      });
+
+      $('btn-outro-remove').addEventListener('click', async () => {
+        const track = outroModalState.track;
+        if (!track || outroModalState.busy) return;
+        if (state.view === 'import') {
+          track.has_outro = false;
+          track.outro_src_path = null;
+          track.outro_src_name = null;
+          track.outro_start = null;
+          track.outro_end = null;
+          closeOutroEditor();
+          renderWorkspace();
+          return;
+        }
+        const delFile = $('chk-delete-mpc') ? $('chk-delete-mpc').checked : false;
+        const res = await callApi('remove_library_track_outro', state.gameDir, track.base_id, delFile);
+        if (!res || !res.ok) {
+          $('outro-error-text').textContent = (res && res.error) || 'Failed to remove outro.';
+          $('outro-error-box').classList.remove('hidden');
+          return;
+        }
+        closeOutroEditor();
+        showBanner(`Removed outro for ${track.title}. Backup saved to ${res.backup_dir}.`, false);
+        await refreshBackupsCount();
+        await loadLibrary();
+      });
+
+      $('btn-close-banner').addEventListener('click', hideBanner);
+
+      $('search-input').addEventListener('input', (e) => {
+        state.searchQuery = e.target.value;
+        renderWorkspace();
+      });
+
+      $('btn-select-all').addEventListener('click', () => {
+        for (const t of getFilteredTracks()) t.selected = true;
+        renderWorkspace();
+      });
+      $('btn-select-none').addEventListener('click', () => {
+        for (const t of getFilteredTracks()) t.selected = false;
+        renderWorkspace();
+      });
+      $('chk-header-all').addEventListener('change', (e) => {
+        for (const t of getFilteredTracks()) t.selected = e.target.checked;
+        renderWorkspace();
+      });
+
+      $('btn-apply-artist').addEventListener('click', () => {
+        const artist = $('batch-artist-input').value.trim();
+        if (!artist) return;
+        const list = getCurrentList();
+        let changed = 0;
+        for (const t of list) {
+          if (t.selected) {
+            t.artist = artist;
+            if (state.view === 'library') {
+              t._dirty = true;
+              state.dirtyLibraryIds.add(t.base_id);
+            }
+            changed += 1;
+          }
+        }
+        if (changed > 0) renderWorkspace();
+      });
+
+      $('btn-apply-station').addEventListener('click', () => {
+        const cat = $('batch-station-select').value;
+        if (!cat || !CATEGORIES.includes(cat)) return;
+        const list = getCurrentList();
+        let changed = 0;
+        for (const t of list) {
+          if (t.selected && t.category !== cat) {
+            t.category = cat;
+            if (state.view === 'library') {
+              t._dirty = true;
+              state.dirtyLibraryIds.add(t.base_id);
+            }
+            changed += 1;
+          }
+        }
+        if (changed > 0) {
+          renderWorkspace();
+          showBanner(`Assigned ${changed} track(s) to ${cat}.`, false);
+        }
+      });
+
+      $('switch-keep-stock').addEventListener('click', () => {
+        state.keepOriginal = !state.keepOriginal;
+        $('switch-keep-stock').setAttribute('aria-checked', String(state.keepOriginal));
+      });
+
+      $('btn-conflict-overwrite').addEventListener('click', () => {
+        state.onConflict = 'overwrite';
+        $('btn-conflict-overwrite').classList.add('active');
+        $('btn-conflict-skip').classList.remove('active');
+        renderWorkspace();
+      });
+      $('btn-conflict-skip').addEventListener('click', () => {
+        state.onConflict = 'skip';
+        $('btn-conflict-skip').classList.add('active');
+        $('btn-conflict-overwrite').classList.remove('active');
+        renderWorkspace();
+      });
+
+      $('btn-hud-play').addEventListener('click', () => {
+        const target = getCurrentList().find((t) => t.uid === (state.playingUid || state.focusedUid)) || getCurrentList()[0];
+        if (target) togglePlayTrack(target, state.playingMode || 'main');
+      });
+
+      $('btn-install').addEventListener('click', async () => {
+        const selected = state.importTracks.filter((t) => t.selected);
+        if (!selected.length) return;
+        $('install-progress-block').classList.remove('hidden');
+        $('install-result-block').classList.add('hidden');
+        $('install-error-block').classList.add('hidden');
+        $('install-sheet-footer').classList.add('hidden');
+        $('btn-close-install').classList.add('hidden');
+        $('install-sheet-title').textContent = 'Installing soundtracks';
+        $('install-stage-text').textContent = 'Starting installation';
+        $('install-count-text').textContent = `0 / ${selected.length}`;
+        $('install-progress-fill').style.width = '4%';
+        $('install-scrim').classList.add('open');
+
+        const res = await callApi('start_install', {
+          game_dir: state.gameDir,
+          tracks: selected,
+          keep_original: state.keepOriginal,
+          on_conflict: state.onConflict,
+        });
+        if (!res.ok) {
+          window.__onInstallComplete({ ok: false, error: res.error || 'Could not start install.' });
+        }
+      });
+
+      window.__onInstallProgress = (data) => {
+        const cur = data.current || 0;
+        const tot = Math.max(1, data.total || 1);
+        const pct = Math.min(100, Math.round((cur / tot) * 100));
+        $('install-stage-text').textContent = data.message || 'Working';
+        $('install-count-text').textContent = `${cur} / ${data.total || 0}`;
+        $('install-progress-fill').style.width = `${Math.max(8, pct)}%`;
+      };
+
+      window.__onInstallComplete = async (data) => {
+        $('btn-close-install').classList.remove('hidden');
+        $('install-sheet-footer').classList.remove('hidden');
+        if (!data.ok) {
+          $('install-sheet-title').textContent = 'Installation failed';
+          $('install-error-text').textContent = data.error || 'Unknown error occurred.';
+          $('install-error-block').classList.remove('hidden');
+          $('btn-open-backup').classList.add('hidden');
+          return;
+        }
+        $('install-progress-fill').style.width = '100%';
+        $('install-stage-text').textContent = 'Completed';
+        $('install-sheet-title').textContent = 'Installation complete';
+        $('res-added').textContent = data.added;
+        $('res-skipped').textContent = data.skipped;
+        $('res-sounds').textContent = data.total_sounds;
+        $('res-texts').textContent = data.texts_updated;
+        $('res-backup-path').textContent = data.backup_dir || '';
+        state.lastBackupDir = data.backup_dir || '';
+        $('btn-open-backup').classList.toggle('hidden', !state.lastBackupDir);
+        $('install-result-block').classList.remove('hidden');
+        if (data.installed_count !== undefined) state.installedCount = data.installed_count;
+        await refreshConflicts();
+        await refreshBackupsCount();
+        await refreshHealthBadge();
+        renderWorkspace();
+      };
+
+      const closeInstallSheet = () => $('install-scrim').classList.remove('open');
+      $('btn-close-install').addEventListener('click', closeInstallSheet);
+      $('btn-done-install').addEventListener('click', closeInstallSheet);
+      $('btn-open-backup').addEventListener('click', () => {
+        if (state.lastBackupDir) callApi('open_folder', state.lastBackupDir);
+      });
+
+      $('btn-save-library').addEventListener('click', async () => {
+        const updates = state.libraryTracks
+          .filter((t) => state.dirtyLibraryIds.has(t.base_id))
+          .map((t) => ({ base_id: t.base_id, title: t.title, artist: t.artist, category: t.category }));
+        if (!updates.length) return;
+        const res = await callApi('save_installed_metadata', state.gameDir, updates);
+        if (!res.ok) {
+          showBanner(res.error || 'Could not save library edits.', true);
+          return;
+        }
+        const stTxt = res.stations_updated > 0 ? ` (${res.stations_updated} station moves)` : '';
+        showBanner(`Saved metadata for ${res.tracks_updated} track(s)${stTxt}. Backup saved to ${res.backup_dir}.`, false);
+        await refreshBackupsCount();
+        await refreshHealthBadge();
+        await loadLibrary();
+      });
+
+      $('btn-remove-selected').addEventListener('click', async () => {
+        const ids = state.libraryTracks.filter((t) => t.selected).map((t) => t.base_id);
+        if (!ids.length) return;
+        const delFiles = $('chk-delete-mpc').checked;
+        const res = await callApi('remove_installed_tracks', state.gameDir, ids, delFiles);
+        if (!res.ok) {
+          showBanner(res.error || 'Could not remove selected tracks.', true);
+          return;
+        }
+        showBanner(`Removed ${res.removed_tracks} track(s). Backup saved to ${res.backup_dir}.`, false);
+        await refreshBackupsCount();
+        await refreshConflicts();
+        await refreshHealthBadge();
+        await loadLibrary();
+      });
+
+      async function openBackupsModal() {
+        closeMobileDrawer();
+        $('backups-scrim').classList.add('open');
+        const listEl = $('backups-list');
+        listEl.innerHTML = '<div style="color:var(--muted);">Loading backups...</div>';
+        const res = await callApi('list_backups', state.gameDir);
+        if (!res.ok) {
+          listEl.innerHTML = `<div style="color:var(--negative);">${res.error}</div>`;
+          return;
+        }
+        const items = res.backups || [];
+        $('backups-count').textContent = items.length;
+        if (!items.length) {
+          listEl.innerHTML = '<div style="color:var(--muted);">No backups saved yet. Snapshots are created automatically before patching, editing, or removing tracks.</div>';
+          return;
+        }
+        listEl.innerHTML = '';
+        for (const b of items) {
+          const row = document.createElement('div');
+          row.className = 'backup-row';
+          const left = document.createElement('div');
+          left.style.minWidth = '0';
+          left.innerHTML = `
+            <div style="font-weight:500;font-size:13px;" class="num">${b.created_at.replace('T', ' ')}</div>
+            <div class="source-path" title="${b.path}">${b.id} (${b.texts_count} language files)</div>
+          `;
+          const right = document.createElement('div');
+          right.style.display = 'flex';
+          right.style.gap = '8px';
+          const openBtn = document.createElement('button');
+          openBtn.type = 'button';
+          openBtn.className = 'btn compact';
+          openBtn.textContent = 'Folder';
+          openBtn.addEventListener('click', () => callApi('open_folder', b.path));
+          const restoreBtn = document.createElement('button');
+          restoreBtn.type = 'button';
+          restoreBtn.className = 'btn compact';
+          restoreBtn.textContent = 'Restore';
+          restoreBtn.addEventListener('click', async () => {
+            if (!state.gameValid) {
+              showBanner('Select an Asphalt 8 folder before restoring a backup.', true);
+              return;
+            }
+            restoreBtn.disabled = true;
+            restoreBtn.textContent = 'Restoring';
+            const r = await callApi('restore_backup', state.gameDir, b.path);
+            if (!r.ok) {
+              showBanner(r.error || 'Restore failed.', true);
+              restoreBtn.disabled = false;
+              restoreBtn.textContent = 'Restore';
+              return;
+            }
+            $('backups-scrim').classList.remove('open');
+            showBanner(`Restored backup from ${b.created_at.replace('T', ' ')}.`, false);
+            await refreshConflicts();
+            await refreshHealthBadge();
+            if (state.view === 'library') await loadLibrary();
+            else renderWorkspace();
+          });
+          right.append(openBtn, restoreBtn);
+          row.append(left, right);
+          listEl.appendChild(row);
+        }
+      }
+
+      $('btn-backups').addEventListener('click', openBackupsModal);
+      $('btn-refresh-backups').addEventListener('click', openBackupsModal);
+      $('btn-close-backups').addEventListener('click', () => $('backups-scrim').classList.remove('open'));
+
+      /* ---------- Health Check & Orphan Cleaner ---------- */
+      function renderHealthResult(res) {
+        state.healthAudit = res;
+        $('hl-missing-mpc').textContent = String((res.missing_files || []).length);
+        $('hl-orphan-mpc').textContent = `${(res.orphan_files || []).length} (${formatBytes(res.orphan_total_bytes || 0)})`;
+        const brokenTot = (res.broken_playlist_refs || []).length + (res.missing_events || []).length;
+        $('hl-broken-refs').textContent = String(brokenTot);
+        $('hl-missing-texts').textContent = String((res.missing_texts || []).length);
+        $('health-issue-count').textContent = res.healthy ? 'OK' : String(res.issue_count || 0);
+        $('lbl-delete-orphans').textContent = `Delete ${(res.orphan_files || []).length} unreferenced orphan .mpc file(s) (reclaims ${formatBytes(res.orphan_total_bytes || 0)})`;
+
+        const lines = [];
+        if (res.healthy) {
+          lines.push(`Healthy: ${res.playlist_tracks || 0} playlist tracks, ${res.total_sounds || 0} sounds verified (${res.ref_text_file || 'en.texts'}).`);
+        } else {
+          if ((res.orphan_files || []).length) {
+            lines.push(`Orphan .mpc (${res.orphan_files.length}, ${formatBytes(res.orphan_total_bytes)}): ` + res.orphan_files.slice(0, 8).map((o) => o.filename).join(', ') + (res.orphan_files.length > 8 ? ' ...' : ''));
+          }
+          if ((res.missing_files || []).length) {
+            lines.push(`Missing .mpc (${res.missing_files.length}): ` + res.missing_files.slice(0, 8).map((m) => m.filename).join(', '));
+          }
+          if ((res.broken_playlist_refs || []).length) {
+            lines.push(`Broken playlist refs (${res.broken_playlist_refs.length}): ` + res.broken_playlist_refs.slice(0, 8).map((b) => `${b.event}->${b.label}`).join(', '));
+          }
+          if ((res.missing_events || []).length) {
+            lines.push(`Missing individual events (${res.missing_events.length}): ` + res.missing_events.slice(0, 8).join(', '));
+          }
+          if ((res.missing_texts || []).length) {
+            lines.push(`Missing localization keys (${res.missing_texts.length}): ` + res.missing_texts.slice(0, 8).map((m) => m.key).join(', '));
+          }
+        }
+        $('health-findings-list').textContent = lines.join('\n');
+      }
+
+      async function refreshHealthBadge() {
+        if (!state.gameValid || !hasBridge()) {
+          $('health-issue-count').textContent = '-';
+          return;
+        }
+        const res = await callApi('audit_health', state.gameDir);
+        if (res && res.ok) renderHealthResult(res);
+      }
+
+      async function openHealthModal() {
+        closeMobileDrawer();
+        $('health-error-box').classList.add('hidden');
+        $('health-scrim').classList.add('open');
+        if (!state.gameValid) {
+          $('health-findings-list').textContent = 'Select a valid Asphalt 8 folder first.';
+          return;
+        }
+        if (new URLSearchParams(window.location.search).has('demo') && state.healthAudit) {
+          renderHealthResult(state.healthAudit);
+          return;
+        }
+        $('health-findings-list').textContent = 'Scanning soundpack, Data/music/*.mpc, and localization strings...';
+        const res = await callApi('audit_health', state.gameDir);
+        if (!res || !res.ok) {
+          $('health-error-text').textContent = (res && res.error) || 'Health audit failed.';
+          $('health-error-box').classList.remove('hidden');
+          return;
+        }
+        renderHealthResult(res);
+      }
+
+      $('nav-health').addEventListener('click', openHealthModal);
+      $('btn-health-rescan').addEventListener('click', openHealthModal);
+      $('btn-close-health').addEventListener('click', () => $('health-scrim').classList.remove('open'));
+      $('btn-health-repair').addEventListener('click', async () => {
+        $('health-error-box').classList.add('hidden');
+        if (!state.gameValid) return;
+        $('btn-health-repair').disabled = true;
+        $('btn-health-repair').textContent = 'Repairing...';
+        const res = await callApi('repair_health', {
+          game_dir: state.gameDir,
+          fix_texts: $('chk-fix-texts').checked,
+          fix_events: $('chk-fix-events').checked,
+          delete_orphans: $('chk-delete-orphans').checked,
+          prune_missing: $('chk-prune-missing').checked,
+        });
+        $('btn-health-repair').disabled = false;
+        $('btn-health-repair').textContent = 'Repair selected';
+        if (!res || !res.ok) {
+          $('health-error-text').textContent = (res && res.error) || 'Repair failed.';
+          $('health-error-box').classList.remove('hidden');
+          return;
+        }
+        if (res.audit_after) renderHealthResult(res.audit_after);
+        await refreshBackupsCount();
+        if (state.view === 'library') await loadLibrary();
+        const summary = `Repaired texts: ${res.texts_fixed}, events: ${res.events_fixed}, orphans removed: ${res.orphans_deleted} (${formatBytes(res.reclaimed_bytes)}).`;
+        showBanner(res.backup_dir ? `${summary} Backup: ${res.backup_dir}` : summary, false);
+      });
+
+      /* ---------- MOD Profiles (Soundtrack Loadouts) ---------- */
+      async function refreshProfilesCount() {
+        if (!hasBridge()) return;
+        const res = await callApi('list_profiles');
+        if (res && res.ok) {
+          $('profiles-count').textContent = String((res.profiles || []).length);
+        }
+      }
+
+      function renderProfilesList(items) {
+        const listEl = $('profiles-list');
+        $('profiles-count').textContent = String(items.length);
+        if (!items.length) {
+          listEl.innerHTML = '<div style="color:var(--muted);padding:10px 0;">No profiles saved yet. Type a name above to snapshot your current soundpack and titles.</div>';
+          return;
+        }
+        listEl.innerHTML = '';
+        for (const p of items) {
+          const row = document.createElement('div');
+          row.className = 'backup-row';
+          const left = document.createElement('div');
+          const sc = p.station_counts || {};
+          left.innerHTML = `<div style="font-weight:500;">${p.name}</div><div class="num" style="font-size:12px;color:var(--muted);">${p.track_count || 0} tracks (Rock ${sc.Rock || 0} · Electro ${sc.Electro || 0} · Dubstep ${sc.Dubstep || 0} · Menu ${sc.Menu || 0}) · ${formatBytes(p.size_bytes || 0)}</div>`;
+          const right = document.createElement('div');
+          right.style.display = 'flex';
+          right.style.gap = '6px';
+          const applyBtn = document.createElement('button');
+          applyBtn.type = 'button';
+          applyBtn.className = 'btn compact primary';
+          applyBtn.textContent = 'Apply';
+          applyBtn.disabled = !state.gameValid;
+          applyBtn.addEventListener('click', async () => {
+            applyBtn.disabled = true;
+            applyBtn.textContent = 'Applying...';
+            const r = await callApi('apply_profile', state.gameDir, p.id);
+            if (!r || !r.ok) {
+              $('profiles-error-text').textContent = (r && r.error) || 'Could not apply profile.';
+              $('profiles-error-box').classList.remove('hidden');
+              applyBtn.disabled = false;
+              applyBtn.textContent = 'Apply';
+              return;
+            }
+            $('profiles-scrim').classList.remove('open');
+            const warnMiss = r.missing_files > 0 ? ` (${r.missing_files} .mpc files missing from Data/music)` : '';
+            showBanner(`Applied profile "${r.name}"${warnMiss}. Backup saved to ${r.backup_dir}.`, r.missing_files > 0);
+            await refreshBackupsCount();
+            await refreshHealthBadge();
+            await refreshConflicts();
+            if (state.view === 'library') await loadLibrary();
+            else renderWorkspace();
+          });
+          const delBtn = document.createElement('button');
+          delBtn.type = 'button';
+          delBtn.className = 'btn compact danger-outline';
+          delBtn.textContent = 'Delete';
+          delBtn.addEventListener('click', async () => {
+            await callApi('delete_profile', p.id);
+            await loadProfilesModalList();
+          });
+          right.append(applyBtn, delBtn);
+          row.append(left, right);
+          listEl.appendChild(row);
+        }
+      }
+
+      async function loadProfilesModalList() {
+        const listEl = $('profiles-list');
+        if (new URLSearchParams(window.location.search).has('demo')) {
+          renderProfilesList([
+            { id: 'demo_stock', name: 'Stock Vanilla A8', track_count: 148, station_counts: { Rock: 42, Electro: 38, Dubstep: 34, Menu: 34 }, size_bytes: 2145000 },
+            { id: 'demo_kessoku', name: 'Bocchi Rock Mix', track_count: 168, station_counts: { Rock: 62, Electro: 38, Dubstep: 34, Menu: 34 }, size_bytes: 2310000 },
+          ]);
+          return;
+        }
+        listEl.innerHTML = '<div style="color:var(--muted);padding:10px 0;">Loading profiles...</div>';
+        const res = await callApi('list_profiles');
+        if (!res || !res.ok) {
+          listEl.innerHTML = `<div style="color:var(--negative);">${(res && res.error) || 'Could not load profiles.'}</div>`;
+          return;
+        }
+        renderProfilesList(res.profiles || []);
+      }
+
+      async function openProfilesModal() {
+        closeMobileDrawer();
+        $('profiles-error-box').classList.add('hidden');
+        $('profiles-scrim').classList.add('open');
+        await loadProfilesModalList();
+      }
+
+      $('nav-profiles').addEventListener('click', openProfilesModal);
+      $('btn-refresh-profiles').addEventListener('click', loadProfilesModalList);
+      $('btn-close-profiles').addEventListener('click', () => $('profiles-scrim').classList.remove('open'));
+      $('btn-save-profile').addEventListener('click', async () => {
+        $('profiles-error-box').classList.add('hidden');
+        const name = $('profile-name-input').value.trim();
+        if (!name) {
+          $('profiles-error-text').textContent = 'Enter a profile name first.';
+          $('profiles-error-box').classList.remove('hidden');
+          return;
+        }
+        if (!state.gameValid) {
+          $('profiles-error-text').textContent = 'Select a valid Asphalt 8 folder first.';
+          $('profiles-error-box').classList.remove('hidden');
+          return;
+        }
+        const res = await callApi('save_profile', state.gameDir, name);
+        if (!res || !res.ok) {
+          $('profiles-error-text').textContent = (res && res.error) || 'Could not save profile.';
+          $('profiles-error-box').classList.remove('hidden');
+          return;
+        }
+        $('profile-name-input').value = '';
+        await loadProfilesModalList();
+        showBanner(`Saved MOD profile "${res.profile.name}".`, false);
+      });
+
+      /* ---------- Export / Share Mod Pack ---------- */
+      function setExportFormat(fmt) {
+        state.exportFormat = fmt === 'folder' ? 'folder' : 'zip';
+        $('btn-export-fmt-zip').classList.toggle('active', state.exportFormat === 'zip');
+        $('btn-export-fmt-folder').classList.toggle('active', state.exportFormat === 'folder');
+      }
+
+      function openExportModal() {
+        const selected = getCurrentList().filter((t) => t.selected);
+        if (!selected.length) {
+          showBanner('Check at least one track before exporting a Mod Pack.', true);
+          return;
+        }
+        $('export-error-box').classList.add('hidden');
+        const srcLabel = state.view === 'import' ? 'Import Queue' : 'In-Game Library';
+        $('export-sheet-sub').textContent = `${selected.length} checked track(s) from ${srcLabel}`;
+        setExportFormat(state.exportFormat);
+        $('export-scrim').classList.add('open');
+      }
+
+      $('btn-export-pack').addEventListener('click', openExportModal);
+      $('btn-export-fmt-zip').addEventListener('click', () => setExportFormat('zip'));
+      $('btn-export-fmt-folder').addEventListener('click', () => setExportFormat('folder'));
+      $('btn-close-export').addEventListener('click', () => $('export-scrim').classList.remove('open'));
+      $('btn-export-cancel').addEventListener('click', () => $('export-scrim').classList.remove('open'));
+      $('btn-export-confirm').addEventListener('click', async () => {
+        $('export-error-box').classList.add('hidden');
+        const selected = getCurrentList().filter((t) => t.selected);
+        if (!selected.length) return;
+        $('btn-export-confirm').disabled = true;
+        $('btn-export-confirm').textContent = 'Exporting...';
+        const res = await callApi('export_mod_pack_dialog', {
+          mode: state.exportFormat,
+          pack_name: $('export-pack-name').value.trim() || 'Asphalt 8 Custom OST Pack',
+          tracks: selected,
+          game_dir: state.gameDir,
+        });
+        $('btn-export-confirm').disabled = false;
+        $('btn-export-confirm').textContent = 'Export Pack';
+        if (!res || res.cancelled) return;
+        if (!res.ok) {
+          $('export-error-text').textContent = res.error || 'Export failed.';
+          $('export-error-box').classList.remove('hidden');
+          return;
+        }
+        $('export-scrim').classList.remove('open');
+        showBanner(`Exported ${res.exported_tracks} track(s) (${formatBytes(res.total_bytes || 0)}) to ${res.dest_path}.`, false);
+      });
+
+      /* ---------- In-App Self-Updater ---------- */
+      function openUpdateModal() {
+        closeMobileDrawer();
+        $('update-error-box').classList.add('hidden');
+        const modeTxt = state.isFrozen ? 'Standalone EXE' : 'Python Source';
+        $('update-current-sub').textContent = `Current version: v${state.appVersion} · ${modeTxt}`;
+        if (state.updateManifestUrl) $('update-manifest-url').value = state.updateManifestUrl;
+        $('update-scrim').classList.add('open');
+      }
+
+      $('btn-updates').addEventListener('click', openUpdateModal);
+      $('btn-close-update').addEventListener('click', () => $('update-scrim').classList.remove('open'));
+      $('btn-close-update-foot').addEventListener('click', () => $('update-scrim').classList.remove('open'));
+
+      $('btn-check-manifest').addEventListener('click', async () => {
+        $('update-error-box').classList.add('hidden');
+        const url = $('update-manifest-url').value.trim();
+        if (!url) {
+          $('update-error-text').textContent = 'Enter a GitHub Releases API URL or HTTPS manifest JSON URL.';
+          $('update-error-box').classList.remove('hidden');
+          return;
+        }
+        $('btn-check-manifest').disabled = true;
+        $('btn-check-manifest').textContent = 'Checking...';
+        const res = await callApi('check_for_updates', url);
+        $('btn-check-manifest').disabled = false;
+        $('btn-check-manifest').textContent = 'Check online';
+        if (!res || !res.ok) {
+          $('update-error-text').textContent = (res && res.error) || 'Update check failed.';
+          $('update-error-box').classList.remove('hidden');
+          return;
+        }
+        state.updateManifestUrl = url;
+        state.updateRemoteInfo = res;
+        $('update-remote-result').classList.remove('hidden');
+        if (res.update_available) {
+          $('update-remote-status').textContent = `New version available: v${res.latest_version} (current v${res.current_version})`;
+          $('btn-install-remote-update').classList.toggle('hidden', !res.download_url);
+        } else {
+          $('update-remote-status').textContent = `Up to date (latest v${res.latest_version})`;
+          $('btn-install-remote-update').classList.add('hidden');
+        }
+        if (res.notes) {
+          $('update-remote-notes').textContent = res.notes;
+          $('update-remote-notes').classList.remove('hidden');
+        } else {
+          $('update-remote-notes').classList.add('hidden');
+        }
+      });
+
+      $('btn-browse-update-pkg').addEventListener('click', async () => {
+        $('update-error-box').classList.add('hidden');
+        const res = await callApi('browse_update_package');
+        if (!res || res.cancelled) return;
+        if (!res.ok) {
+          $('update-error-text').textContent = res.error || 'Invalid update package.';
+          $('update-error-box').classList.remove('hidden');
+          return;
+        }
+        state.updateLocalPkgPath = res.package_path;
+        $('update-local-readout').textContent = `${res.file_name} -> ${res.exe_name} (${formatBytes(res.size_bytes)})`;
+        $('btn-install-local-update').classList.remove('hidden');
+      });
+
+      async function performAppUpdate(payload, btn) {
+        $('update-error-box').classList.add('hidden');
+        const prevTxt = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Installing...';
+        const res = await callApi('apply_app_update', payload);
+        btn.disabled = false;
+        btn.textContent = prevTxt;
+        if (!res || !res.ok) {
+          $('update-error-text').textContent = (res && res.error) || 'Update installation failed.';
+          $('update-error-box').classList.remove('hidden');
+          return;
+        }
+        $('update-scrim').classList.remove('open');
+        showBanner('Update staged. Restarting A8 Custom OST Patcher...', false);
+      }
+
+      $('btn-install-remote-update').addEventListener('click', () => {
+        if (!state.updateRemoteInfo || !state.updateRemoteInfo.download_url) return;
+        performAppUpdate({
+          download_url: state.updateRemoteInfo.download_url,
+          sha256: state.updateRemoteInfo.sha256 || '',
+          relaunch: true,
+        }, $('btn-install-remote-update'));
+      });
+
+      $('btn-install-local-update').addEventListener('click', () => {
+        if (!state.updateLocalPkgPath) return;
+        performAppUpdate({
+          local_package_path: state.updateLocalPkgPath,
+          relaunch: true,
+        }, $('btn-install-local-update'));
+      });
+
+      /* ---------- Keyboard Shortcuts ---------- */
+      $('btn-shortcuts').addEventListener('click', () => $('shortcuts-scrim').classList.add('open'));
+      $('btn-close-shortcuts').addEventListener('click', () => $('shortcuts-scrim').classList.remove('open'));
+
+      function getTopOpenScrim() {
+        const ids = ['shortcuts-scrim', 'update-scrim', 'export-scrim', 'profiles-scrim', 'health-scrim', 'backups-scrim', 'outro-scrim'];
+        for (const id of ids) {
+          const el = $(id);
+          if (el && el.classList.contains('open')) return el;
+        }
+        if ($('install-scrim').classList.contains('open') && !$('btn-close-install').classList.contains('hidden')) {
+          return $('install-scrim');
+        }
+        return null;
+      }
+
+      window.addEventListener('keydown', (e) => {
+        const tag = (document.activeElement && document.activeElement.tagName) || '';
+        const inputType = (document.activeElement && document.activeElement.type) || '';
+        const isTextEntry = (tag === 'INPUT' && inputType !== 'checkbox' && inputType !== 'range') || tag === 'TEXTAREA' || tag === 'SELECT';
+
+        if (e.key === 'Escape') {
+          const topScrim = getTopOpenScrim();
+          if (topScrim) {
+            e.preventDefault();
+            topScrim.classList.remove('open');
+            if (topScrim.id === 'outro-scrim') outroModalState.track = null;
+          }
+          return;
+        }
+
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+          e.preventDefault();
+          $('search-input').focus();
+          $('search-input').select();
+          return;
+        }
+
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+          if (state.view === 'library' && !$('btn-save-library').disabled) {
+            e.preventDefault();
+            $('btn-save-library').click();
+          }
+          return;
+        }
+
+        const openModal = getTopOpenScrim();
+        if (openModal) return;
+
+        if (!isTextEntry && (e.key === '?' || (e.shiftKey && e.key === '/'))) {
+          e.preventDefault();
+          $('shortcuts-scrim').classList.add('open');
+          return;
+        }
+
+        if (!isTextEntry && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
+          const filtered = getFilteredTracks();
+          if (!filtered.length) return;
+          e.preventDefault();
+          const allSelected = filtered.every((t) => t.selected);
+          for (const t of filtered) t.selected = !allSelected;
+          renderWorkspace();
+          return;
+        }
+
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+          if (tag === 'SELECT' || tag === 'INPUT') return;
+          const filtered = getFilteredTracks();
+          if (!filtered.length) return;
+          e.preventDefault();
+          const curIdx = filtered.findIndex((t) => t.uid === state.focusedUid);
+          const nextIdx = e.key === 'ArrowDown'
+            ? (curIdx < 0 ? 0 : Math.min(filtered.length - 1, curIdx + 1))
+            : (curIdx < 0 ? 0 : Math.max(0, curIdx - 1));
+          const target = filtered[nextIdx];
+          if (target) {
+            setFocusedTrack(target.uid);
+            updateHudPreview(target);
+            const row = document.querySelector(`#track-tbody tr[data-uid="${CSS.escape(target.uid)}"]`);
+            if (row) row.scrollIntoView({ block: 'nearest' });
+          }
+          return;
+        }
+
+        if (e.key === ' ' && !isTextEntry && tag !== 'BUTTON' && inputType !== 'checkbox') {
+          const list = getFilteredTracks();
+          const target = list.find((t) => t.uid === (state.focusedUid || state.playingUid)) || list[0];
+          if (target) {
+            e.preventDefault();
+            togglePlayTrack(target, state.playingMode || 'main');
+          }
+          return;
+        }
+
+        if (e.key === 'Enter' && !isTextEntry && tag !== 'BUTTON') {
+          const list = getFilteredTracks();
+          const target = list.find((t) => t.uid === state.focusedUid) || list[0];
+          if (target) {
+            e.preventDefault();
+            openOutroEditor(target);
+          }
+        }
+      });
+
+      let dragDepth = 0;
+      window.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+        dragDepth += 1;
+        $('drop-overlay').classList.add('visible');
+        $('music-drop-card').classList.add('drag-over');
+      });
+      window.addEventListener('dragover', (e) => e.preventDefault());
+      window.addEventListener('dragleave', () => {
+        dragDepth = Math.max(0, dragDepth - 1);
+        if (dragDepth === 0) {
+          $('drop-overlay').classList.remove('visible');
+          $('music-drop-card').classList.remove('drag-over');
+        }
+      });
+      window.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dragDepth = 0;
+        $('drop-overlay').classList.remove('visible');
+        $('music-drop-card').classList.remove('drag-over');
+      });
+
+      window.__onNativeDrop = async (paths) => {
+        dragDepth = 0;
+        $('drop-overlay').classList.remove('visible');
+        $('music-drop-card').classList.remove('drag-over');
+        if (!Array.isArray(paths) || !paths.length) return;
+        if (paths.length === 1) {
+          const gRes = await callApi('set_game_dir', paths[0]);
+          if (gRes && gRes.ok) {
+            applyGameStatus(gRes);
+            await refreshConflicts();
+            await refreshBackupsCount();
+            await refreshHealthBadge();
+            if (state.view === 'library') await loadLibrary();
+            else renderWorkspace();
+            return;
+          }
+        }
+        hideBanner();
+        const res = await callApi('add_music_paths', paths, state.gameDir);
+        if (!res || !res.ok) {
+          showBanner((res && res.error) || 'Could not load dropped audio.', true);
+          return;
+        }
+        applyScanResult(res, state.importTracks.length > 0);
+        await refreshConflicts();
+        switchNav('import');
+        renderWorkspace();
+      };
+
+      async function boot() {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('demo') === '1') {
+          applyTheme(params.get('theme') || 'dark', false);
+          state.gameDir = 'D:\\UmaToAsphalt8_Mod\\Asphalt8_Loose';
+          state.gameValid = true;
+          state.gameWritable = true;
+          state.installedCount = 342;
+          state.musicDir = 'C:\\Users\\Administrator\\Music\\Anime OST';
+          state.musicSources = [state.musicDir, 'D:\\Downloads\\seisyun_complex.ogg'];
+          state.importTracks = [
+            { uid: 'd1', category: 'Rock', base_id: 'm_that_band', title: 'That Band', artist: 'Kessoku Band', src_path: 'demo/m_that_band.ogg', src_name: 'm_that_band.ogg', has_outro: true, outro_src_name: 'm_outro_that_band.ogg', conflict: true, selected: true },
+            { uid: 'd2', category: 'Rock', base_id: 'm_seisyun_complex', title: 'Seisyun Complex', artist: 'Kessoku Band', src_path: 'demo/m_seisyun_complex.ogg', src_name: 'm_seisyun_complex.ogg', has_outro: true, outro_start: 145, outro_end: 165, outro_fade_out: 1.2, conflict: false, selected: true },
+            { uid: 'd3', category: 'Rock', base_id: 'm_guitar_loneliness', title: 'Guitar, Loneliness and Blue Planet', artist: 'Kessoku Band', src_path: 'demo/m_guitar.ogg', src_name: 'm_guitar_loneliness_and_blue_planet.ogg', has_outro: true, conflict: false, selected: true },
+            { uid: 'd4', category: 'Electro', base_id: 'm_constellation', title: 'If I Could Be a Constellation', artist: 'Kessoku Band', src_path: 'demo/m_constellation.ogg', src_name: 'm_if_i_could_be_a_constellation.ogg', has_outro: true, conflict: false, selected: true },
+            { uid: 'd5', category: 'Dubstep', base_id: 'm_distortion', title: 'Distortion!!', artist: 'Kessoku Band', src_path: 'demo/m_distortion.ogg', src_name: 'm_distortion.ogg', has_outro: false, conflict: false, selected: true },
+            { uid: 'd6', category: 'Menu', base_id: 'm_secret_base', title: 'Secret Base', artist: 'Kessoku Band', src_path: 'demo/m_secret_base.ogg', src_name: 'm_secret_base.ogg', has_outro: false, conflict: false, selected: false }
+          ];
+          state.libraryTracks = [
+            { uid: 'lib1', category: 'Rock', base_id: 'm_rock_you', title: 'Rock You', artist: 'Queen of Hearts', main_path: 'demo/m_rock_you.mpc', main_file: 'm_rock_you.mpc', main_exists: true, has_outro: false, selected: false, _dirty: false },
+            { uid: 'lib2', category: 'Electro', base_id: 'm_pulse_drive', title: 'Pulse Drive', artist: 'Vanguard', main_path: 'demo/m_pulse_drive.mpc', main_file: 'm_pulse_drive.mpc', main_exists: true, has_outro: true, outro_exists: true, selected: true, _dirty: true },
+            { uid: 'lib3', category: 'Dubstep', base_id: 'm_sub_zero', title: 'Sub Zero', artist: 'Kessoku Band', main_path: 'demo/m_sub_zero.mpc', main_file: 'm_sub_zero.mpc', main_exists: false, has_outro: false, selected: false, _dirty: false }
+          ];
+          Object.assign(state.audioMetricsCache, {
+            'demo/m_that_band.ogg': { peak_db: -1.2, rms_db: -13.8, badge: 'Balanced' },
+            'demo/m_seisyun_complex.ogg': { peak_db: -0.2, rms_db: -8.6, badge: 'Hot mix' },
+            'demo/m_guitar.ogg': { peak_db: 0.0, rms_db: -7.9, badge: 'Clip risk' },
+            'demo/m_constellation.ogg': { peak_db: -1.4, rms_db: -14.5, badge: 'Balanced' },
+            'demo/m_distortion.ogg': { peak_db: -0.4, rms_db: -12.1, badge: 'Balanced' },
+            'demo/m_secret_base.ogg': { peak_db: -6.2, rms_db: -25.1, badge: 'Quiet' },
+            'demo/m_rock_you.mpc': { peak_db: -1.1, rms_db: -14.0, badge: 'Balanced' },
+            'demo/m_pulse_drive.mpc': { peak_db: -0.3, rms_db: -9.4, badge: 'Hot mix' },
+          });
+          state.healthAudit = {
+            healthy: false,
+            issue_count: 10,
+            total_sounds: 1162,
+            total_events: 1048,
+            playlist_tracks: 315,
+            missing_files: [],
+            orphan_files: [{ filename: 'm_unused_demo.mpc', path: 'demo/m_unused_demo.mpc', size_bytes: 27131590 }],
+            orphan_total_bytes: 27131590,
+            broken_playlist_refs: [],
+            missing_events: [],
+            missing_texts: [{ base_id: 'm_upd25_FOB_hold_me_tight_or_dont', key: 'STR_SONG_m_upd25_FOB_hold_me_tight_or_dont' }],
+            ref_text_file: 'en.texts',
+          };
+          renderHealthResult(state.healthAudit);
+          $('profiles-count').textContent = '2';
+          if (state.libraryTracks[1]) state.dirtyLibraryIds.add('m_pulse_drive');
+          if (params.get('view') === 'library') switchNav('library');
+          renderWorkspace();
+          if (params.get('outro') === '1') {
+            openOutroEditor(getCurrentList()[0]);
+          } else if (params.get('modal') === 'health') {
+            openHealthModal();
+          } else if (params.get('modal') === 'profiles') {
+            openProfilesModal();
+          } else if (params.get('modal') === 'update') {
+            openUpdateModal();
+          } else if (params.get('modal') === 'export') {
+            openExportModal();
+          } else if (params.get('modal') === 'shortcuts') {
+            $('shortcuts-scrim').classList.add('open');
+          }
+          return;
+        }
+
+        if (!hasBridge()) {
+          await new Promise((resolve) => {
+            window.addEventListener('pywebviewready', resolve, { once: true });
+            setTimeout(resolve, 1200);
+          });
+        }
+        if (!hasBridge()) {
+          renderWorkspace();
+          return;
+        }
+        const init = await callApi('get_initial_state');
+        applyTheme(init.theme || 'dark', false);
+        state.appVersion = init.app_version || '1.2.0';
+        state.isFrozen = !!init.is_frozen;
+        state.updateManifestUrl = init.update_manifest_url || '';
+        $('app-version-pill').textContent = `v${state.appVersion}`;
+        applyGameStatus(init);
+        if (init.tools) {
+          const okTools = init.tools.ffmpeg && init.tools.mpcenc;
+          $('tools-readout').textContent = okTools ? 'FFmpeg + mpcenc ready' : 'Encoder missing in tools';
+        }
+        $('backups-count').textContent = init.backups_count || 0;
+        renderWorkspace();
+        refreshProfilesCount();
+        refreshHealthBadge();
+      }
+
+      boot();
+    })();
+  </script>
+</body>
+</html>
