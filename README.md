@@ -1,34 +1,43 @@
-# Asphalt 8: Airborne — Custom OST Patcher
+# Asphalt 8: Airborne Custom OST Patcher
 
-Desktop application (`v1.3.0`) and engine for installing, previewing, trimming Outros, and managing custom soundtrack mods in Asphalt 8: Airborne (Windows 10/11).
+Desktop app (`v1.3.0`) and engine for managing custom soundtrack mods in Asphalt 8: Airborne on Windows 10 and 11. Built on PyWebView (Edge WebView2) and Python.
 
 ## Features
-- **Desktop GUI & Offline Converter**: PyWebView (Edge WebView2) UI backed by bundled `tools/ffmpeg.exe` and `tools/mpcenc.exe` (32 kHz Musepack SV8, -14 LUFS loudness normalization).
-- **Flexible Import Queue**: Drop or browse individual audio files, folders (optional `Rock/`, `Electro/`, `Dubstep/`, `Menu/`, `Outro/` layout), or `.zip` mod packs with `pack_manifest.json`.
-- **Station & Metadata Management**: Batch artist/station assignment, inline Song Title/Artist/Station editing for both Import Queue and In-Game Library (`Data/soundpack/soundpack` + `*.texts`), and in-game conflict detection.
-- **Outro Song Editor & Interactive Waveform**: Single-pass 120-bin PCM waveform canvas with draggable/sweepable trim bounds, fade-in/fade-out controls, and live clip preview.
-- **Audio Quality & Health Tools**: Background `Peak dBFS` / `RMS dBFS` loudness badges, **Soundpack Health Check & Orphan Cleaner**, **MOD Profiles** (`soundpack` + `*.texts` loadouts), and timestamped **Backups / Restore**.
-- **Export / Share Mod Pack**: Export checked Queue or Library tracks into a structured `.zip` or portable folder with `pack_manifest.json`.
-- **Windows Permission Unlock & Loose Copy Helper**: Fast scoped ACL/ReadOnly unlock on mod targets (`Data/soundpack`, `Data/music`, `Data/text`) plus **Make writable copy** fallback (clears `AppxSignature.p7x` and read-only attributes) when Microsoft Store `WindowsApps` blocks direct writes.
-- **Keyboard Shortcuts & In-App Updater**: Full keyboard navigation (`?` to open help), Dark/Light theme, and HTTPS release manifest / GitHub Releases API or local `.exe`/`.zip` package self-updater.
 
-## Folder Structure
-- `app/desktop_app.py` — PyWebView desktop application, audio bridge, permissions, and self-updater
-- `app/ui/` — Single-file desktop UI (`index.html`) and logo assets (`assets/`)
-- `engine/` — Game detector/permissions, audio converter, `soundpack` XML manager, `.texts` dictionary manager, library/health/profile manager, and CLI patcher
-- `tools/` — Offline `ffmpeg.exe` and `mpcenc.exe` encoders
+The UI converts audio offline with the bundled `tools/ffmpeg.exe` and `tools/mpcenc.exe` encoders into 32 kHz Musepack SV8 normalized to -14 LUFS.
 
-## Running from Source
-Requires Python 3.10+ on Windows with `pywebview` (`pythonnet` / WebView2 runtime):
+- Import dropped or browsed audio files, folders (with optional `Rock/`, `Electro/`, `Dubstep/`, `Menu/`, and `Outro/` subfolders), or `.zip` mod packs containing `pack_manifest.json`.
+- Assign artists and stations in batches, edit Song Title, Artist, and Station inline across the Import Queue and In-Game Library (`Data/soundpack/soundpack` and `*.texts`), and flag conflicts with existing game tracks.
+- Trim Outro tracks on a 120-bin PCM waveform with draggable and sweepable bounds, fade-in and fade-out controls, and live clip playback.
+- View background `Peak dBFS` and `RMS dBFS` loudness badges on tracks.
+- Audit files with Soundpack Health Check & Orphan Cleaner, switch MOD Profiles (`soundpack` and `*.texts` loadouts), and restore timestamped backups.
+- Export checked Queue or Library tracks as a `.zip` archive or portable folder with `pack_manifest.json`.
+- Unlock ACL and read-only flags on `Data/soundpack`, `Data/music`, and `Data/text`, or run "Make writable copy" (removing `AppxSignature.p7x` and read-only attributes) when Microsoft Store `WindowsApps` blocks direct writes.
+- Use keyboard shortcuts (`?` opens the shortcut list), switch between Dark and Light themes, and install updates from GitHub Releases in standalone builds.
+
+## Files
+
+- `app/desktop_app.py`: PyWebView desktop host, local audio preview bridge, permission helpers, and self-updater.
+- `app/ui/`: Single-file desktop UI (`index.html`) and image assets (`assets/`).
+- `engine/`: Game detector and permission helpers, audio converter, `soundpack` XML editor, `.texts` dictionary manager, library/health/profile manager, and CLI patcher.
+- `tools/`: Bundled `ffmpeg.exe` and `mpcenc.exe` encoders.
+
+## Running from source
+
+Install Python 3.10+ on Windows with `pywebview` (`pythonnet` and the Edge WebView2 runtime), then start the app:
+
 ```powershell
 python app/desktop_app.py
 ```
 
-## Building Standalone `.exe`
+## Building the standalone `.exe`
+
 ```powershell
 pyinstaller --noconfirm --onefile --windowed --name A8_Custom_OST_Patcher --paths . --add-data "app/ui;app/ui" --hidden-import webview --hidden-import clr --hidden-import pythonnet --hidden-import engine.detector --hidden-import engine.audio_converter --hidden-import engine.soundpack_manager --hidden-import engine.texts_manager --hidden-import engine.library_manager --hidden-import engine.patcher app/desktop_app.py
 ```
 
-## In-App Updates & Automated Releases
-- **Default update feed**: `https://api.github.com/repos/PythonnXD/A8-Custom-OST/releases/latest` (overrideable in the Updates modal with any HTTPS `manifest.json` or GitHub Releases URL).
-- **Automated release publishing**: Pushing a version tag (`v1.3.0`, `v1.3.1`, etc.) triggers `.github/workflows/release.yml` on `windows-latest` to build and smoke-test `A8_Custom_OST_Patcher.exe`, package `A8_Custom_OST_Patcher.zip`, and publish the `.zip` archive as the GitHub Release asset.
+## Updates and releases
+
+Standalone builds check `https://api.github.com/repos/PythonnXD/A8-Custom-OST/releases/latest` when you open App Updates and apply new releases directly to the extracted app folder.
+
+Pushing a version tag such as `v1.3.0` runs `.github/workflows/release.yml` on `windows-latest`. The workflow builds and smoke-tests `A8_Custom_OST_Patcher.exe`, packages it with `tools/` and `README.md` into `A8_Custom_OST_Patcher.zip`, and attaches the archive to the GitHub Release using the matching notes from `CHANGELOG.md`.
