@@ -215,8 +215,12 @@ def list_installed_tracks(game_dir: str) -> List[Dict[str, Any]]:
     return tracks
 
 
-def update_installed_tracks_metadata(game_dir: str, updates: List[Dict[str, str]]) -> Dict[str, Any]:
-    """Updates song titles, artists, and optional radio stations for existing tracks after creating a backup."""
+def update_installed_tracks_metadata(
+    game_dir: str,
+    updates: List[Dict[str, str]],
+    auto_backup: bool = True,
+) -> Dict[str, Any]:
+    """Updates song titles, artists, and optional radio stations for existing tracks."""
     if not updates:
         return {'backup_dir': None, 'texts_updated': 0, 'tracks_updated': 0, 'stations_updated': 0}
 
@@ -225,7 +229,7 @@ def update_installed_tracks_metadata(game_dir: str, updates: List[Dict[str, str]
     if not texts_dir or not os.path.isdir(texts_dir):
         raise FileNotFoundError(f"Texts directory not found: {texts_dir}")
 
-    backup_dir = create_backup(game_dir, reason='edit_metadata')
+    backup_dir = create_backup(game_dir, reason='edit_metadata') if auto_backup else None
     songs = [
         {
             'base_id': u['base_id'],
@@ -308,7 +312,12 @@ def update_installed_tracks_metadata(game_dir: str, updates: List[Dict[str, str]
     }
 
 
-def remove_installed_tracks(game_dir: str, base_ids: List[str], delete_files: bool = False) -> Dict[str, Any]:
+def remove_installed_tracks(
+    game_dir: str,
+    base_ids: List[str],
+    delete_files: bool = False,
+    auto_backup: bool = True,
+) -> Dict[str, Any]:
     """Removes selected tracks from soundpack playlists, localization tables, and optionally .mpc files."""
     if not base_ids:
         return {'backup_dir': None, 'removed_tracks': 0, 'texts_updated': 0, 'files_deleted': 0}
@@ -320,7 +329,7 @@ def remove_installed_tracks(game_dir: str, base_ids: List[str], delete_files: bo
     if not soundpack_path or not os.path.isfile(soundpack_path):
         raise FileNotFoundError(f"soundpack not found at: {soundpack_path}")
 
-    backup_dir = create_backup(game_dir, reason='remove_tracks')
+    backup_dir = create_backup(game_dir, reason='remove_tracks') if auto_backup else None
 
     remove_labels = set()
     for bid in base_ids:
@@ -572,6 +581,7 @@ def save_track_outro(
     fade_in: float = 0.0,
     fade_out: Optional[float] = None,
     quality_preset: str = DEFAULT_QUALITY_PRESET,
+    auto_backup: bool = True,
 ) -> Dict[str, Any]:
     """Encodes a custom or trimmed outro clip to m_outro_<id>.mpc and registers it in soundpack."""
     import tempfile
@@ -600,7 +610,7 @@ def save_track_outro(
     outro_dst = os.path.join(music_dir, outro_file)
     os.makedirs(music_dir, exist_ok=True)
 
-    backup_dir = create_backup(game_dir, reason='edit_outro')
+    backup_dir = create_backup(game_dir, reason='edit_outro') if auto_backup else None
 
     # Convert to temp file first so trimming an already-installed m_outro_*.mpc never collides with itself
     tmp_dir = tempfile.mkdtemp(prefix='a8_outro_')
@@ -659,7 +669,12 @@ def save_track_outro(
     }
 
 
-def remove_track_outro(game_dir: str, base_id: str, delete_file: bool = False) -> Dict[str, Any]:
+def remove_track_outro(
+    game_dir: str,
+    base_id: str,
+    delete_file: bool = False,
+    auto_backup: bool = True,
+) -> Dict[str, Any]:
     """Removes m_outro_<id> registration from soundpack and optionally deletes its .mpc file."""
     if not base_id:
         return {'backup_dir': None, 'removed': False, 'files_deleted': 0}
@@ -670,7 +685,7 @@ def remove_track_outro(game_dir: str, base_id: str, delete_file: bool = False) -
     if not soundpack_path or not os.path.isfile(soundpack_path):
         raise FileNotFoundError(f"soundpack not found at: {soundpack_path}")
 
-    backup_dir = create_backup(game_dir, reason='remove_outro')
+    backup_dir = create_backup(game_dir, reason='remove_outro') if auto_backup else None
     stripped = base_id[2:] if base_id.startswith('m_') else base_id
     outro_id = f"m_outro_{stripped}"
 
@@ -891,8 +906,9 @@ def repair_soundpack_health(
     fix_events: bool = True,
     prune_missing: bool = False,
     delete_orphans: bool = False,
+    auto_backup: bool = True,
 ) -> Dict[str, Any]:
-    """Repairs detected soundpack, localization, and orphan .mpc issues after creating a backup."""
+    """Repairs detected soundpack, localization, and orphan .mpc issues."""
     import re
     import xml.etree.ElementTree as ET
     from engine.texts_manager import add_song_titles
@@ -915,7 +931,7 @@ def repair_soundpack_health(
         }
 
     paths = resolve_game_paths(game_dir)
-    backup_dir = create_backup(game_dir, reason='health_repair')
+    backup_dir = create_backup(game_dir, reason='health_repair') if auto_backup else None
 
     texts_fixed = 0
     if will_fix_texts:
@@ -1299,8 +1315,9 @@ def apply_profile(
     game_dir: str,
     profile_id: str,
     profiles_root: Optional[str] = None,
+    auto_backup: bool = True,
 ) -> Dict[str, Any]:
-    """Creates a safety backup and applies the named profile's soundpack and .texts to game_dir."""
+    """Applies the named profile's soundpack and .texts to game_dir."""
     import json
     import shutil
 
@@ -1325,7 +1342,7 @@ def apply_profile(
         except Exception:
             pass
 
-    backup_dir = create_backup(game_dir, reason='apply_profile')
+    backup_dir = create_backup(game_dir, reason='apply_profile') if auto_backup else None
     shutil.copy2(src_sp, dst_sp)
 
     p_texts = os.path.join(pdir, 'text')

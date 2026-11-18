@@ -49,7 +49,13 @@ def resolve_quality_preset(preset: Optional[str]) -> Tuple[str, Dict[str, Any]]:
 def _subprocess_kwargs() -> Dict[str, Any]:
     """Returns platform-specific subprocess options (suppressing console flashes on Windows)."""
     if os.name == 'nt':
-        return {'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)}
+        si = subprocess.STARTUPINFO()
+        si.dwFlags |= getattr(subprocess, 'STARTF_USESHOWWINDOW', 0x00000001)
+        si.wShowWindow = 0
+        return {
+            'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0x08000000),
+            'startupinfo': si,
+        }
     return {}
 
 
@@ -160,19 +166,21 @@ def is_valid_mpc8(file_path: str) -> bool:
                 streams = data.get('streams', [])
                 if streams:
                     s = streams[0]
+                    codec = str(s.get('codec_name') or '').lower()
                     return (
-                        s.get('codec_name') == 'musepack8'
+                        codec in ('musepack8', 'musepack', 'mpc8')
                         and str(s.get('sample_rate')) in VALID_MPC8_SAMPLE_RATES
-                        and s.get('channels') == 2
+                        and s.get('channels') in (1, 2)
                     )
 
         probed = probe_with_ffmpeg(file_path)
         s = probed.get('stream') or {}
         if s:
+            codec = str(s.get('codec_name') or '').lower()
             return (
-                s.get('codec_name') == 'musepack8'
+                codec in ('musepack8', 'musepack', 'mpc8')
                 and str(s.get('sample_rate')) in VALID_MPC8_SAMPLE_RATES
-                and s.get('channels') == 2
+                and s.get('channels') in (1, 2)
             )
         return True
     except Exception:
@@ -625,43 +633,36 @@ def build_ffmpeg_audio_filter_and_trim(
     end_sec: Optional[float] = None,
     fade_in: float = 0.0,
     fade_out: Optional[float] = None,
-    apply_loudnorm: bool = True,
+    apply_loudnorm: bool = False,
     sample_rate: int = 44100,
 ) -> Tuple[List[str], str, bool]:
-    """Builds ffmpeg post-input seek/duration args and high-precision audio filter chain."""
+    """Builds ffmpeg post-input seek/duration args and unity-gain resampling filter chain."""
     start = max(0.0, float(start_sec)) if start_sec is not None else None
     end = max(0.0, float(end_sec)) if end_sec is not None else None
     if start is not None and end is not None and end <= start:
         raise ValueError("Outro end time must be greater than start time.")
 
-    fi = max(0.0, float(fade_in or 0.0))
-    fo_val = (0.08 if is_outro else 0.0) if fade_out is None else max(0.0, float(fade_out))
-    has_fade_out_change = (
-        abs(fo_val - 0.08) > 1e-4 if is_outro else fo_val > 0.0
-    ) if fade_out is not None else False
-    has_custom = (
-        (start is not None and start > 0.0)
-        or (end is not None and end > 0.0)
-        or (fi > 0.0)
-        or has_fade_out_change
-    )
+    total_dur = probe_duration(src_path)
+    has_start_trim = bool(start is not None and start > 0.005)
+    has_end_trim = bool(end is not None and end > 0.0 and (total_dur is None or end < (total_dur - 0.02)))
 
+    fi = max(0.0, float(fade_in or 0.0))
+    fo_val = max(0.0, float(fade_out or 0.0))
+    has_custom = has_start_trim or has_end_trim or (fi > 0.0) or (fo_val > 0.0)
+
+    eff_start = start if has_start_trim else 0.0
     clip_dur: Optional[float]
-    if start is not None and end is not None:
-        clip_dur = end - start
-    elif end is not None:
-        start = 0.0
-        clip_dur = end
-    elif start is not None:
-        total = probe_duration(src_path)
-        clip_dur = max(0.1, total - start) if total and total > start else None
+    if has_end_trim and end is not None:
+        clip_dur = max(0.05, end - eff_start)
+    elif has_start_trim and total_dur is not None and total_dur > eff_start:
+        clip_dur = max(0.05, total_dur - eff_start)
     else:
-        clip_dur = probe_duration(src_path)
+        clip_dur = total_dur
 
     trim_args: List[str] = []
-    if start is not None and start > 0.0:
-        trim_args.extend(['-ss', f"{start:.3f}"])
-    if end is not None and clip_dur is not None:
+    if has_start_trim:
+        trim_args.extend(['-ss', f"{eff_start:.3f}"])
+    if has_end_trim and clip_dur is not None:
         trim_args.extend(['-t', f"{clip_dur:.3f}"])
 
     filters: List[str] = []
@@ -682,6 +683,51 @@ def build_ffmpeg_audio_filter_and_trim(
     return trim_args, ','.join(filters), has_custom
 
 
+def format_duration_ms(seconds: float) -> str:
+    """Formats a duration in seconds as m:ss.mmm (minute, second, millisecond)."""
+    ms_total = max(0, int(round(float(seconds) * 1000.0)))
+    mins, rem_ms = divmod(ms_total, 60000)
+    secs, ms = divmod(rem_ms, 1000)
+    return f"{mins}:{secs:02d}.{ms:03d}"
+
+
+def get_wav_exact_duration(wav_path: str) -> float:
+    """Returns exact PCM duration in seconds from a WAV file header."""
+    import wave
+    with wave.open(wav_path, 'rb') as wf:
+        sr = wf.getframerate() or 44100
+        return wf.getnframes() / float(sr)
+
+
+def verify_audio_duration_match(
+    expected_sec: float,
+    actual_mpc_path: str,
+    tolerance_ms: float = 25.0,
+) -> Dict[str, Any]:
+    """Verifies an encoded or copied .mpc matches expected duration to millisecond tolerance."""
+    actual = _read_mpc8_duration(actual_mpc_path)
+    if actual is None:
+        actual = probe_duration(actual_mpc_path)
+    if actual is None:
+        return {
+            'ok': False,
+            'expected_sec': expected_sec,
+            'actual_sec': 0.0,
+            'diff_ms': float('inf'),
+            'expected_fmt': format_duration_ms(expected_sec),
+            'actual_fmt': 'unknown',
+        }
+    diff_ms = abs(float(actual) - float(expected_sec)) * 1000.0
+    return {
+        'ok': diff_ms <= tolerance_ms,
+        'expected_sec': float(expected_sec),
+        'actual_sec': float(actual),
+        'diff_ms': round(diff_ms, 2),
+        'expected_fmt': format_duration_ms(expected_sec),
+        'actual_fmt': format_duration_ms(actual),
+    }
+
+
 def convert_track(
     src_path: str,
     dst_path: str,
@@ -694,8 +740,9 @@ def convert_track(
     quality_preset: str = DEFAULT_QUALITY_PRESET,
     sample_rate: Optional[int] = None,
 ) -> str:
-    """Converts src_path (optionally trimmed and faded) to stereo Musepack SV8 at dst_path."""
-    os.makedirs(os.path.dirname(os.path.abspath(dst_path)), exist_ok=True)
+    """Converts src_path (or direct-copies valid untrimmed .mpc) at original volume with ms duration check."""
+    abs_dst = os.path.abspath(dst_path)
+    os.makedirs(os.path.dirname(abs_dst), exist_ok=True)
     _, preset_cfg = resolve_quality_preset(quality_preset)
     target_sr = int(sample_rate or preset_cfg['sample_rate'])
     mpc_flag = str(preset_cfg['mpc_flag'])
@@ -707,44 +754,104 @@ def convert_track(
         end_sec=end_sec,
         fade_in=fade_in,
         fade_out=fade_out,
-        apply_loudnorm=True,
+        apply_loudnorm=False,
         sample_rate=target_sr,
     )
 
-    if is_valid_mpc8(src_path) and not has_custom:
-        shutil.copy2(src_path, dst_path)
-        return dst_path
+    fi = max(0.0, float(fade_in or 0.0))
+    fo_val = max(0.0, float(fade_out or 0.0))
 
-    mpcenc = mpcenc_path or find_tool('mpcenc')
-    if not mpcenc:
-        raise RuntimeError("mpcenc encoder tool not found!")
+    with tempfile.TemporaryDirectory(prefix='a8_conv_') as conv_tmp:
+        tmp_mpc_path = os.path.join(conv_tmp, 'staged.mpc')
 
-    ffmpeg = find_tool('ffmpeg')
-    if not ffmpeg:
-        raise RuntimeError("ffmpeg tool not found!")
+        if is_valid_mpc8(src_path) and not has_custom:
+            src_dur = _read_mpc8_duration(src_path)
+            shutil.copy2(src_path, tmp_mpc_path)
+            if src_dur is not None:
+                check = verify_audio_duration_match(src_dur, tmp_mpc_path, tolerance_ms=1.0)
+                if not check['ok']:
+                    raise RuntimeError(
+                        f"Staged .mpc copy duration mismatch for {os.path.basename(src_path)}: "
+                        f"{check['actual_fmt']} vs expected {check['expected_fmt']}."
+                    )
+            shutil.copy2(tmp_mpc_path, abs_dst)
+            return abs_dst
 
-    with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_wav:
-        tmp_wav_path = tmp_wav.name
+        mpcenc = mpcenc_path or find_tool('mpcenc')
+        if not mpcenc:
+            raise RuntimeError("mpcenc encoder tool not found!")
 
-    try:
-        # Step 1: ffmpeg decode, optional trim, loudness normalize, fade & high-precision resample
-        cmd_ffmpeg = [ffmpeg, '-y', '-i', src_path] + trim_args
-        if af_chain:
-            cmd_ffmpeg.extend(['-af', af_chain])
-        cmd_ffmpeg.extend(['-ar', str(target_sr), '-ac', '2', '-c:a', 'pcm_s16le', tmp_wav_path])
-        subprocess.run(cmd_ffmpeg, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **_subprocess_kwargs())
+        ffmpeg = find_tool('ffmpeg')
+        if not ffmpeg:
+            raise RuntimeError("ffmpeg tool not found!")
 
-        # Step 2: mpcenc encode to Musepack SV8 at selected quality tier
+        raw_wav_path = os.path.join(conv_tmp, 'raw.wav')
+        faded_wav_path = os.path.join(conv_tmp, 'faded.wav')
+
+        # Step 1a: Decode full stream (or trimmed range) at original volume with precision resample + dither
+        resample_filter = f"aresample={target_sr}:filter_size=64:phase_shift=12:cutoff=0.95:dither_method=shibata"
+        cmd_decode = [ffmpeg, '-y', '-i', src_path] + trim_args + [
+            '-vn', '-af', resample_filter, '-ar', str(target_sr), '-ac', '2', '-c:a', 'pcm_s16le', raw_wav_path
+        ]
+        subprocess.run(cmd_decode, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **_subprocess_kwargs())
+
+        # Step 1b: Measure exact decoded duration to milliseconds before optional fade pass
+        exact_dur = get_wav_exact_duration(raw_wav_path)
+        if exact_dur <= 0.0:
+            raise RuntimeError(f"Decoded audio is empty for {os.path.basename(src_path)}.")
+
+        if not trim_args:
+            src_probed = probe_duration(src_path)
+            if src_probed and src_probed > 1.0 and abs(exact_dur - src_probed) > 0.25:
+                # Re-verify only if container header and full PCM decode diverge significantly on non-VBR/long tracks
+                ext_low = os.path.splitext(src_path)[1].lower()
+                if ext_low == '.wav':
+                    raise RuntimeError(
+                        f"Audio length mismatch during decode of {os.path.basename(src_path)}: "
+                        f"{format_duration_ms(exact_dur)} vs expected {format_duration_ms(src_probed)}."
+                    )
+
+        wav_for_mpc = raw_wav_path
+        if fi > 0.0 or fo_val > 0.0:
+            fade_filters: List[str] = []
+            if fi > 0.0:
+                eff_fi = min(fi, max(0.05, exact_dur * 0.45))
+                fade_filters.append(f"afade=t=in:st=0:d={eff_fi:.4f}")
+            if fo_val > 0.0:
+                eff_fo = min(fo_val, max(0.05, exact_dur * 0.5))
+                fade_start = max(0.0, exact_dur - eff_fo)
+                fade_filters.append(f"afade=t=out:st={fade_start:.4f}:d={eff_fo:.4f}")
+            cmd_fade = [
+                ffmpeg, '-y', '-i', raw_wav_path,
+                '-af', ','.join(fade_filters),
+                '-ar', str(target_sr), '-ac', '2', '-c:a', 'pcm_s16le', faded_wav_path,
+            ]
+            subprocess.run(cmd_fade, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **_subprocess_kwargs())
+            faded_dur = get_wav_exact_duration(faded_wav_path)
+            if abs(faded_dur - exact_dur) * 1000.0 > 25.0:
+                raise RuntimeError(
+                    f"Fade pass changed duration for {os.path.basename(src_path)}: "
+                    f"{format_duration_ms(faded_dur)} vs {format_duration_ms(exact_dur)}."
+                )
+            wav_for_mpc = faded_wav_path
+
+        # Step 2: Encode staged Musepack SV8 file and verify minute:second.millisecond length before install
         cmd_mpc = [
             mpcenc, '--silent', mpc_flag, '--overwrite',
-            tmp_wav_path, dst_path
+            wav_for_mpc, tmp_mpc_path,
         ]
         subprocess.run(cmd_mpc, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **_subprocess_kwargs())
-    finally:
-        if os.path.exists(tmp_wav_path):
-            os.remove(tmp_wav_path)
 
-    return dst_path
+        dur_check = verify_audio_duration_match(exact_dur, tmp_mpc_path, tolerance_ms=25.0)
+        if not dur_check['ok']:
+            raise RuntimeError(
+                f"Converted duration mismatch for {os.path.basename(src_path)}: "
+                f"{dur_check['actual_fmt']} vs expected {dur_check['expected_fmt']} ({dur_check['diff_ms']} ms delta)."
+            )
+
+        shutil.copy2(tmp_mpc_path, abs_dst)
+
+    return abs_dst
 
 
 def _parse_wav_pcm_s16le(wav_bytes: bytes) -> bytes:

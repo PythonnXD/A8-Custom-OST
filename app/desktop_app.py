@@ -20,7 +20,7 @@ from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse
 from typing import Any, Dict, List, Optional
 
-APP_VERSION = '1.3.2'
+APP_VERSION = '1.4.0'
 DEFAULT_UPDATE_MANIFEST_URL = 'https://api.github.com/repos/PythonnXD/A8-Custom-OST/releases/latest'
 _LEGACY_UPDATE_URLS = {
     '',
@@ -58,6 +58,9 @@ from engine.detector import (
     clone_game_to_loose_folder,
     resolve_game_paths,
     _get_current_user_sid,
+    _clear_readonly,
+    _unlock_targets,
+    _hidden_subprocess_kwargs,
 )
 from engine.audio_converter import (
     scan_input_folder,
@@ -365,17 +368,23 @@ def apply_local_exe_update(
         f.write(script_body)
 
     # Never combine DETACHED_PROCESS with powershell.exe; it exits immediately without running scripts.
+    sub_kwargs = _hidden_subprocess_kwargs()
     creationflags = (
-        getattr(subprocess, 'CREATE_NO_WINDOW', 0x08000000)
+        sub_kwargs.get('creationflags', 0)
         | getattr(subprocess, 'CREATE_NEW_PROCESS_GROUP', 0x00000200)
     )
+    popen_kwargs: Dict[str, Any] = {
+        'stdin': subprocess.DEVNULL,
+        'stdout': subprocess.DEVNULL,
+        'stderr': subprocess.DEVNULL,
+        'close_fds': True,
+        'creationflags': creationflags,
+    }
+    if 'startupinfo' in sub_kwargs:
+        popen_kwargs['startupinfo'] = sub_kwargs['startupinfo']
     subprocess.Popen(
-        ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ps_script],
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        close_fds=True,
-        creationflags=creationflags,
+        ['powershell.exe', '-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-ExecutionPolicy', 'Bypass', '-File', ps_script],
+        **popen_kwargs,
     )
     return {
         'ok': True,
@@ -390,17 +399,96 @@ def _prefs_path() -> str:
     return os.path.join(local_app, 'A8_Custom_OST_Patcher', 'prefs.json')
 
 
+def _queue_state_path() -> str:
+    return os.path.join(os.path.dirname(_prefs_path()), 'queue_state.json')
+
+
+def load_queue_state() -> Dict[str, Any]:
+    path = _queue_state_path()
+    default_state: Dict[str, Any] = {
+        'tracks': [],
+        'music_dir': '',
+        'music_sources': [],
+        'keep_original': True,
+        'on_conflict': 'overwrite',
+        'playlist_dirty': False,
+    }
+    if os.path.isfile(path):
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            if isinstance(data, dict):
+                out = dict(default_state)
+                if isinstance(data.get('tracks'), list):
+                    out['tracks'] = data['tracks']
+                if isinstance(data.get('music_dir'), str):
+                    out['music_dir'] = data['music_dir']
+                if isinstance(data.get('music_sources'), list):
+                    out['music_sources'] = [str(s) for s in data['music_sources'] if isinstance(s, str)]
+                if 'keep_original' in data:
+                    out['keep_original'] = bool(data['keep_original'])
+                if data.get('on_conflict') in ('overwrite', 'skip'):
+                    out['on_conflict'] = data['on_conflict']
+                out['playlist_dirty'] = bool(data.get('playlist_dirty', False))
+                return out
+        except Exception:
+            pass
+    return default_state
+
+
+def save_queue_state_file(payload: Dict[str, Any]) -> Dict[str, Any]:
+    path = _queue_state_path()
+    allowed_fields = (
+        'uid', 'category', 'base_id', 'title', 'artist', 'src_path', 'src_name',
+        'main_file', 'has_outro', 'outro_id', 'outro_file', 'outro_src_path',
+        'outro_src_name', 'outro_mode', 'outro_start', 'outro_end',
+        'outro_fade_in', 'outro_fade_out', 'outro_fade_in_enabled',
+        'outro_fade_out_enabled', 'conflict', 'selected',
+    )
+    sanitized_tracks: List[Dict[str, Any]] = []
+    for raw in (payload.get('tracks') or []):
+        if not isinstance(raw, dict):
+            continue
+        item = {k: raw[k] for k in allowed_fields if k in raw}
+        if item.get('src_path'):
+            sanitized_tracks.append(item)
+
+    clean_state: Dict[str, Any] = {
+        'tracks': sanitized_tracks,
+        'music_dir': str(payload.get('music_dir') or ''),
+        'music_sources': [str(s) for s in (payload.get('music_sources') or []) if isinstance(s, str)],
+        'keep_original': bool(payload.get('keep_original', True)),
+        'on_conflict': 'skip' if payload.get('on_conflict') == 'skip' else 'overwrite',
+        'playlist_dirty': bool(payload.get('playlist_dirty', False)) and len(sanitized_tracks) > 0,
+    }
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(clean_state, f, indent=2)
+    except Exception:
+        pass
+    return clean_state
+
+
 def load_prefs() -> Dict[str, Any]:
     path = _prefs_path()
+    defaults: Dict[str, Any] = {
+        'theme': 'dark',
+        'auto_backup': True,
+        'outro_editor_enabled': True,
+        'loop_playback': False,
+    }
     if os.path.isfile(path):
         try:
             with open(path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 if isinstance(data, dict):
-                    return data
+                    merged = dict(defaults)
+                    merged.update(data)
+                    return merged
         except Exception:
             pass
-    return {'theme': 'dark'}
+    return defaults
 
 
 def save_prefs(updates: Dict[str, Any]) -> None:
@@ -421,25 +509,48 @@ def is_dir_writable(target_dir: str) -> bool:
 
 
 def elevate_game_permissions_detailed(game_dir: str) -> Dict[str, Any]:
-    """Grants write permissions on mod targets inside game_dir with diagnostic feedback."""
+    """Grants write permissions on mod targets inside game_dir, unlocking WindowsApps if needed."""
     if not is_valid_game_dir(game_dir):
         raise ValueError(f"Invalid Asphalt 8 directory: {game_dir}")
 
-    res = ensure_write_permissions_detailed(game_dir)
-    if res.get('ok'):
-        return res
+    winapps = is_windowsapps_path(game_dir)
+    ok, _ = is_game_dir_writable(game_dir)
+    if ok:
+        return {
+            'ok': True,
+            'writable': True,
+            'is_admin': is_user_admin(),
+            'is_windowsapps': winapps,
+            'error': '',
+            'raw_detail': '',
+        }
 
+    # Clear local read-only flags in-process before deciding whether elevated ACL repair is required
+    root_dirs, mod_dirs = _unlock_targets(game_dir)
+    for d in root_dirs:
+        _clear_readonly(d)
+    for d in mod_dirs:
+        _clear_readonly(d)
+        try:
+            for walk_root, dir_names, file_names in os.walk(d):
+                for dn in dir_names:
+                    _clear_readonly(os.path.join(walk_root, dn))
+                for fn in file_names:
+                    _clear_readonly(os.path.join(walk_root, fn))
+        except Exception:
+            pass
+
+    ok, _ = is_game_dir_writable(game_dir)
     is_admin = is_user_admin()
-    if os.name != 'nt' or is_admin:
-        # Process is already elevated (or non-Windows): relaunching 'runas' would be redundant.
-        return res
+    if ok or os.name != 'nt' or is_admin:
+        return ensure_write_permissions_detailed(game_dir)
 
     log_fd, log_path = tempfile.mkstemp(prefix='a8_acl_', suffix='.log')
     os.close(log_fd)
     try:
         caller_sid = _get_current_user_sid()
         b64_cmd = build_unlock_ps_command(game_dir, caller_sid=caller_sid, log_path=log_path)
-        ps_args = f'-NoProfile -WindowStyle Hidden -EncodedCommand {b64_cmd}'
+        ps_args = f'-NoProfile -NonInteractive -WindowStyle Hidden -EncodedCommand {b64_cmd}'
 
         class SHELLEXECUTEINFO(ctypes.Structure):
             _fields_ = [
@@ -691,6 +802,8 @@ class PatcherDesktopAPI:
         self._preview_cache_dir = os.path.join(tempfile.gettempdir(), 'a8_ost_patcher_previews')
         self._install_lock = threading.Lock()
         self._installing = False
+        self._has_unsaved_playlist = False
+        self._allow_close = False
 
     def _attach_window(self, window: Any) -> None:
         self._window = window
@@ -737,12 +850,46 @@ class PatcherDesktopAPI:
         status = self._game_status(detected)
         backups = list_backups(detected) if detected else []
         quality_key, _ = resolve_quality_preset(prefs.get('quality_preset'))
+        auto_backup = bool(prefs.get('auto_backup', True))
+        outro_editor_enabled = bool(prefs.get('outro_editor_enabled', True))
+        loop_playback = bool(prefs.get('loop_playback', False))
+
+        saved_q = load_queue_state()
+        existing_ids = set()
+        if status['valid'] and detected:
+            try:
+                existing_ids = get_existing_track_ids(resolve_game_paths(detected)['soundpack_path'])
+            except Exception:
+                existing_ids = set()
+        restored_tracks: List[Dict[str, Any]] = []
+        for idx, tr in enumerate(saved_q.get('tracks') or [], 1):
+            sp = str(tr.get('src_path') or '').strip()
+            if not sp or not os.path.isfile(sp):
+                continue
+            item = dict(tr)
+            item.setdefault('uid', f"imp_{idx}_{item.get('base_id', idx)}")
+            item['conflict'] = item.get('base_id') in existing_ids
+            outro_sp = item.get('outro_src_path')
+            if outro_sp and not os.path.isfile(outro_sp):
+                item['outro_src_path'] = None
+                item['outro_src_name'] = None
+                item['has_outro'] = False
+            restored_tracks.append(item)
+
+        saved_q['tracks'] = restored_tracks
+        saved_q['playlist_dirty'] = bool(saved_q.get('playlist_dirty', False)) and len(restored_tracks) > 0
+        self._has_unsaved_playlist = saved_q['playlist_dirty']
+
         status.update({
             'app_version': APP_VERSION,
             'is_frozen': bool(getattr(sys, 'frozen', False)),
             'theme': prefs.get('theme', 'dark'),
             'last_music_dir': prefs.get('last_music_dir', ''),
             'quality_preset': quality_key,
+            'auto_backup': auto_backup,
+            'outro_editor_enabled': outro_editor_enabled,
+            'loop_playback': loop_playback,
+            'saved_queue': saved_q,
             'quality_presets': [
                 {
                     'id': k,
@@ -767,6 +914,59 @@ class PatcherDesktopAPI:
             'mpc_flag': cfg['mpc_flag'],
             'label': cfg['label'],
         }
+
+    def set_auto_backup(self, enabled: bool) -> Dict[str, Any]:
+        val = bool(enabled)
+        save_prefs({'auto_backup': val})
+        return {'ok': True, 'auto_backup': val}
+
+    def set_outro_editor_enabled(self, enabled: bool) -> Dict[str, Any]:
+        val = bool(enabled)
+        save_prefs({'outro_editor_enabled': val})
+        return {'ok': True, 'outro_editor_enabled': val}
+
+    def set_loop_playback(self, enabled: bool) -> Dict[str, Any]:
+        val = bool(enabled)
+        save_prefs({'loop_playback': val})
+        return {'ok': True, 'loop_playback': val}
+
+    def create_manual_backup(self, game_dir: str) -> Dict[str, Any]:
+        if not game_dir or not is_valid_game_dir(game_dir):
+            return {'ok': False, 'error': 'Select a valid Asphalt 8 folder first.'}
+        try:
+            backup_dir = create_backup(game_dir, reason='manual')
+            backups = list_backups(game_dir)
+            return {
+                'ok': True,
+                'backup_dir': backup_dir,
+                'backups_count': len(backups),
+            }
+        except Exception as e:
+            return {'ok': False, 'error': str(e)}
+
+    def save_queue_state(self, state_payload: Dict[str, Any]) -> Dict[str, Any]:
+        clean = save_queue_state_file(state_payload or {})
+        self._has_unsaved_playlist = bool(clean.get('playlist_dirty', False))
+        return {
+            'ok': True,
+            'saved_count': len(clean.get('tracks') or []),
+            'playlist_dirty': self._has_unsaved_playlist,
+        }
+
+    def set_unsaved_playlist_state(self, dirty: bool) -> Dict[str, Any]:
+        self._has_unsaved_playlist = bool(dirty)
+        return {'ok': True, 'dirty': self._has_unsaved_playlist}
+
+    def force_close_window(self) -> Dict[str, Any]:
+        self._allow_close = True
+        if self._window is not None:
+            def _do_destroy() -> None:
+                try:
+                    self._window.destroy()
+                except Exception:
+                    pass
+            threading.Timer(0.04, _do_destroy).start()
+        return {'ok': True}
 
     def set_window_theme(self, theme: str) -> Dict[str, Any]:
         normalized = 'light' if theme == 'light' else 'dark'
@@ -969,7 +1169,7 @@ class PatcherDesktopAPI:
                 'outro_start': t.get('outro_start'),
                 'outro_end': t.get('outro_end'),
                 'outro_fade_in': float(t.get('outro_fade_in') or 0.0),
-                'outro_fade_out': float(t['outro_fade_out']) if t.get('outro_fade_out') is not None else 0.08,
+                'outro_fade_out': float(t['outro_fade_out']) if t.get('outro_fade_out') is not None else 0.0,
                 'outro_fade_in_enabled': (
                     bool(t['outro_fade_in_enabled'])
                     if t.get('outro_fade_in_enabled') is not None
@@ -978,7 +1178,7 @@ class PatcherDesktopAPI:
                 'outro_fade_out_enabled': (
                     bool(t['outro_fade_out_enabled'])
                     if t.get('outro_fade_out_enabled') is not None
-                    else (float(t['outro_fade_out']) > 0.0 if t.get('outro_fade_out') is not None else True)
+                    else (float(t.get('outro_fade_out') or 0.0) > 0.0)
                 ),
                 'conflict': base_id in existing_ids,
                 'selected': True,
@@ -1038,8 +1238,14 @@ class PatcherDesktopAPI:
             err = _ensure_game_writable(game_dir)
             if err:
                 return {'ok': False, 'error': err}
+            prefs = load_prefs()
             quality_key, _ = resolve_quality_preset(
-                payload.get('quality_preset') or load_prefs().get('quality_preset')
+                payload.get('quality_preset') or prefs.get('quality_preset')
+            )
+            auto_backup = (
+                bool(payload['auto_backup'])
+                if payload.get('auto_backup') is not None
+                else bool(prefs.get('auto_backup', True))
             )
             res = save_track_outro(
                 game_dir=game_dir,
@@ -1050,6 +1256,7 @@ class PatcherDesktopAPI:
                 fade_in=float(payload.get('fade_in') or 0.0),
                 fade_out=payload.get('fade_out'),
                 quality_preset=quality_key,
+                auto_backup=auto_backup,
             )
             res['ok'] = True
             return res
@@ -1061,7 +1268,8 @@ class PatcherDesktopAPI:
             err = _ensure_game_writable(game_dir)
             if err:
                 return {'ok': False, 'error': err}
-            res = remove_track_outro(game_dir, base_id, delete_file=delete_file)
+            auto_backup = bool(load_prefs().get('auto_backup', True))
+            res = remove_track_outro(game_dir, base_id, delete_file=delete_file, auto_backup=auto_backup)
             res['ok'] = True
             return res
         except Exception as e:
@@ -1102,7 +1310,8 @@ class PatcherDesktopAPI:
             err = _ensure_game_writable(game_dir)
             if err:
                 return {'ok': False, 'error': err}
-            res = update_installed_tracks_metadata(game_dir, updates)
+            auto_backup = bool(load_prefs().get('auto_backup', True))
+            res = update_installed_tracks_metadata(game_dir, updates, auto_backup=auto_backup)
             res['ok'] = True
             return res
         except Exception as e:
@@ -1113,7 +1322,8 @@ class PatcherDesktopAPI:
             err = _ensure_game_writable(game_dir)
             if err:
                 return {'ok': False, 'error': err}
-            res = remove_installed_tracks(game_dir, base_ids, delete_files=delete_files)
+            auto_backup = bool(load_prefs().get('auto_backup', True))
+            res = remove_installed_tracks(game_dir, base_ids, delete_files=delete_files, auto_backup=auto_backup)
             res['ok'] = True
             return res
         except Exception as e:
@@ -1236,12 +1446,18 @@ class PatcherDesktopAPI:
             err = _ensure_game_writable(game_dir)
             if err:
                 return {'ok': False, 'error': err}
+            auto_backup = (
+                bool(payload['auto_backup'])
+                if payload.get('auto_backup') is not None
+                else bool(load_prefs().get('auto_backup', True))
+            )
             res = repair_soundpack_health(
                 game_dir,
                 fix_texts=bool(payload.get('fix_texts', True)),
                 fix_events=bool(payload.get('fix_events', True)),
                 prune_missing=bool(payload.get('prune_missing', False)),
                 delete_orphans=bool(payload.get('delete_orphans', False)),
+                auto_backup=auto_backup,
             )
             res['ok'] = True
             return res
@@ -1270,7 +1486,8 @@ class PatcherDesktopAPI:
             err = _ensure_game_writable(game_dir)
             if err:
                 return {'ok': False, 'error': err}
-            res = apply_profile(game_dir, profile_id)
+            auto_backup = bool(load_prefs().get('auto_backup', True))
+            res = apply_profile(game_dir, profile_id, auto_backup=auto_backup)
             res['ok'] = True
             return res
         except Exception as e:
@@ -1299,6 +1516,7 @@ class PatcherDesktopAPI:
             return {'ok': False, 'error': str(e)}
 
     def _graceful_exit(self) -> None:
+        self._allow_close = True
         watchdog = threading.Timer(2.5, os._exit, args=(0,))
         watchdog.daemon = True
         watchdog.start()
@@ -1362,8 +1580,14 @@ class PatcherDesktopAPI:
         tracks = payload.get('tracks', [])
         keep_original = bool(payload.get('keep_original', True))
         on_conflict = 'skip' if payload.get('on_conflict') == 'skip' else 'overwrite'
+        prefs = load_prefs()
+        auto_backup = (
+            bool(payload['auto_backup'])
+            if payload.get('auto_backup') is not None
+            else bool(prefs.get('auto_backup', True))
+        )
         quality_key, quality_cfg = resolve_quality_preset(
-            payload.get('quality_preset') or load_prefs().get('quality_preset')
+            payload.get('quality_preset') or prefs.get('quality_preset')
         )
         khz_label = f"{quality_cfg['sample_rate'] / 1000.0:g}"
 
@@ -1392,13 +1616,15 @@ class PatcherDesktopAPI:
                     })
                     return
 
-                self._emit('__onInstallProgress', {
-                    'stage': 'backup',
-                    'current': 0,
-                    'total': len(tracks),
-                    'message': 'Backing up Data/soundpack and language files...',
-                })
-                backup_dir = create_backup(game_dir, reason='install_ost')
+                backup_dir = None
+                if auto_backup:
+                    self._emit('__onInstallProgress', {
+                        'stage': 'backup',
+                        'current': 0,
+                        'total': len(tracks),
+                        'message': 'Backing up soundpack and language files...',
+                    })
+                    backup_dir = create_backup(game_dir, reason='install_ost')
 
                 paths = resolve_game_paths(game_dir)
                 soundpack_path = paths['soundpack_path']
@@ -1571,6 +1797,20 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     api._attach_window(window)
 
+    def on_closing() -> Any:
+        if verify_window or api._allow_close or not api._has_unsaved_playlist:
+            return True
+        try:
+            window.evaluate_js("window.__onConfirmUnsavedClose && window.__onConfirmUnsavedClose()")
+        except Exception:
+            return True
+        return False
+
+    try:
+        window.events.closing += on_closing
+    except Exception:
+        pass
+
     def on_started() -> None:
         window.events.loaded.wait()
         _bind_dnd_handlers(window, api)
@@ -1588,6 +1828,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 else:
                     print(msg)
             finally:
+                api._allow_close = True
                 window.destroy()
 
     try:

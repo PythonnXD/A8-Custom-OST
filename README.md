@@ -4,16 +4,17 @@ Desktop app and engine for managing custom soundtrack mods in Windows and extrac
 
 ## Features
 
-The UI converts audio offline with the bundled `tools/ffmpeg.exe` and `tools/mpcenc.exe` encoders into Musepack SV8 normalized to -14 LUFS, defaulting to High quality (`44.1 kHz`, `--insane`, ~240 kbps) with selectable Ultra, Standard, and Compact presets.
+The UI converts audio offline with the bundled `tools/ffmpeg.exe` and `tools/mpcenc.exe` encoders into Musepack SV8 at original mastered volume (no dynamic compression) and verifies exact minute/second/millisecond duration before copying files into the game, defaulting to High quality (`44.1 kHz`, `--insane`, ~240 kbps) with selectable Ultra, Standard, and Compact presets. Untrimmed valid `.mpc` files are direct-copied without re-encoding.
 
 - Supports standard Windows installs (`Data/`), Microsoft Store (`Content/Data/`), and extracted Android OBB or `files/` directories (direct `soundpack/`, `music/`, and `text/` without a `Data/` folder).
+- Remembers your Import Queue across app restarts and warns before closing or clearing an unsaved playlist.
 - Import dropped or browsed audio files, folders (with optional `Rock/`, `Electro/`, `Dubstep/`, `Menu/`, and `Outro/` subfolders), or `.zip` mod packs containing `pack_manifest.json`.
 - Assign artists and stations in batches, edit Song Title, Artist, and Station inline across the Import Queue and In-Game Library (`soundpack` and `*.texts`), and flag conflicts with existing game tracks.
-- Trim Outro tracks on a 120-bin PCM waveform with draggable and sweepable bounds, independent Fade In and Fade Out On/Off toggles, and live clip playback.
+- Trim Outro tracks on a 120-bin PCM waveform at `0.01s` resolution with independent Fade In and Fade Out On/Off toggles, Loop playback, and a toggle to hide the Outro editor when not needed.
 - View background `Peak dBFS` and `RMS dBFS` loudness badges on tracks.
-- Audit files with Soundpack Health Check & Orphan Cleaner, switch MOD Profiles (`soundpack` and `*.texts` loadouts), and restore timestamped backups.
+- Toggle Auto backup snapshots on or off, trigger manual backups on demand, restore timestamped snapshots, switch MOD Profiles, or clean issues in Health Check.
 - Export checked Queue or Library tracks as a `.zip` archive or portable folder with `pack_manifest.json`.
-- Unlock ACL and read-only flags on the resolved `soundpack`, `music`, and `text` directories, or run "Make writable copy" (removing `AppxSignature.p7x` and read-only attributes) when Microsoft Store `WindowsApps` blocks direct writes.
+- Unlock ACL and read-only flags on `WindowsApps` and the verified Asphalt 8 package folder silently, or run "Make writable copy" when Microsoft Store blocks direct edits.
 - Use keyboard shortcuts (`?` opens the shortcut list), switch between Dark and Light themes, and install updates from GitHub Releases in standalone builds.
 
 ## Files

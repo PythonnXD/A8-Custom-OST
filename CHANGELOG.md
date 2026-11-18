@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.4.0
+
+### Fixed
+- Removed ffmpeg `loudnorm` compression during audio conversion so songs and outros keep their original mastered volume and dynamics.
+- Verified exact minute, second, and millisecond duration on every encoded or copied `.mpc` file before moving it into the game music folder, and direct-copied valid untrimmed `.mpc` files (including outros) with zero fade or re-encoding.
+- Fixed `.ogg` outro truncation and rounding by decoding full streams through EOF without `-t` cutoffs and setting outro trim sliders to `0.01s` precision.
+- Upgraded `WindowsApps` permission handling to take ownership and grant ACL access on both the `WindowsApps` directory and the verified Asphalt 8 package folder like Spicetify, while running all PowerShell checks silently with hidden windows.
+
+### Added
+- Added an Auto backup toggle saved in preferences alongside manual Backup buttons in the toolbar and Backups modal.
+- Saved the Import Queue across app restarts and added an unsaved-playlist confirmation before closing or clearing.
+- Added an Outro editor toggle in the toolbar and a Loop playback button across both the Radio Deck and Outro Editor.
+- Added smooth dialog animations, press feedback, staggered row motion, and an active playing indicator, renamed `Repair selected` to `Repair` in Health Check, and rewrote in-app labels to read more naturally.
+
 ## v1.3.2
 
 ### Fixed

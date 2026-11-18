@@ -140,71 +140,24 @@ def _iter_drive_roots():
     return [f'{d}:\\' for d in string.ascii_uppercase if os.path.isdir(f'{d}:\\')]
 
 
-def find_asphalt8_paths():
-    """Auto-detects all installed Asphalt 8 directories across Store, XboxGames, Steam, and portable folders."""
-    candidates = []
-    # 1. UWP AppX packages (older & current Microsoft Store versions)
-    try:
-        cmd = [
-            'powershell', '-NoProfile', '-Command',
-            '(Get-AppxPackage *Asphalt* | Where-Object { $_.Name -like "*Asphalt8*" -or $_.Name -like "*Airborne*" }).InstallLocation'
-        ]
-        res = subprocess.run(cmd, capture_output=True, encoding='utf-8', errors='replace', timeout=10)
-        if res.returncode == 0:
-            for line in res.stdout.strip().splitlines():
-                loc = line.strip()
-                if loc:
-                    candidates.append(loc)
-    except Exception:
-        pass
-
-    # 2. Local workspaces / known folders
-    candidates.append(r'D:\UmaToAsphalt8_Mod\Asphalt8_Loose')
-
-    # 3. Steam libraries
-    for lib in _iter_steam_library_paths():
-        common = os.path.join(lib, 'steamapps', 'common')
-        if os.path.isdir(common):
-            candidates.extend(glob.glob(os.path.join(common, '*Asphalt*8*')))
-            candidates.extend(glob.glob(os.path.join(common, '*Asphalt8*')))
-
-    # 4. WindowsApps & XboxGames & common game folders across drives
-    for env_key in ('ProgramFiles', 'ProgramFiles(x86)', 'LOCALAPPDATA'):
-        base = os.environ.get(env_key)
-        if base and os.path.isdir(base):
-            candidates.extend(glob.glob(os.path.join(base, 'WindowsApps', 'GAMELOFTSA.Asphalt8*')))
-            candidates.extend(glob.glob(os.path.join(base, '*Asphalt*8*')))
-
-    for drive in _iter_drive_roots():
-        for pattern in (
-            os.path.join(drive, 'XboxGames', '*Asphalt*8*'),
-            os.path.join(drive, 'WindowsApps', 'GAMELOFTSA.Asphalt8*'),
-            os.path.join(drive, 'Games', '*Asphalt*8*'),
-            os.path.join(drive, 'Games', '*Asphalt8*'),
-            os.path.join(drive, '*Asphalt*8*'),
-            os.path.join(drive, '*Asphalt8*'),
-        ):
-            candidates.extend(glob.glob(pattern))
-
-    found = []
-    seen = set()
-    for c in candidates:
-        if not c or not os.path.isdir(c):
-            continue
-        for variant in (c, os.path.join(c, 'Content')):
-            if is_valid_game_dir(variant):
-                resolved = resolve_game_paths(variant)['base_dir']
-                norm = os.path.normcase(os.path.abspath(resolved))
-                if norm not in seen:
-                    seen.add(norm)
-                    found.append(resolved)
-    return found
+def _subprocess_no_window_flags() -> int:
+    if os.name == 'nt':
+        return getattr(subprocess, 'CREATE_NO_WINDOW', 0x08000000)
+    return 0
 
 
-def find_asphalt8_path() -> Optional[str]:
-    """Auto-detects the Asphalt 8 installation directory."""
-    found = find_asphalt8_paths()
-    return found[0] if found else None
+def _hidden_subprocess_kwargs() -> Dict[str, Any]:
+    """Returns subprocess kwargs that suppress console window popups on Windows."""
+    if os.name != 'nt':
+        return {}
+    si = subprocess.STARTUPINFO()
+    si.dwFlags |= getattr(subprocess, 'STARTF_USESHOWWINDOW', 0x00000001)
+    si.wShowWindow = 0
+    return {
+        'creationflags': _subprocess_no_window_flags(),
+        'startupinfo': si,
+    }
+
 
 def is_user_admin() -> bool:
     """Returns True when running with Administrator privileges (or non-Windows)."""
@@ -224,14 +177,119 @@ def is_windowsapps_path(path: str) -> bool:
     return '\\windowsapps\\' in norm or norm.endswith('\\windowsapps')
 
 
+def find_windowsapps_root(path: str) -> Optional[str]:
+    """Returns the enclosing WindowsApps directory for path, if any."""
+    if not path:
+        return None
+    norm = os.path.normpath(os.path.abspath(path))
+    drive, tail = os.path.splitdrive(norm)
+    parts = [p for p in tail.split(os.sep) if p]
+    for idx, part in enumerate(parts):
+        if part.lower() == 'windowsapps':
+            return os.path.join(drive + os.sep, *parts[:idx + 1]) if drive else os.path.join(os.sep, *parts[:idx + 1])
+    return None
+
+
+def find_windowsapps_package_root(path: str) -> Optional[str]:
+    """Returns the exact Asphalt 8 package folder directly inside WindowsApps, if present."""
+    wa_root = find_windowsapps_root(path)
+    if not wa_root:
+        return None
+    norm = os.path.normpath(os.path.abspath(path))
+    rel = os.path.relpath(norm, wa_root)
+    if not rel or rel == '.' or rel.startswith('..'):
+        return None
+    first_part = rel.split(os.sep)[0]
+    if not first_part:
+        return None
+    return os.path.join(wa_root, first_part)
+
+
 def _ps_quote(value: str) -> str:
     return "'" + str(value).replace("'", "''") + "'"
 
 
-def _subprocess_no_window_flags() -> int:
-    if os.name == 'nt':
-        return getattr(subprocess, 'CREATE_NO_WINDOW', 0x08000000)
-    return 0
+def find_asphalt8_paths():
+    """Auto-detects all installed Asphalt 8 directories across Store, XboxGames, Steam, and portable folders."""
+    candidates = []
+
+    # 1. Local workspaces / known folders
+    candidates.append(r'D:\UmaToAsphalt8_Mod\Asphalt8_Loose')
+
+    # 2. Steam libraries
+    for lib in _iter_steam_library_paths():
+        common = os.path.join(lib, 'steamapps', 'common')
+        if os.path.isdir(common):
+            candidates.extend(glob.glob(os.path.join(common, '*Asphalt*8*')))
+            candidates.extend(glob.glob(os.path.join(common, '*Asphalt8*')))
+
+    # 3. WindowsApps & XboxGames & common game folders across drives
+    for env_key in ('ProgramFiles', 'ProgramFiles(x86)', 'LOCALAPPDATA'):
+        base = os.environ.get(env_key)
+        if base and os.path.isdir(base):
+            candidates.extend(glob.glob(os.path.join(base, 'WindowsApps', 'GAMELOFTSA.Asphalt8*')))
+            candidates.extend(glob.glob(os.path.join(base, '*Asphalt*8*')))
+
+    for drive in _iter_drive_roots():
+        for pattern in (
+            os.path.join(drive, 'XboxGames', '*Asphalt*8*'),
+            os.path.join(drive, 'WindowsApps', 'GAMELOFTSA.Asphalt8*'),
+            os.path.join(drive, 'Games', '*Asphalt*8*'),
+            os.path.join(drive, 'Games', '*Asphalt8*'),
+            os.path.join(drive, '*Asphalt*8*'),
+            os.path.join(drive, '*Asphalt8*'),
+        ):
+            candidates.extend(glob.glob(pattern))
+
+    found = []
+    seen = set()
+
+    def _collect(cands: List[str]) -> None:
+        for c in cands:
+            if not c or not os.path.isdir(c):
+                continue
+            for variant in (c, os.path.join(c, 'Content')):
+                if is_valid_game_dir(variant):
+                    resolved = resolve_game_paths(variant)['base_dir']
+                    norm = os.path.normcase(os.path.abspath(resolved))
+                    if norm not in seen:
+                        seen.add(norm)
+                        found.append(resolved)
+
+    _collect(candidates)
+
+    # 4. UWP AppX fallback (only run silently if filesystem scan found nothing, avoiding PowerShell launch popups)
+    if not found and os.name == 'nt':
+        ps_candidates: List[str] = []
+        try:
+            cmd = [
+                'powershell.exe', '-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command',
+                '(Get-AppxPackage *Asphalt* | Where-Object { $_.Name -like "*Asphalt8*" -or $_.Name -like "*Airborne*" }).InstallLocation'
+            ]
+            res = subprocess.run(
+                cmd,
+                capture_output=True,
+                encoding='utf-8',
+                errors='replace',
+                timeout=10,
+                **_hidden_subprocess_kwargs(),
+            )
+            if res.returncode == 0:
+                for line in res.stdout.strip().splitlines():
+                    loc = line.strip()
+                    if loc:
+                        ps_candidates.append(loc)
+        except Exception:
+            pass
+        _collect(ps_candidates)
+
+    return found
+
+
+def find_asphalt8_path() -> Optional[str]:
+    """Auto-detects the Asphalt 8 installation directory."""
+    found = find_asphalt8_paths()
+    return found[0] if found else None
 
 
 def _clear_readonly(path: str) -> None:
@@ -300,7 +358,7 @@ def _get_current_user_sid() -> Optional[str]:
             encoding='utf-8',
             errors='replace',
             timeout=5,
-            creationflags=_subprocess_no_window_flags(),
+            **_hidden_subprocess_kwargs(),
         )
         if res.returncode == 0 and res.stdout:
             line = res.stdout.strip().splitlines()[0]
@@ -316,15 +374,39 @@ def _unlock_targets(game_dir: str) -> Tuple[List[str], List[str]]:
     abs_dir = os.path.abspath(game_dir)
     paths = resolve_game_paths(abs_dir)
     data_dir = paths['data_dir']
-    root_dirs = [abs_dir]
-    if data_dir and os.path.isdir(data_dir) and os.path.normcase(data_dir) != os.path.normcase(abs_dir):
-        root_dirs.append(data_dir)
+    root_dirs: List[str] = []
+    seen_roots = set()
+
+    def _add_root(candidate: Optional[str]) -> None:
+        if candidate and os.path.isdir(candidate):
+            norm = os.path.normcase(os.path.abspath(candidate))
+            if norm not in seen_roots:
+                seen_roots.add(norm)
+                root_dirs.append(os.path.abspath(candidate))
+
+    if is_windowsapps_path(abs_dir) and is_valid_game_dir(abs_dir):
+        _add_root(find_windowsapps_package_root(abs_dir))
+    _add_root(abs_dir)
+    _add_root(data_dir)
+
     mod_candidates = [
         paths['soundpack_dir'],
         paths['music_dir'],
         paths['text_dir'],
     ]
-    mod_dirs = [d for d in mod_candidates if d and os.path.isdir(d)]
+    if is_windowsapps_path(abs_dir) and is_valid_game_dir(abs_dir):
+        pkg_root = find_windowsapps_package_root(abs_dir)
+        if pkg_root:
+            mod_candidates.insert(0, pkg_root)
+
+    mod_dirs: List[str] = []
+    seen_mods = set()
+    for d in mod_candidates:
+        if d and os.path.isdir(d):
+            norm = os.path.normcase(os.path.abspath(d))
+            if norm not in seen_mods:
+                seen_mods.add(norm)
+                mod_dirs.append(os.path.abspath(d))
     return root_dirs, mod_dirs
 
 
@@ -385,27 +467,41 @@ def build_unlock_ps_command(
     caller_sid: Optional[str] = None,
     log_path: Optional[str] = None,
 ) -> str:
-    """Builds a UTF-16LE Base64-encoded PowerShell unlock command scoped to mod targets."""
+    """Builds a UTF-16LE Base64-encoded PowerShell unlock command scoped to Asphalt 8 mod targets."""
+    if not is_valid_game_dir(game_dir):
+        raise ValueError(f"Selected folder is not a valid Asphalt 8 installation: {game_dir}")
+
     root_dirs, mod_dirs = _unlock_targets(game_dir)
     if not mod_dirs:
         mod_dirs = [os.path.abspath(game_dir)]
 
+    winapps_root = ''
+    if is_windowsapps_path(game_dir):
+        wa = find_windowsapps_root(game_dir)
+        if wa and os.path.isdir(wa):
+            winapps_root = wa
+
     grants = ['*S-1-5-32-544:(OI)(CI)F', '*S-1-5-32-545:(OI)(CI)F']
     dir_grants = ['*S-1-5-32-544:F', '*S-1-5-32-545:F']
+    wa_grants = ['*S-1-5-32-544:(OI)(CI)F', '*S-1-5-32-545:(OI)(CI)RX']
     sids_to_unblock = ['*S-1-5-32-544', '*S-1-5-32-545']
     if caller_sid and caller_sid.startswith('S-1-'):
         grants.append(f'*{caller_sid}:(OI)(CI)F')
         dir_grants.append(f'*{caller_sid}:F')
+        wa_grants.append(f'*{caller_sid}:(OI)(CI)F')
         sids_to_unblock.append(f'*{caller_sid}')
 
     root_arr = ', '.join(_ps_quote(p) for p in root_dirs)
     mod_arr = ', '.join(_ps_quote(p) for p in mod_dirs)
+    wa_lit = _ps_quote(winapps_root)
     grant_args = ' '.join(_ps_quote(g) for g in grants)
     dir_grant_args = ' '.join(_ps_quote(g) for g in dir_grants)
+    wa_grant_args = ' '.join(_ps_quote(g) for g in wa_grants)
     deny_args = ' '.join(_ps_quote(s) for s in sids_to_unblock)
     log_lit = _ps_quote(log_path) if log_path else "''"
 
     script = f"""$ErrorActionPreference = 'Continue'
+$winAppsRoot = {wa_lit}
 $rootDirs = @({root_arr})
 $modDirs = @({mod_arr})
 $logPath = {log_lit}
@@ -430,32 +526,38 @@ function Clear-RoAttr([string]$path, [bool]$recurse) {{
   }}
 }}
 
+if ($winAppsRoot -and (Test-Path -LiteralPath $winAppsRoot)) {{
+  # Spicetify-style non-recursive unlock on WindowsApps parent so Administrators/user can traverse and modify inside the verified Asphalt 8 package
+  & takeown.exe /f $winAppsRoot /a /d y 2>&1 | Out-Null
+  & icacls.exe $winAppsRoot /setowner '*S-1-5-32-544' /c /q 2>&1 | Out-Null
+  & icacls.exe $winAppsRoot /remove:d {deny_args} /c /q 2>&1 | Out-Null
+  $waOut = & icacls.exe $winAppsRoot /grant {wa_grant_args} /c /q 2>&1 | Out-String
+  if ($LASTEXITCODE -ne 0) {{ $logs.Add("icacls WindowsApps ($winAppsRoot) rc=$LASTEXITCODE : $($waOut.Trim())") }}
+}}
+
 foreach ($p in $rootDirs) {{
   if (-not (Test-Path -LiteralPath $p)) {{ continue }}
   Clear-RoAttr $p $false
-  $tOut = & takeown.exe /F $p /A 2>&1 | Out-String
-  if ($LASTEXITCODE -ne 0) {{ $logs.Add("takeown root ($p) rc=$LASTEXITCODE : $($tOut.Trim())") }}
-  & icacls.exe $p /remove:d {deny_args} /C /Q 2>&1 | Out-Null
-  $iOut = & icacls.exe $p /grant {dir_grant_args} /C /Q 2>&1 | Out-String
+  & takeown.exe /f $p /a /d y 2>&1 | Out-Null
+  & icacls.exe $p /setowner '*S-1-5-32-544' /c /q 2>&1 | Out-Null
+  & icacls.exe $p /remove:d {deny_args} /c /q 2>&1 | Out-Null
+  $iOut = & icacls.exe $p /grant {dir_grant_args} /c /q 2>&1 | Out-String
   if ($LASTEXITCODE -ne 0) {{ $logs.Add("icacls root ($p) rc=$LASTEXITCODE : $($iOut.Trim())") }}
 }}
 
 foreach ($p in $modDirs) {{
   if (-not (Test-Path -LiteralPath $p)) {{ continue }}
   Clear-RoAttr $p $true
-  $tOut = & takeown.exe /F $p /A 2>&1 | Out-String
-  if ($LASTEXITCODE -ne 0) {{ $logs.Add("takeown dir ($p) rc=$LASTEXITCODE : $($tOut.Trim())") }}
-  & icacls.exe $p /inheritance:e /Q 2>&1 | Out-Null
-  & icacls.exe $p /remove:d {deny_args} /C /Q 2>&1 | Out-Null
-  & icacls.exe $p /grant {grant_args} /C /Q 2>&1 | Out-Null
-  & takeown.exe /F ($p + '\\*') /A 2>&1 | Out-Null
-  Get-ChildItem -LiteralPath $p -Directory -Recurse -Force -ErrorAction SilentlyContinue | ForEach-Object {{
-    & takeown.exe /F $_.FullName /A 2>&1 | Out-Null
-    & takeown.exe /F ($_.FullName + '\\*') /A 2>&1 | Out-Null
+  & attrib.exe -r -s $p 2>&1 | Out-Null
+  & attrib.exe -r -s ($p + '\\*') /s /d 2>&1 | Out-Null
+  $tOut = & takeown.exe /f $p /a /r /d y 2>&1 | Out-String
+  if ($LASTEXITCODE -ne 0) {{
+    & icacls.exe $p /setowner '*S-1-5-32-544' /t /c /q 2>&1 | Out-Null
+    $logs.Add("takeown tree ($p) rc=$LASTEXITCODE : $($tOut.Trim())")
   }}
-  & icacls.exe $p /inheritance:e /T /C /Q 2>&1 | Out-Null
-  & icacls.exe $p /remove:d {deny_args} /T /C /Q 2>&1 | Out-Null
-  $iOut = & icacls.exe $p /grant {grant_args} /T /C /Q 2>&1 | Out-String
+  & icacls.exe $p /inheritance:e /t /c /q 2>&1 | Out-Null
+  & icacls.exe $p /remove:d {deny_args} /t /c /q 2>&1 | Out-Null
+  $iOut = & icacls.exe $p /grant {grant_args} /t /c /q 2>&1 | Out-String
   if ($LASTEXITCODE -ne 0) {{ $logs.Add("icacls tree ($p) rc=$LASTEXITCODE : $($iOut.Trim())") }}
 }}
 
@@ -564,12 +666,12 @@ def ensure_write_permissions_detailed(game_dir: str, timeout: int = 90) -> Dict[
     try:
         b64_cmd = build_unlock_ps_command(game_dir, caller_sid=caller_sid)
         res = subprocess.run(
-            ['powershell.exe', '-NoProfile', '-WindowStyle', 'Hidden', '-EncodedCommand', b64_cmd],
+            ['powershell.exe', '-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-EncodedCommand', b64_cmd],
             capture_output=True,
             encoding='utf-8',
             errors='replace',
             timeout=timeout,
-            creationflags=_subprocess_no_window_flags(),
+            **_hidden_subprocess_kwargs(),
         )
         for chunk in (res.stdout, res.stderr):
             if chunk and chunk.strip():

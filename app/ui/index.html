@@ -228,12 +228,16 @@
       font-weight: 400;
       text-align: left;
       cursor: pointer;
-      transition: background-color 140ms ease, color 140ms ease;
+      transition: background-color 140ms ease, color 140ms ease, transform 90ms var(--ease);
     }
 
     .nav-item:hover {
       background: var(--raised);
       color: var(--text);
+    }
+
+    .nav-item:active {
+      transform: scale(0.985);
     }
 
     .nav-item.active {
@@ -424,6 +428,12 @@
 
     .banner.visible {
       display: flex;
+      animation: bannerIn 200ms var(--ease) both;
+    }
+
+    @keyframes bannerIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
     .banner.error {
@@ -490,7 +500,7 @@
       font-weight: 500;
       white-space: nowrap;
       cursor: pointer;
-      transition: background-color 140ms ease, border-color 140ms ease, transform 120ms var(--ease);
+      transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, transform 90ms var(--ease);
     }
 
     .btn:hover:not(:disabled) {
@@ -498,7 +508,13 @@
     }
 
     .btn:active:not(:disabled) {
-      transform: translateY(1px);
+      transform: scale(0.97);
+    }
+
+    .btn.is-toggled {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      color: var(--accent-ink);
     }
 
     .btn:disabled {
@@ -674,13 +690,57 @@
       justify-content: center;
       cursor: pointer;
       flex: none;
-      transition: background-color 140ms ease, border-color 140ms ease;
+      transition: background-color 140ms ease, border-color 140ms ease, transform 90ms var(--ease);
+    }
+
+    .deck-play-btn:active {
+      transform: scale(0.94);
     }
 
     .deck-play-btn.active {
       background: var(--accent);
       border-color: var(--accent);
       color: var(--accent-on);
+    }
+
+    .deck-eq {
+      display: inline-flex;
+      align-items: flex-end;
+      gap: 2px;
+      height: 11px;
+      opacity: 0;
+      transition: opacity 150ms ease;
+    }
+
+    .deck-eq.playing {
+      opacity: 1;
+    }
+
+    .deck-eq span {
+      width: 2px;
+      border-radius: 1px;
+      background: var(--accent);
+      height: 4px;
+      transform-origin: bottom;
+    }
+
+    .deck-eq.playing span {
+      animation: eqDance 720ms var(--ease) infinite alternate;
+    }
+
+    .deck-eq.playing span:nth-child(2) {
+      animation-delay: -240ms;
+      animation-duration: 580ms;
+    }
+
+    .deck-eq.playing span:nth-child(3) {
+      animation-delay: -480ms;
+      animation-duration: 640ms;
+    }
+
+    @keyframes eqDance {
+      0% { height: 3px; }
+      100% { height: 11px; }
     }
 
     .deck-info {
@@ -770,11 +830,15 @@
       letter-spacing: 0.03em;
       cursor: pointer;
       white-space: nowrap;
-      transition: background-color 140ms ease, color 140ms ease;
+      transition: background-color 140ms ease, color 140ms ease, transform 90ms var(--ease);
     }
 
     .hud-station:hover {
       color: var(--text);
+    }
+
+    .hud-station:active {
+      transform: scale(0.96);
     }
 
     .hud-station.active {
@@ -919,6 +983,19 @@
     tbody tr {
       border-bottom: 1px solid var(--rule);
       transition: background-color 120ms ease;
+    }
+
+    tbody tr.row-enter {
+      animation: rowRise 210ms var(--ease) var(--row-delay, 0ms) both;
+    }
+
+    @keyframes rowRise {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    body.outro-editor-disabled .col-outro {
+      display: none;
     }
 
     tbody tr:last-child {
@@ -1302,9 +1379,9 @@
       color: var(--muted);
     }
 
-    /* Drop overlay (opaque flat, no blur) */
+    /* Drop overlay (composited fade) */
     .drop-overlay {
-      display: none;
+      display: flex;
       position: fixed;
       inset: 16px;
       z-index: 80;
@@ -1316,26 +1393,41 @@
       flex-direction: column;
       gap: 8px;
       pointer-events: none;
+      opacity: 0;
+      visibility: hidden;
+      transform: scale(0.985);
+      transition: opacity 160ms var(--ease), transform 180ms var(--ease), visibility 0s linear 160ms;
     }
 
     .drop-overlay.visible {
-      display: flex;
+      opacity: 1;
+      visibility: visible;
+      transform: scale(1);
+      transition: opacity 160ms var(--ease), transform 180ms var(--ease), visibility 0s linear 0s;
     }
 
     /* Modal dialogs */
     .scrim {
-      display: none;
+      display: flex;
       position: fixed;
       inset: 0;
       z-index: 90;
       background: var(--scrim);
+      backdrop-filter: blur(6px);
       align-items: center;
       justify-content: center;
       padding: 16px;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 140ms var(--ease), visibility 0s linear 140ms;
     }
 
     .scrim.open {
-      display: flex;
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transition: opacity 200ms var(--ease), visibility 0s linear 0s;
     }
 
     .sheet {
@@ -1348,6 +1440,14 @@
       border: 1px solid var(--control);
       background: var(--surface);
       overflow: hidden;
+      opacity: 0;
+      transform: translateY(10px) scale(0.985);
+      transition: transform 220ms var(--ease), opacity 180ms var(--ease);
+    }
+
+    .scrim.open .sheet {
+      opacity: 1;
+      transform: translateY(0) scale(1);
     }
 
     .sheet-head {
@@ -1852,6 +1952,12 @@
         animation: none !important;
       }
     }
+
+    @media (prefers-reduced-transparency: reduce) {
+      .scrim {
+        backdrop-filter: none;
+      }
+    }
   </style>
 </head>
 <body>
@@ -1912,7 +2018,7 @@
             <span class="source-name">Music sources</span>
             <span id="music-status-chip" class="source-state"><span class="state-dot"></span><span>Waiting</span></span>
           </div>
-          <div id="music-dir-path" class="source-path">Drop audio files, folders, or .zip packs</div>
+          <div id="music-dir-path" class="source-path">Drop songs, folders, or .zip mod packs here</div>
           <div class="source-actions">
             <button id="btn-add-files" class="btn compact" type="button">+ Songs</button>
             <button id="btn-browse-music" class="btn compact" type="button">+ Folder</button>
@@ -1927,7 +2033,7 @@
           <button id="btn-updates" class="nav-item" type="button" title="Check or install app updates">
             <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="m7 10 5 5 5-5" /><path d="M12 15V3" /></svg>
             <span>Updates</span>
-            <span id="app-version-pill" class="nav-count">v1.3.2</span>
+            <span id="app-version-pill" class="nav-count">v1.4.0</span>
           </button>
           <button id="btn-shortcuts" class="btn compact" type="button" title="Keyboard shortcuts (?)">?</button>
         </div>
@@ -1961,11 +2067,22 @@
         <section class="title-row">
           <div class="title-group">
             <h1 id="page-title">Import Queue</h1>
-            <p id="page-sub" class="title-sub">Add songs or folders from anywhere to inspect, trim outros, and patch into Asphalt 8</p>
+            <p id="page-sub" class="title-sub">Queue tracks, pick their radio stations, and adjust optional outro clips before installing</p>
           </div>
           <div class="title-actions">
+            <div class="dock-controls">
+              <label class="switch-label" for="switch-auto-backup" title="Automatically save a backup snapshot before modifying game files">
+                <button id="switch-auto-backup" class="switch-btn" type="button" role="switch" aria-checked="true"></button>
+                <span>Auto backup</span>
+              </label>
+              <button id="btn-manual-backup" class="btn" type="button" title="Save a manual snapshot of your game soundpack and titles now">Backup</button>
+              <label class="switch-label" for="switch-outro-editor" title="Show or hide outro controls in the track list">
+                <button id="switch-outro-editor" class="switch-btn" type="button" role="switch" aria-checked="true"></button>
+                <span>Outro editor</span>
+              </label>
+            </div>
             <div id="dock-import-controls" class="dock-controls">
-              <select id="quality-select" class="input quality-select" aria-label="Audio export quality" title="Output sample rate and Musepack quality">
+              <select id="quality-select" class="input quality-select" aria-label="Audio export quality" title="Musepack encoding preset and sample rate">
                 <option value="high">High (44.1 kHz · ~240 kbps)</option>
                 <option value="ultra">Ultra (44.1 kHz · ~270 kbps)</option>
                 <option value="standard">Standard (32 kHz · ~210 kbps)</option>
@@ -1975,7 +2092,7 @@
                 <button id="switch-keep-stock" class="switch-btn" type="button" role="switch" aria-checked="true"></button>
                 <span>Keep stock</span>
               </label>
-              <div class="segmented" role="group" aria-label="When track exists in game">
+              <div class="segmented" role="group" aria-label="When a song ID already exists">
                 <button id="btn-conflict-overwrite" class="segmented-btn active" type="button">Overwrite</button>
                 <button id="btn-conflict-skip" class="segmented-btn" type="button">Skip</button>
               </div>
@@ -2000,7 +2117,7 @@
         </section>
 
         <!-- Signature Asphalt 8 Radio Monitor -->
-        <section class="radio-deck" aria-label="Asphalt 8 soundtrack deck preview">
+        <section class="radio-deck" aria-label="Soundtrack preview player">
           <div class="deck-track">
             <button id="btn-hud-play" class="deck-play-btn" type="button" aria-label="Play or pause preview">
               <svg id="hud-play-icon" class="icon" viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4" fill="currentColor" stroke="none" /></svg>
@@ -2008,9 +2125,10 @@
             <div class="deck-info">
               <div class="deck-status">
                 <span>NOW PLAYING</span>
-                <span id="hud-mode-text">Main mix</span>
+                <span id="hud-eq" class="deck-eq" aria-hidden="true"><span></span><span></span><span></span></span>
+                <span id="hud-mode-text">Idle</span>
               </div>
-              <div id="hud-song-text" class="deck-song">"Select a Track" - Custom Artist</div>
+              <div id="hud-song-text" class="deck-song">Choose a track to preview</div>
             </div>
           </div>
 
@@ -2021,6 +2139,7 @@
               </div>
             </div>
             <span id="hud-time" class="deck-time">0:00 / 0:00</span>
+            <button id="btn-hud-loop" class="btn compact" type="button" aria-pressed="false" title="Repeat the active song or outro clip">Loop</button>
           </div>
 
           <div class="deck-stations" aria-label="Asphalt 8 in-game station">
@@ -2077,7 +2196,7 @@
             <div id="empty-state" class="empty-state">
               <div id="empty-title" class="empty-title">Drop music files or folders to start</div>
               <div id="empty-desc" class="empty-desc">
-                Add songs from any location on your PC, edit titles or stations, and trim custom outros before patching
+                Add songs or folders from anywhere on your computer, pick their stations, and set up outro clips before installing
               </div>
               <div id="empty-cta-row" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
                 <button id="btn-empty-files" class="btn primary" type="button">Add songs</button>
@@ -2092,15 +2211,15 @@
 
   <div id="drop-overlay" class="drop-overlay">
     <svg class="icon" style="width:28px;height:28px;color:var(--accent);" viewBox="0 0 24 24"><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 20h14" /></svg>
-    <div style="font-size:16px;font-weight:600;">Drop music files, folders, or Asphalt 8 directory</div>
-    <div style="font-size:13px;color:var(--muted);">Adds audio tracks from any location directly to your Import Queue</div>
+    <div style="font-size:16px;font-weight:600;">Drop music files, folders, or your Asphalt 8 folder</div>
+    <div style="font-size:13px;color:var(--muted);">Queues songs right away or opens your game folder</div>
   </div>
 
   <div id="outro-scrim" class="scrim" role="dialog" aria-modal="true" aria-labelledby="outro-sheet-title">
     <div class="sheet">
       <div class="sheet-head">
         <div>
-          <div id="outro-sheet-title" class="sheet-title">Outro Song Editor</div>
+          <div id="outro-sheet-title" class="sheet-title">Outro Editor</div>
           <div id="outro-sheet-sub" style="font-size:12px;color:var(--muted);margin-top:2px;"></div>
         </div>
         <button id="btn-close-outro" class="btn compact ghost" type="button">Close</button>
@@ -2115,24 +2234,27 @@
         </div>
 
         <div id="outro-src-readout" class="sub-filename" style="font-size:12px;color:var(--muted);"></div>
+        <div id="outro-ogg-hint" class="banner visible hidden" style="padding:8px 12px;border-left-color:var(--accent);font-size:12px;">
+          <span>Note: .mp3 or .wav is recommended over .ogg for outros to avoid container padding differences; full-stream decoding and exact length checks are still active.</span>
+        </div>
 
         <div class="outro-timeline-card">
           <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);" class="num">
-            <span id="outro-range-readout">Selected: 0:00 - 0:20</span>
-            <span id="outro-total-readout">Total: 0:00</span>
+            <span id="outro-range-readout">Selected: 0:00.000 - 0:20.000</span>
+            <span id="outro-total-readout">Total: 0:00.000</span>
           </div>
           <div id="outro-wave-wrap" class="outro-wave-wrap" title="Click or drag handles to select outro range">
             <canvas id="outro-wave-canvas" class="outro-wave-canvas" aria-label="Interactive outro audio waveform"></canvas>
           </div>
           <div class="outro-slider-row">
             <label class="outro-slider-label" for="outro-start-num">Start (s)</label>
-            <input id="outro-start-range" class="range-slider" type="range" min="0" max="300" step="0.5" value="0" aria-label="Outro start time slider" />
-            <input id="outro-start-num" class="input num-input" type="number" min="0" step="0.5" value="0" />
+            <input id="outro-start-range" class="range-slider" type="range" min="0" max="300" step="0.01" value="0" aria-label="Outro start time slider" />
+            <input id="outro-start-num" class="input num-input" type="number" min="0" step="0.01" value="0" />
           </div>
           <div class="outro-slider-row">
             <label class="outro-slider-label" for="outro-end-num">End (s)</label>
-            <input id="outro-end-range" class="range-slider" type="range" min="0" max="300" step="0.5" value="20" aria-label="Outro end time slider" />
-            <input id="outro-end-num" class="input num-input" type="number" min="0" step="0.5" value="20" />
+            <input id="outro-end-range" class="range-slider" type="range" min="0" max="300" step="0.01" value="20" aria-label="Outro end time slider" />
+            <input id="outro-end-num" class="input num-input" type="number" min="0" step="0.01" value="20" />
           </div>
           <div class="preset-row">
             <button id="btn-preset-last20" class="btn compact" type="button">Last 20s</button>
@@ -2147,18 +2269,18 @@
             <div class="fade-head">
               <label class="fade-title" for="outro-fade-in">Fade in (seconds)</label>
               <label class="fade-toggle-row" for="switch-outro-fade-in">
-                <span id="lbl-outro-fade-in-state">On</span>
-                <button id="switch-outro-fade-in" class="switch-btn" type="button" role="switch" aria-checked="true" aria-label="Toggle fade in effect"></button>
+                <span id="lbl-outro-fade-in-state">Off</span>
+                <button id="switch-outro-fade-in" class="switch-btn" type="button" role="switch" aria-checked="false" aria-label="Toggle fade in effect"></button>
               </label>
             </div>
-            <input id="outro-fade-in" class="input num-input" style="text-align:left;" type="number" min="0" max="10" step="0.1" value="0.2" />
+            <input id="outro-fade-in" class="input num-input" style="text-align:left;" type="number" min="0" max="10" step="0.1" value="0.3" />
           </div>
           <div class="fade-card">
             <div class="fade-head">
               <label class="fade-title" for="outro-fade-out">Fade out (seconds)</label>
               <label class="fade-toggle-row" for="switch-outro-fade-out">
-                <span id="lbl-outro-fade-out-state">On</span>
-                <button id="switch-outro-fade-out" class="switch-btn" type="button" role="switch" aria-checked="true" aria-label="Toggle fade out effect"></button>
+                <span id="lbl-outro-fade-out-state">Off</span>
+                <button id="switch-outro-fade-out" class="switch-btn" type="button" role="switch" aria-checked="false" aria-label="Toggle fade out effect"></button>
               </label>
             </div>
             <input id="outro-fade-out" class="input num-input" style="text-align:left;" type="number" min="0" max="10" step="0.1" value="1.2" />
@@ -2166,8 +2288,11 @@
         </div>
 
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:4px;">
-          <button id="btn-outro-preview" class="btn" type="button">Preview clip</button>
-          <span id="outro-clip-meta" class="num" style="font-size:12px;color:var(--muted);">Clip: 20.0s</span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <button id="btn-outro-preview" class="btn" type="button">Preview clip</button>
+            <button id="btn-outro-loop" class="btn compact" type="button" aria-pressed="false" title="Loop outro preview playback">Loop</button>
+          </div>
+          <span id="outro-clip-meta" class="num" style="font-size:12px;color:var(--muted);">Clip: 20.00s</span>
         </div>
 
         <div id="outro-error-box" class="banner error hidden">
@@ -2221,11 +2346,12 @@
   <div id="backups-scrim" class="scrim" role="dialog" aria-modal="true" aria-labelledby="backups-sheet-title">
     <div class="sheet">
       <div class="sheet-head">
-        <span id="backups-sheet-title" class="sheet-title">Restore game backup</span>
+        <span id="backups-sheet-title" class="sheet-title">Game Backups</span>
         <button id="btn-close-backups" class="btn compact ghost" type="button">Close</button>
       </div>
       <div id="backups-list" class="sheet-body" style="gap:0;"></div>
       <div class="sheet-footer">
+        <button id="btn-modal-create-backup" class="btn primary" type="button">Create backup</button>
         <button id="btn-refresh-backups" class="btn" type="button">Refresh</button>
       </div>
     </div>
@@ -2235,30 +2361,30 @@
     <div class="sheet wide">
       <div class="sheet-head">
         <div>
-          <span id="health-sheet-title" class="sheet-title">Soundpack Health Check &amp; Orphan Cleaner</span>
-          <div id="health-sheet-sub" style="font-size:12px;color:var(--muted);margin-top:2px;">Inspect soundpack XML, Data/music .mpc files, and language keys</div>
+          <span id="health-sheet-title" class="sheet-title">Health Check &amp; Cleanup</span>
+          <div id="health-sheet-sub" style="font-size:12px;color:var(--muted);margin-top:2px;">Checks soundpack playlists, music files, and song title entries</div>
         </div>
         <button id="btn-close-health" class="btn compact ghost" type="button">Close</button>
       </div>
       <div class="sheet-body">
         <div class="stat-grid">
           <div class="stat-cell"><div class="stat-k">Missing .mpc files</div><div id="hl-missing-mpc" class="stat-v">-</div></div>
-          <div class="stat-cell"><div class="stat-k">Orphan .mpc files</div><div id="hl-orphan-mpc" class="stat-v">-</div></div>
-          <div class="stat-cell"><div class="stat-k">Broken playlist refs / events</div><div id="hl-broken-refs" class="stat-v">-</div></div>
-          <div class="stat-cell"><div class="stat-k">Missing song texts</div><div id="hl-missing-texts" class="stat-v">-</div></div>
+          <div class="stat-cell"><div class="stat-k">Unused .mpc files</div><div id="hl-orphan-mpc" class="stat-v">-</div></div>
+          <div class="stat-cell"><div class="stat-k">Broken playlist refs</div><div id="hl-broken-refs" class="stat-v">-</div></div>
+          <div class="stat-cell"><div class="stat-k">Missing song titles</div><div id="hl-missing-texts" class="stat-v">-</div></div>
         </div>
-        <div id="health-findings-list" class="code-notes" style="max-height:140px;">Run scan on your Asphalt 8 folder to inspect soundtrack integrity.</div>
+        <div id="health-findings-list" class="code-notes" style="max-height:140px;">Run a scan on your Asphalt 8 folder to check soundtrack files.</div>
         <div class="check-stack">
-          <label class="check-option"><input id="chk-fix-texts" type="checkbox" checked /><span>Fill missing STR_SONG_ entries across game .texts localization files</span></label>
-          <label class="check-option"><input id="chk-fix-events" type="checkbox" checked /><span>Remove dangling playlist refs and recreate missing track events</span></label>
-          <label class="check-option"><input id="chk-delete-orphans" type="checkbox" /><span id="lbl-delete-orphans">Delete unreferenced orphan .mpc files in Data/music</span></label>
-          <label class="check-option"><input id="chk-prune-missing" type="checkbox" /><span>Prune sound entries whose .mpc file is missing from Data/music</span></label>
+          <label class="check-option"><input id="chk-fix-texts" type="checkbox" checked /><span>Fill in missing song titles across game language files</span></label>
+          <label class="check-option"><input id="chk-fix-events" type="checkbox" checked /><span>Clean up broken playlist references and missing track events</span></label>
+          <label class="check-option"><input id="chk-delete-orphans" type="checkbox" /><span id="lbl-delete-orphans">Delete unreferenced .mpc files in music</span></label>
+          <label class="check-option"><input id="chk-prune-missing" type="checkbox" /><span>Remove playlist entries whose audio file is missing</span></label>
         </div>
         <div id="health-error-box" class="banner error hidden"><span id="health-error-text"></span></div>
       </div>
       <div class="sheet-footer">
         <button id="btn-health-rescan" class="btn" type="button">Re-scan</button>
-        <button id="btn-health-repair" class="btn primary" type="button">Repair selected</button>
+        <button id="btn-health-repair" class="btn primary" type="button">Repair</button>
       </div>
     </div>
   </div>
@@ -2267,14 +2393,14 @@
     <div class="sheet wide">
       <div class="sheet-head">
         <div>
-          <span id="profiles-sheet-title" class="sheet-title">MOD Profiles (Soundtrack Loadouts)</span>
-          <div style="font-size:12px;color:var(--muted);margin-top:2px;">Save and switch named soundpack + title loadouts with automatic backup</div>
+          <span id="profiles-sheet-title" class="sheet-title">MOD Profiles</span>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;">Save your current soundtrack setup and switch loadouts anytime</div>
         </div>
         <button id="btn-close-profiles" class="btn compact ghost" type="button">Close</button>
       </div>
       <div class="sheet-body">
         <div style="display:flex;gap:8px;align-items:center;">
-          <input id="profile-name-input" class="input" type="text" placeholder="Loadout name (e.g. Stock Vanilla, Anime Rock)" aria-label="New profile name" />
+          <input id="profile-name-input" class="input" type="text" placeholder="Loadout name (for example: Stock, Racing Mix)" aria-label="New profile name" />
           <button id="btn-save-profile" class="btn primary" type="button" style="flex:none;">Save current loadout</button>
         </div>
         <div id="profiles-error-box" class="banner error hidden"><span id="profiles-error-text"></span></div>
@@ -2308,7 +2434,7 @@
           </div>
         </div>
         <div style="font-size:12px;color:var(--muted);line-height:18px;">
-          Exports audio organized into Rock/, Electro/, Dubstep/, Menu/, Outro/ alongside a pack_manifest.json keeping song titles, artists, and Outro trim timings intact when re-imported.
+          Packages songs into Rock, Electro, Dubstep, Menu, and Outro folders with a pack_manifest.json file so titles, artists, and outro timings load back later.
         </div>
         <div id="export-error-box" class="banner error hidden"><span id="export-error-text"></span></div>
       </div>
@@ -2324,7 +2450,7 @@
       <div class="sheet-head">
         <div>
           <span id="update-sheet-title" class="sheet-title">App Updates</span>
-          <div id="update-current-sub" style="font-size:12px;color:var(--muted);margin-top:2px;">Installed v1.3.2</div>
+          <div id="update-current-sub" style="font-size:12px;color:var(--muted);margin-top:2px;">Installed v1.4.0</div>
         </div>
         <button id="btn-close-update" class="btn compact ghost" type="button">Close</button>
       </div>
@@ -2337,7 +2463,7 @@
               <div id="update-remote-meta" class="upd-status-meta"></div>
             </div>
           </div>
-          <span id="upd-version-pill" class="upd-ver-pill">v1.3.2</span>
+          <span id="upd-version-pill" class="upd-ver-pill">v1.4.0</span>
         </div>
 
         <div id="update-error-box" class="banner error hidden"><span id="update-error-text"></span></div>
@@ -2345,7 +2471,7 @@
         <div class="upd-changelog-section">
           <div class="upd-changelog-bar">
             <span id="upd-changelog-heading" class="upd-changelog-label">Changelog</span>
-            <span id="upd-changelog-ver" class="upd-changelog-ver">v1.3.2</span>
+            <span id="upd-changelog-ver" class="upd-changelog-ver">v1.4.0</span>
           </div>
           <div id="update-changelog-list" class="upd-changelog-card"></div>
         </div>
@@ -2357,6 +2483,25 @@
     </div>
   </div>
 
+  <div id="unsaved-scrim" class="scrim" role="dialog" aria-modal="true" aria-labelledby="unsaved-sheet-title">
+    <div class="sheet">
+      <div class="sheet-head">
+        <span id="unsaved-sheet-title" class="sheet-title">Save current playlist?</span>
+        <button id="btn-close-unsaved" class="btn compact ghost" type="button">Close</button>
+      </div>
+      <div class="sheet-body">
+        <div id="unsaved-desc" style="font-size:13px;color:var(--muted);line-height:20px;">
+          You have queued songs that haven't been saved to a Mod Pack or installed yet. Do you want to save your playlist first?
+        </div>
+      </div>
+      <div class="sheet-footer">
+        <button id="btn-unsaved-cancel" class="btn" type="button">Cancel</button>
+        <button id="btn-unsaved-discard" class="btn danger-outline" type="button">Close without saving</button>
+        <button id="btn-unsaved-save" class="btn primary" type="button">Save playlist</button>
+      </div>
+    </div>
+  </div>
+
   <div id="shortcuts-scrim" class="scrim" role="dialog" aria-modal="true" aria-labelledby="shortcuts-sheet-title">
     <div class="sheet">
       <div class="sheet-head">
@@ -2364,13 +2509,13 @@
         <button id="btn-close-shortcuts" class="btn compact ghost" type="button">Close</button>
       </div>
       <div class="sheet-body" style="gap:0;">
-        <div class="shortcut-row"><span>Play / pause focused track</span><span class="kbd-key">Space</span></div>
-        <div class="shortcut-row"><span>Move focus up / down</span><span><span class="kbd-key">Up</span> / <span class="kbd-key">Down</span></span></div>
-        <div class="shortcut-row"><span>Open Outro Song Editor for focused track</span><span class="kbd-key">Enter</span></div>
-        <div class="shortcut-row"><span>Focus track search box</span><span class="kbd-key">Ctrl + F</span></div>
-        <div class="shortcut-row"><span>Save edited Library metadata &amp; stations</span><span class="kbd-key">Ctrl + S</span></div>
-        <div class="shortcut-row"><span>Toggle select all visible tracks</span><span class="kbd-key">Ctrl + A</span></div>
-        <div class="shortcut-row"><span>Close active modal or dialog</span><span class="kbd-key">Esc</span></div>
+        <div class="shortcut-row"><span>Play / pause active track</span><span class="kbd-key">Space</span></div>
+        <div class="shortcut-row"><span>Move up / down in list</span><span><span class="kbd-key">Up</span> / <span class="kbd-key">Down</span></span></div>
+        <div class="shortcut-row"><span>Open Outro Editor for selected track</span><span class="kbd-key">Enter</span></div>
+        <div class="shortcut-row"><span>Search tracks</span><span class="kbd-key">Ctrl + F</span></div>
+        <div class="shortcut-row"><span>Save edited Library titles &amp; stations</span><span class="kbd-key">Ctrl + S</span></div>
+        <div class="shortcut-row"><span>Select or unselect all visible tracks</span><span class="kbd-key">Ctrl + A</span></div>
+        <div class="shortcut-row"><span>Close active dialog</span><span class="kbd-key">Esc</span></div>
         <div class="shortcut-row"><span>Show keyboard shortcuts</span><span class="kbd-key">?</span></div>
       </div>
     </div>
@@ -2387,7 +2532,7 @@
       const state = {
         view: 'import',
         theme: 'dark',
-        appVersion: '1.3.2',
+        appVersion: '1.4.0',
         isFrozen: false,
         gameDir: '',
         gameValid: false,
@@ -2406,6 +2551,11 @@
         searchQuery: '',
         keepOriginal: true,
         onConflict: 'overwrite',
+        autoBackup: true,
+        outroEditorEnabled: true,
+        loopPlayback: false,
+        playlistDirty: false,
+        unsavedContext: null,
         focusedUid: null,
         playingUid: null,
         playingMode: 'main',
@@ -2426,9 +2576,9 @@
         totalDur: 0,
         startSec: 0,
         endSec: 20,
-        fadeInEnabled: true,
-        fadeOutEnabled: true,
-        fadeIn: 0.2,
+        fadeInEnabled: false,
+        fadeOutEnabled: false,
+        fadeIn: 0.3,
         fadeOut: 1.2,
         busy: false,
         peaks: [],
@@ -2460,6 +2610,101 @@
 
       const $ = (id) => document.getElementById(id);
       const audioEl = $('audio-player');
+      const LOCAL_QUEUE_STORAGE_KEY = 'a8_custom_ost_saved_queue_v1';
+      let queueSaveTimer = null;
+
+      function buildQueueSnapshot() {
+        return {
+          tracks: state.importTracks.map((t) => ({
+            uid: t.uid,
+            category: t.category,
+            base_id: t.base_id,
+            title: t.title,
+            artist: t.artist,
+            src_path: t.src_path,
+            src_name: t.src_name,
+            main_file: t.main_file,
+            has_outro: !!t.has_outro,
+            outro_id: t.outro_id || null,
+            outro_file: t.outro_file || null,
+            outro_src_path: t.outro_src_path || null,
+            outro_src_name: t.outro_src_name || null,
+            outro_mode: t.outro_mode || 'trim',
+            outro_start: t.outro_start != null ? t.outro_start : null,
+            outro_end: t.outro_end != null ? t.outro_end : null,
+            outro_fade_in: t.outro_fade_in != null ? Number(t.outro_fade_in) : 0.0,
+            outro_fade_out: t.outro_fade_out != null ? Number(t.outro_fade_out) : 0.0,
+            outro_fade_in_enabled: !!t.outro_fade_in_enabled,
+            outro_fade_out_enabled: !!t.outro_fade_out_enabled,
+            conflict: !!t.conflict,
+            selected: t.selected !== false,
+          })),
+          music_dir: state.musicDir || '',
+          music_sources: (state.musicSources || []).slice(),
+          keep_original: !!state.keepOriginal,
+          on_conflict: state.onConflict === 'skip' ? 'skip' : 'overwrite',
+          playlist_dirty: !!state.playlistDirty && state.importTracks.length > 0,
+        };
+      }
+
+      async function flushQueueState() {
+        if (queueSaveTimer) {
+          clearTimeout(queueSaveTimer);
+          queueSaveTimer = null;
+        }
+        const snap = buildQueueSnapshot();
+        try { localStorage.setItem(LOCAL_QUEUE_STORAGE_KEY, JSON.stringify(snap)); } catch (_) {}
+        if (hasBridge()) {
+          await callApi('save_queue_state', snap);
+        }
+      }
+
+      function persistQueueState(markDirty) {
+        if (markDirty === true) {
+          state.playlistDirty = state.importTracks.length > 0;
+        } else if (markDirty === false) {
+          state.playlistDirty = false;
+        }
+        const snap = buildQueueSnapshot();
+        try { localStorage.setItem(LOCAL_QUEUE_STORAGE_KEY, JSON.stringify(snap)); } catch (_) {}
+        if (hasBridge() && markDirty !== undefined) {
+          callApi('set_unsaved_playlist_state', state.playlistDirty);
+        }
+        if (queueSaveTimer) clearTimeout(queueSaveTimer);
+        queueSaveTimer = setTimeout(() => {
+          queueSaveTimer = null;
+          if (hasBridge()) callApi('save_queue_state', buildQueueSnapshot());
+        }, 160);
+      }
+
+      function syncLoopControlsUI() {
+        const on = !!state.loopPlayback;
+        audioEl.loop = on;
+        for (const id of ['btn-hud-loop', 'btn-outro-loop']) {
+          const btn = $(id);
+          if (!btn) continue;
+          btn.classList.toggle('is-toggled', on);
+          btn.setAttribute('aria-pressed', String(on));
+          btn.textContent = on ? 'Loop: On' : 'Loop';
+        }
+      }
+
+      function toggleLoopPlayback() {
+        state.loopPlayback = !state.loopPlayback;
+        syncLoopControlsUI();
+        if (hasBridge()) callApi('set_loop_playback', state.loopPlayback);
+      }
+
+      function syncPreferenceControlsUI() {
+        $('switch-auto-backup').setAttribute('aria-checked', String(!!state.autoBackup));
+        $('switch-outro-editor').setAttribute('aria-checked', String(!!state.outroEditorEnabled));
+        $('switch-keep-stock').setAttribute('aria-checked', String(!!state.keepOriginal));
+        $('btn-conflict-overwrite').classList.toggle('active', state.onConflict !== 'skip');
+        $('btn-conflict-skip').classList.toggle('active', state.onConflict === 'skip');
+        document.body.classList.toggle('outro-editor-disabled', !state.outroEditorEnabled);
+        $('btn-manual-backup').disabled = !state.gameValid;
+        if ($('btn-modal-create-backup')) $('btn-modal-create-backup').disabled = !state.gameValid;
+      }
 
       function hasBridge() {
         return !!(window.pywebview && window.pywebview.api);
@@ -2480,6 +2725,15 @@
         const rem = s % 60;
         const secStr = rem < 10 ? '0' + String(rem) : String(rem);
         return `${mins}:${secStr}`;
+      }
+
+      function formatExactClock(seconds) {
+        const totalMs = Math.max(0, Math.round((Number(seconds) || 0) * 1000));
+        const mins = Math.floor(totalMs / 60000);
+        const remMs = totalMs % 60000;
+        const secs = Math.floor(remMs / 1000);
+        const ms = remMs % 1000;
+        return `${mins}:${String(secs).padStart(2, '0')}.${String(ms).padStart(3, '0')}`;
       }
 
       function showBanner(msg, isError) {
@@ -2552,7 +2806,7 @@
         const peakTxt = info.peak_db != null ? ` ${Number(info.peak_db).toFixed(1)}dB` : '';
         chipEl.textContent = `${badge}${peakTxt}`;
         const rmsTxt = info.rms_db != null ? ` · RMS ${Number(info.rms_db).toFixed(1)} dBFS` : '';
-        chipEl.title = `Peak ${info.peak_db} dBFS${rmsTxt} — Auto-loudnorm (-14 LUFS) runs on install`;
+        chipEl.title = `Peak ${info.peak_db} dBFS${rmsTxt} · Original track volume preserved on install`;
       }
 
       function generateFallbackPeaks(seedText, count = 120) {
@@ -2745,10 +2999,10 @@
           const selected = state.importTracks.filter((t) => t.selected);
           const conflicts = selected.filter((t) => t.conflict).length;
           if (total === 0) {
-            $('page-sub').textContent = 'Add songs, folders, or .zip mod packs from anywhere to inspect, trim outros, and patch into Asphalt 8';
+            $('page-sub').textContent = 'Queue tracks or folders, pick radio stations, and configure optional outro clips';
           } else {
             const parts = [`${selected.length} of ${total} selected`];
-            if (conflicts > 0) parts.push(`${conflicts} existing in game`);
+            if (conflicts > 0) parts.push(`${conflicts} already in game`);
             $('page-sub').textContent = parts.join(' \u00b7 ');
           }
           const installCount = state.onConflict === 'skip' ? selected.length - conflicts : selected.length;
@@ -2761,8 +3015,8 @@
           const selLib = state.libraryTracks.filter((t) => t.selected).length;
           const dirty = state.dirtyLibraryIds.size;
           $('page-sub').textContent = state.gameValid
-            ? `${state.libraryTracks.length} custom tracks in soundpack \u00b7 ${dirty} modified`
-            : 'Select an Asphalt 8 folder to manage installed songs';
+            ? `${state.libraryTracks.length} tracks in soundpack \u00b7 ${dirty} edited`
+            : 'Choose an Asphalt 8 folder to manage installed songs';
           $('btn-remove-label').textContent = `Remove (${selLib})`;
           $('btn-remove-selected').disabled = !state.gameValid || selLib === 0;
           $('btn-save-label').textContent = `Save edits (${dirty})`;
@@ -2784,6 +3038,7 @@
 
       function renderWorkspace() {
         updateSourceUI();
+        syncPreferenceControlsUI();
         renderCategoryTabs();
         updateTitleAndActions();
 
@@ -2796,18 +3051,18 @@
           tbody.innerHTML = '';
           empty.classList.remove('hidden');
           if (total > 0) {
-            $('empty-title').textContent = 'No tracks match your filter';
-            $('empty-desc').textContent = 'Clear the search box or switch back to All stations to view every track.';
+            $('empty-title').textContent = 'No matching tracks';
+            $('empty-desc').textContent = 'Clear the search box or switch back to All stations to see all queued tracks.';
             $('empty-cta-row').classList.add('hidden');
           } else if (state.view === 'import') {
             $('empty-title').textContent = 'Drop music files or folders to start';
-            $('empty-desc').textContent = 'Add songs from any location on your PC, edit titles or stations, and trim custom outros before patching';
+            $('empty-desc').textContent = 'Add songs or folders from anywhere on your computer, pick their stations, and set up outro clips before installing';
             $('empty-cta-row').classList.remove('hidden');
           } else {
             $('empty-title').textContent = state.gameValid ? 'No songs found in soundpack' : 'Select an Asphalt 8 folder first';
             $('empty-desc').textContent = state.gameValid
               ? 'No station music entries were found inside the soundpack file.'
-              : 'Browse to your Asphalt 8 game folder in the left sidebar to inspect and edit installed tracks.';
+              : 'Choose your Asphalt 8 folder in the left sidebar to inspect and edit installed tracks.';
             $('empty-cta-row').classList.add('hidden');
           }
           $('chk-header-all').checked = false;
@@ -2827,6 +3082,10 @@
         filtered.forEach((track, idx) => {
           const tr = document.createElement('tr');
           tr.dataset.uid = track.uid;
+          if (idx < 14) {
+            tr.style.setProperty('--row-delay', `${idx * 18}ms`);
+            tr.classList.add('row-enter');
+          }
           const playingMain = state.isPlaying && state.playingUid === track.uid && state.playingMode === 'main';
           const playingOutro = state.isPlaying && state.playingUid === track.uid && state.playingMode === 'outro';
           if (track.selected) tr.classList.add('is-selected');
@@ -2843,6 +3102,7 @@
             track.selected = chk.checked;
             tr.classList.toggle('is-selected', track.selected);
             updateTitleAndActions();
+            if (state.view === 'import') persistQueueState();
             const curFiltered = getFilteredTracks();
             const curChecked = curFiltered.filter((x) => x.selected).length;
             headerChk.checked = curFiltered.length > 0 && curChecked === curFiltered.length;
@@ -2884,6 +3144,8 @@
               titleInp.classList.add('dirty');
               state.dirtyLibraryIds.add(track.base_id);
               updateTitleAndActions();
+            } else {
+              persistQueueState(true);
             }
             updateHudPreview(track);
           });
@@ -2922,6 +3184,8 @@
               artistInp.classList.add('dirty');
               state.dirtyLibraryIds.add(track.base_id);
               updateTitleAndActions();
+            } else {
+              persistQueueState(true);
             }
             updateHudPreview(track);
           });
@@ -2945,6 +3209,8 @@
               track._dirty = true;
               state.dirtyLibraryIds.add(track.base_id);
               updateTitleAndActions();
+            } else {
+              persistQueueState(true);
             }
             updateHudPreview(track);
             renderCategoryTabs();
@@ -3030,9 +3296,9 @@
           : ((track.outro_fade_in || 0) > 0);
         const trackFoEnabled = track.outro_fade_out_enabled != null
           ? !!track.outro_fade_out_enabled
-          : (track.outro_fade_out == null || Number(track.outro_fade_out) > 0);
+          : ((track.outro_fade_out || 0) > 0);
         const effFadeIn = trackFiEnabled ? Number(track.outro_fade_in || 0) : 0;
-        const effFadeOut = trackFoEnabled ? (track.outro_fade_out != null ? Number(track.outro_fade_out) : 1.2) : 0;
+        const effFadeOut = trackFoEnabled ? Number(track.outro_fade_out || 0) : 0;
         const isCutOutro = (
           mode === 'outro'
           && state.view === 'import'
@@ -3041,8 +3307,7 @@
             track.outro_start != null
             || track.outro_end != null
             || effFadeIn > 0
-            || !trackFoEnabled
-            || (track.outro_fade_out != null && Number(track.outro_fade_out) === 0)
+            || effFadeOut > 0
           )
         );
         const targetPath = mode === 'outro' ? (track.outro_src_path || track.outro_path) : (track.src_path || track.main_path);
@@ -3102,6 +3367,7 @@
           : '<polygon points="6 4 20 12 6 20 6 4" fill="currentColor" stroke="none"/>';
         $('hud-play-icon').innerHTML = icon;
         $('btn-hud-play').classList.toggle('active', state.isPlaying);
+        if ($('hud-eq')) $('hud-eq').classList.toggle('playing', state.isPlaying);
         const rows = $('track-tbody').children;
         const filtered = getFilteredTracks();
         for (let i = 0; i < rows.length; i++) {
@@ -3193,6 +3459,7 @@
           state.musicSources = (res.sources || []).slice();
           if (!state.musicSources.length && state.musicDir) state.musicSources = [state.musicDir];
         }
+        persistQueueState(true);
         triggerBackgroundAudioAnalysis(state.importTracks);
       }
 
@@ -3289,30 +3556,38 @@
         ctx.restore();
       }
 
-      function syncOutroTimelineUI() {
-        const dur = Math.max(1, Number(outroModalState.totalDur) || 180);
-        const start = Math.max(0, Math.min(dur - 0.5, Number(outroModalState.startSec) || 0));
-        const end = Math.max(start + 0.5, Math.min(dur, Number(outroModalState.endSec) || dur));
-        outroModalState.startSec = Math.round(start * 10) / 10;
-        outroModalState.endSec = Math.round(end * 10) / 10;
+      function updateOutroOggHint(filePath) {
+        const hint = $('outro-ogg-hint');
+        if (!hint) return;
+        const isOgg = String(filePath || '').trim().toLowerCase().endsWith('.ogg');
+        hint.classList.toggle('hidden', !isOgg);
+      }
 
-        $('outro-start-range').max = String(Math.ceil(dur * 10) / 10);
-        $('outro-end-range').max = String(Math.ceil(dur * 10) / 10);
+      function syncOutroTimelineUI() {
+        const dur = Math.max(0.5, Number(outroModalState.totalDur) || 180);
+        const start = Math.max(0, Math.min(dur - 0.1, Number(outroModalState.startSec) || 0));
+        const end = Math.max(start + 0.1, Math.min(dur, Number(outroModalState.endSec) || dur));
+        outroModalState.startSec = Math.round(start * 100) / 100;
+        outroModalState.endSec = Math.round(end * 100) / 100;
+
+        $('outro-start-range').max = String(Math.ceil(dur * 100) / 100);
+        $('outro-end-range').max = String(Math.ceil(dur * 100) / 100);
         $('outro-start-range').value = String(outroModalState.startSec);
         $('outro-start-num').value = String(outroModalState.startSec);
         $('outro-end-range').value = String(outroModalState.endSec);
         $('outro-end-num').value = String(outroModalState.endSec);
 
-        $('outro-range-readout').textContent = `Selected: ${formatClock(outroModalState.startSec)} - ${formatClock(outroModalState.endSec)}`;
-        $('outro-total-readout').textContent = `Total: ${formatClock(dur)}`;
-        const clipLen = Math.max(0.5, outroModalState.endSec - outroModalState.startSec);
+        $('outro-range-readout').textContent = `Selected: ${formatExactClock(outroModalState.startSec)} - ${formatExactClock(outroModalState.endSec)}`;
+        $('outro-total-readout').textContent = `Total: ${formatExactClock(dur)}`;
+        const clipLen = Math.max(0.1, outroModalState.endSec - outroModalState.startSec);
         const fiText = outroModalState.fadeInEnabled ? `Fade in ${getEffectiveFadeIn().toFixed(1)}s` : 'Fade in Off';
         const foText = outroModalState.fadeOutEnabled ? `Fade out ${getEffectiveFadeOut().toFixed(1)}s` : 'Fade out Off';
-        $('outro-clip-meta').textContent = `Clip: ${clipLen.toFixed(1)}s \u00b7 ${fiText} \u00b7 ${foText}`;
+        $('outro-clip-meta').textContent = `Clip: ${clipLen.toFixed(2)}s \u00b7 ${fiText} \u00b7 ${foText}`;
         drawOutroWaveform();
       }
 
       async function loadOutroSourceDuration(filePath) {
+        updateOutroOggHint(filePath);
         if (!filePath || !hasBridge()) {
           outroModalState.totalDur = 180;
           outroModalState.peaks = generateFallbackPeaks(filePath || outroModalState.srcName || 'demo', 120);
@@ -3328,7 +3603,7 @@
       }
 
       async function openOutroEditor(track) {
-        if (!track) return;
+        if (!track || !state.outroEditorEnabled) return;
         $('outro-error-box').classList.add('hidden');
         outroModalState.track = track;
         outroModalState.busy = false;
@@ -3353,6 +3628,7 @@
         $('btn-outro-mode-file').classList.toggle('active', outroModalState.mode === 'file');
         $('btn-outro-pick-file').classList.toggle('hidden', outroModalState.mode !== 'file');
         $('outro-src-readout').textContent = outroModalState.srcPath || 'Demo track audio';
+        updateOutroOggHint(outroModalState.srcPath);
         $('btn-outro-remove').classList.toggle('hidden', !track.has_outro);
         $('btn-outro-save').textContent = state.view === 'library' ? 'Save outro to game' : 'Apply outro';
         $('btn-outro-save').disabled = false;
@@ -3363,8 +3639,8 @@
         if (track.outro_start != null && track.outro_end != null) {
           outroModalState.startSec = Number(track.outro_start);
           outroModalState.endSec = Number(track.outro_end);
-          const fiRaw = track.outro_fade_in != null ? Number(track.outro_fade_in) : 0.2;
-          const foRaw = track.outro_fade_out != null ? Number(track.outro_fade_out) : 1.2;
+          const fiRaw = track.outro_fade_in != null ? Number(track.outro_fade_in) : 0.0;
+          const foRaw = track.outro_fade_out != null ? Number(track.outro_fade_out) : 0.0;
           outroModalState.fadeInEnabled = track.outro_fade_in_enabled != null ? !!track.outro_fade_in_enabled : fiRaw > 0;
           outroModalState.fadeOutEnabled = track.outro_fade_out_enabled != null ? !!track.outro_fade_out_enabled : foRaw > 0;
           outroModalState.fadeIn = outroModalState.fadeInEnabled ? fiRaw : (fiRaw > 0 ? fiRaw : 0.3);
@@ -3373,16 +3649,16 @@
           outroModalState.startSec = 0;
           outroModalState.endSec = dur;
           const fiRaw = track.outro_fade_in != null ? Number(track.outro_fade_in) : 0.0;
-          const foRaw = track.outro_fade_out != null ? Number(track.outro_fade_out) : 0.2;
+          const foRaw = track.outro_fade_out != null ? Number(track.outro_fade_out) : 0.0;
           outroModalState.fadeInEnabled = track.outro_fade_in_enabled != null ? !!track.outro_fade_in_enabled : fiRaw > 0;
           outroModalState.fadeOutEnabled = track.outro_fade_out_enabled != null ? !!track.outro_fade_out_enabled : foRaw > 0;
           outroModalState.fadeIn = outroModalState.fadeInEnabled ? fiRaw : (fiRaw > 0 ? fiRaw : 0.3);
-          outroModalState.fadeOut = outroModalState.fadeOutEnabled ? foRaw : (foRaw > 0 ? foRaw : 0.2);
+          outroModalState.fadeOut = outroModalState.fadeOutEnabled ? foRaw : (foRaw > 0 ? foRaw : 1.2);
         } else {
-          outroModalState.startSec = Math.max(0, Math.floor((dur - 20) * 10) / 10);
-          outroModalState.endSec = Math.round(dur * 10) / 10;
-          outroModalState.fadeInEnabled = track.outro_fade_in_enabled != null ? !!track.outro_fade_in_enabled : true;
-          outroModalState.fadeOutEnabled = track.outro_fade_out_enabled != null ? !!track.outro_fade_out_enabled : true;
+          outroModalState.startSec = Math.max(0, Math.round((dur - 20) * 100) / 100);
+          outroModalState.endSec = Math.round(dur * 100) / 100;
+          outroModalState.fadeInEnabled = track.outro_fade_in_enabled != null ? !!track.outro_fade_in_enabled : false;
+          outroModalState.fadeOutEnabled = track.outro_fade_out_enabled != null ? !!track.outro_fade_out_enabled : false;
           outroModalState.fadeIn = track.outro_fade_in > 0 ? Number(track.outro_fade_in) : 0.3;
           outroModalState.fadeOut = track.outro_fade_out > 0 ? Number(track.outro_fade_out) : 1.2;
         }
@@ -3409,10 +3685,10 @@
           outroModalState.srcName = track.src_name || track.main_file || 'Main track';
           $('outro-src-readout').textContent = outroModalState.srcPath || 'Main track';
           const dur = await loadOutroSourceDuration(outroModalState.srcPath);
-          outroModalState.startSec = Math.max(0, Math.floor((dur - 20) * 10) / 10);
-          outroModalState.endSec = Math.round(dur * 10) / 10;
-          outroModalState.fadeInEnabled = true;
-          outroModalState.fadeOutEnabled = true;
+          outroModalState.startSec = Math.max(0, Math.round((dur - 20) * 100) / 100);
+          outroModalState.endSec = Math.round(dur * 100) / 100;
+          outroModalState.fadeInEnabled = false;
+          outroModalState.fadeOutEnabled = false;
           outroModalState.fadeIn = 0.3;
           outroModalState.fadeOut = 1.2;
           syncOutroFadeControlsUI();
@@ -3428,9 +3704,9 @@
               outroModalState.startSec = 0;
               outroModalState.endSec = outroModalState.totalDur;
               outroModalState.fadeInEnabled = false;
-              outroModalState.fadeOutEnabled = true;
+              outroModalState.fadeOutEnabled = false;
               outroModalState.fadeIn = 0.3;
-              outroModalState.fadeOut = 0.2;
+              outroModalState.fadeOut = 1.2;
               $('outro-src-readout').textContent = outroModalState.srcPath;
               syncOutroFadeControlsUI();
               syncOutroTimelineUI();
@@ -3569,15 +3845,117 @@
         }
       });
 
+      async function runManualBackup() {
+        hideBanner();
+        if (!state.gameValid) {
+          showBanner('Select your Asphalt 8 folder first before creating a backup.', true);
+          return;
+        }
+        const btns = [$('btn-manual-backup'), $('btn-modal-create-backup')].filter(Boolean);
+        for (const b of btns) { b.disabled = true; }
+        if ($('btn-manual-backup')) $('btn-manual-backup').textContent = 'Backing up...';
+        try {
+          const res = await callApi('create_manual_backup', state.gameDir);
+          if (!res || !res.ok) {
+            showBanner((res && res.error) || 'Could not create backup.', true);
+            return;
+          }
+          if (typeof res.backups_count === 'number') {
+            $('backups-count').textContent = res.backups_count;
+          } else {
+            await refreshBackupsCount();
+          }
+          showBanner(`Backup saved to ${res.backup_dir}.`, false);
+          if ($('backups-scrim').classList.contains('open')) {
+            await openBackupsModal();
+          }
+        } finally {
+          if ($('btn-manual-backup')) $('btn-manual-backup').textContent = 'Backup';
+          syncPreferenceControlsUI();
+        }
+      }
+
+      function clearQueueConfirmed() {
+        state.importTracks = [];
+        state.musicDir = '';
+        state.musicSources = [];
+        persistQueueState(false);
+        flushQueueState();
+        renderWorkspace();
+      }
+
+      function openUnsavedModal(context) {
+        state.unsavedContext = context || 'close';
+        const isClose = state.unsavedContext === 'close';
+        $('unsaved-sheet-title').textContent = isClose ? 'Save playlist before closing?' : 'Save playlist before clearing?';
+        $('unsaved-desc').textContent = isClose
+          ? 'Your Import Queue has tracks that have not been saved to a Mod Pack or installed yet. Do you want to save them before closing?'
+          : 'Your Import Queue has tracks that have not been saved to a Mod Pack or installed yet. Do you want to save them before clearing the list?';
+        $('btn-unsaved-discard').textContent = isClose ? 'Close without saving' : 'Clear queue';
+        $('unsaved-scrim').classList.add('open');
+      }
+
+      window.__onConfirmUnsavedClose = () => {
+        if (!state.playlistDirty || !state.importTracks.length) {
+          callApi('force_close_window');
+          return;
+        }
+        openUnsavedModal('close');
+      };
+
+      $('switch-auto-backup').addEventListener('click', () => {
+        state.autoBackup = !state.autoBackup;
+        syncPreferenceControlsUI();
+        if (hasBridge()) callApi('set_auto_backup', state.autoBackup);
+      });
+
+      $('switch-outro-editor').addEventListener('click', () => {
+        state.outroEditorEnabled = !state.outroEditorEnabled;
+        syncPreferenceControlsUI();
+        if (!state.outroEditorEnabled && $('outro-scrim').classList.contains('open')) {
+          closeOutroEditor();
+        }
+        if (hasBridge()) callApi('set_outro_editor_enabled', state.outroEditorEnabled);
+      });
+
+      $('btn-manual-backup').addEventListener('click', runManualBackup);
+      $('btn-hud-loop').addEventListener('click', toggleLoopPlayback);
+      if ($('btn-outro-loop')) $('btn-outro-loop').addEventListener('click', toggleLoopPlayback);
+
+      $('btn-close-unsaved').addEventListener('click', () => $('unsaved-scrim').classList.remove('open'));
+      $('btn-unsaved-cancel').addEventListener('click', () => $('unsaved-scrim').classList.remove('open'));
+      $('btn-unsaved-discard').addEventListener('click', () => {
+        const ctx = state.unsavedContext;
+        $('unsaved-scrim').classList.remove('open');
+        state.unsavedContext = null;
+        if (ctx === 'clear') {
+          clearQueueConfirmed();
+        } else {
+          callApi('force_close_window');
+        }
+      });
+      $('btn-unsaved-save').addEventListener('click', () => {
+        $('unsaved-scrim').classList.remove('open');
+        state.unsavedContext = null;
+        if (state.view !== 'import') switchNav('import');
+        const list = getCurrentList();
+        if (list.length > 0 && list.filter((t) => t.selected).length === 0) {
+          for (const t of list) t.selected = true;
+          renderWorkspace();
+        }
+        openExportModal();
+      });
+
       $('btn-browse-music').addEventListener('click', () => loadMusicFolder(null, state.importTracks.length > 0));
       $('btn-empty-browse').addEventListener('click', () => loadMusicFolder(null, false));
       $('btn-add-files').addEventListener('click', () => addMusicFiles(state.importTracks.length > 0));
       $('btn-empty-files').addEventListener('click', () => addMusicFiles(state.importTracks.length > 0));
       $('btn-clear-music').addEventListener('click', () => {
-        state.importTracks = [];
-        state.musicDir = '';
-        state.musicSources = [];
-        renderWorkspace();
+        if (state.playlistDirty && state.importTracks.length > 0) {
+          openUnsavedModal('clear');
+          return;
+        }
+        clearQueueConfirmed();
       });
       $('btn-rescan-music').addEventListener('click', async () => {
         const srcs = state.musicSources && state.musicSources.length
@@ -3615,9 +3993,9 @@
       function waveClientXToSec(clientX) {
         const canvas = $('outro-wave-canvas');
         const rect = canvas.getBoundingClientRect();
-        const dur = Math.max(1, Number(outroModalState.totalDur) || 180);
+        const dur = Math.max(0.5, Number(outroModalState.totalDur) || 180);
         const frac = Math.max(0, Math.min(1, (clientX - rect.left) / Math.max(1, rect.width)));
-        return Math.round(frac * dur * 10) / 10;
+        return Math.round(frac * dur * 100) / 100;
       }
 
       $('outro-wave-canvas').addEventListener('pointerdown', (e) => {
@@ -3733,14 +4111,14 @@
 
       $('btn-preset-last20').addEventListener('click', () => {
         const d = outroModalState.totalDur || 180;
-        outroModalState.startSec = Math.max(0, Math.floor((d - 20) * 10) / 10);
-        outroModalState.endSec = Math.round(d * 10) / 10;
+        outroModalState.startSec = Math.max(0, Math.round((d - 20) * 100) / 100);
+        outroModalState.endSec = Math.round(d * 100) / 100;
         syncOutroTimelineUI();
       });
       $('btn-preset-last30').addEventListener('click', () => {
         const d = outroModalState.totalDur || 180;
-        outroModalState.startSec = Math.max(0, Math.floor((d - 30) * 10) / 10);
-        outroModalState.endSec = Math.round(d * 10) / 10;
+        outroModalState.startSec = Math.max(0, Math.round((d - 30) * 100) / 100);
+        outroModalState.endSec = Math.round(d * 100) / 100;
         syncOutroTimelineUI();
       });
       $('btn-preset-first25').addEventListener('click', () => {
@@ -3796,10 +4174,10 @@
           const effFadeIn = getEffectiveFadeIn();
           const effFadeOut = getEffectiveFadeOut();
           const isFullFile = outroModalState.mode === 'file'
-            && outroModalState.startSec <= 0.1
-            && Math.abs(outroModalState.endSec - dur) < 0.2
-            && effFadeIn <= 0.05
-            && effFadeOut > 0;
+            && outroModalState.startSec <= 0.02
+            && Math.abs(outroModalState.endSec - dur) < 0.05
+            && effFadeIn <= 0.01
+            && effFadeOut <= 0.01;
           track.has_outro = true;
           track.outro_id = `m_outro_${baseKey}`;
           track.outro_file = `${track.outro_id}.mpc`;
@@ -3813,6 +4191,7 @@
           track.outro_fade_in = effFadeIn;
           track.outro_fade_out = effFadeOut;
           closeOutroEditor();
+          persistQueueState(true);
           renderWorkspace();
           return;
         }
@@ -3844,7 +4223,8 @@
           return;
         }
         closeOutroEditor();
-        showBanner(`Saved outro ${res.outro_file} to game. Backup saved to ${res.backup_dir}.`, false);
+        const bakTxt = res.backup_dir ? ` Backup saved to ${res.backup_dir}.` : '';
+        showBanner(`Saved outro ${res.outro_file} to game.${bakTxt}`, false);
         await refreshBackupsCount();
         await loadLibrary();
       });
@@ -3859,10 +4239,11 @@
           track.outro_start = null;
           track.outro_end = null;
           track.outro_fade_in = 0.0;
-          track.outro_fade_out = 0.08;
+          track.outro_fade_out = 0.0;
           track.outro_fade_in_enabled = false;
-          track.outro_fade_out_enabled = true;
+          track.outro_fade_out_enabled = false;
           closeOutroEditor();
+          persistQueueState(true);
           renderWorkspace();
           return;
         }
@@ -3874,7 +4255,8 @@
           return;
         }
         closeOutroEditor();
-        showBanner(`Removed outro for ${track.title}. Backup saved to ${res.backup_dir}.`, false);
+        const bakTxt = res.backup_dir ? ` Backup saved to ${res.backup_dir}.` : '';
+        showBanner(`Removed outro for ${track.title}.${bakTxt}`, false);
         await refreshBackupsCount();
         await loadLibrary();
       });
@@ -3888,14 +4270,17 @@
 
       $('btn-select-all').addEventListener('click', () => {
         for (const t of getFilteredTracks()) t.selected = true;
+        if (state.view === 'import') persistQueueState();
         renderWorkspace();
       });
       $('btn-select-none').addEventListener('click', () => {
         for (const t of getFilteredTracks()) t.selected = false;
+        if (state.view === 'import') persistQueueState();
         renderWorkspace();
       });
       $('chk-header-all').addEventListener('change', (e) => {
         for (const t of getFilteredTracks()) t.selected = e.target.checked;
+        if (state.view === 'import') persistQueueState();
         renderWorkspace();
       });
 
@@ -3914,7 +4299,10 @@
             changed += 1;
           }
         }
-        if (changed > 0) renderWorkspace();
+        if (changed > 0) {
+          if (state.view === 'import') persistQueueState(true);
+          renderWorkspace();
+        }
       });
 
       $('btn-apply-station').addEventListener('click', () => {
@@ -3933,26 +4321,30 @@
           }
         }
         if (changed > 0) {
+          if (state.view === 'import') persistQueueState(true);
           renderWorkspace();
-          showBanner(`Assigned ${changed} track(s) to ${cat}.`, false);
+          showBanner(`Moved ${changed} track(s) to ${cat}.`, false);
         }
       });
 
       $('switch-keep-stock').addEventListener('click', () => {
         state.keepOriginal = !state.keepOriginal;
         $('switch-keep-stock').setAttribute('aria-checked', String(state.keepOriginal));
+        persistQueueState();
       });
 
       $('btn-conflict-overwrite').addEventListener('click', () => {
         state.onConflict = 'overwrite';
         $('btn-conflict-overwrite').classList.add('active');
         $('btn-conflict-skip').classList.remove('active');
+        persistQueueState();
         renderWorkspace();
       });
       $('btn-conflict-skip').addEventListener('click', () => {
         state.onConflict = 'skip';
         $('btn-conflict-skip').classList.add('active');
         $('btn-conflict-overwrite').classList.remove('active');
+        persistQueueState();
         renderWorkspace();
       });
 
@@ -3981,6 +4373,7 @@
           keep_original: state.keepOriginal,
           on_conflict: state.onConflict,
           quality_preset: state.qualityPreset,
+          auto_backup: state.autoBackup,
         });
         if (!res.ok) {
           window.__onInstallComplete({ ok: false, error: res.error || 'Could not start install.' });
@@ -4024,11 +4417,13 @@
         $('res-skipped').textContent = data.skipped;
         $('res-sounds').textContent = data.total_sounds;
         $('res-texts').textContent = data.texts_updated;
-        $('res-backup-path').textContent = data.backup_dir || '';
+        $('res-backup-path').textContent = data.backup_dir ? `Backup saved to ${data.backup_dir}` : 'Auto backup was switched off for this install.';
         state.lastBackupDir = data.backup_dir || '';
         $('btn-open-backup').classList.toggle('hidden', !state.lastBackupDir);
         $('install-result-block').classList.remove('hidden');
         if (data.installed_count !== undefined) state.installedCount = data.installed_count;
+        persistQueueState(false);
+        await flushQueueState();
         await refreshConflicts();
         await refreshBackupsCount();
         await refreshHealthBadge();
@@ -4053,7 +4448,8 @@
           return;
         }
         const stTxt = res.stations_updated > 0 ? ` (${res.stations_updated} station moves)` : '';
-        showBanner(`Saved metadata for ${res.tracks_updated} track(s)${stTxt}. Backup saved to ${res.backup_dir}.`, false);
+        const bakTxt = res.backup_dir ? ` Backup saved to ${res.backup_dir}.` : '';
+        showBanner(`Saved metadata for ${res.tracks_updated} track(s)${stTxt}.${bakTxt}`, false);
         await refreshBackupsCount();
         await refreshHealthBadge();
         await loadLibrary();
@@ -4068,7 +4464,8 @@
           showBanner(res.error || 'Could not remove selected tracks.', true);
           return;
         }
-        showBanner(`Removed ${res.removed_tracks} track(s). Backup saved to ${res.backup_dir}.`, false);
+        const bakTxt = res.backup_dir ? ` Backup saved to ${res.backup_dir}.` : '';
+        showBanner(`Removed ${res.removed_tracks} track(s).${bakTxt}`, false);
         await refreshBackupsCount();
         await refreshConflicts();
         await refreshHealthBadge();
@@ -4088,7 +4485,7 @@
         const items = res.backups || [];
         $('backups-count').textContent = items.length;
         if (!items.length) {
-          listEl.innerHTML = '<div style="color:var(--muted);">No backups saved yet. Snapshots are created automatically before patching, editing, or removing tracks.</div>';
+          listEl.innerHTML = '<div style="color:var(--muted);padding:12px 0;">No backups yet. Click Create backup below or leave Auto backup turned on to save a snapshot before changes.</div>';
           return;
         }
         listEl.innerHTML = '';
@@ -4142,6 +4539,7 @@
 
       $('btn-backups').addEventListener('click', openBackupsModal);
       $('btn-refresh-backups').addEventListener('click', openBackupsModal);
+      $('btn-modal-create-backup').addEventListener('click', runManualBackup);
       $('btn-close-backups').addEventListener('click', () => $('backups-scrim').classList.remove('open'));
 
       /* ---------- Health Check & Orphan Cleaner ---------- */
@@ -4153,26 +4551,26 @@
         $('hl-broken-refs').textContent = String(brokenTot);
         $('hl-missing-texts').textContent = String((res.missing_texts || []).length);
         $('health-issue-count').textContent = res.healthy ? 'OK' : String(res.issue_count || 0);
-        $('lbl-delete-orphans').textContent = `Delete ${(res.orphan_files || []).length} unreferenced orphan .mpc file(s) (reclaims ${formatBytes(res.orphan_total_bytes || 0)})`;
+        $('lbl-delete-orphans').textContent = `Delete ${(res.orphan_files || []).length} unused .mpc file(s) (frees ${formatBytes(res.orphan_total_bytes || 0)})`;
 
         const lines = [];
         if (res.healthy) {
-          lines.push(`Healthy: ${res.playlist_tracks || 0} playlist tracks, ${res.total_sounds || 0} sounds verified (${res.ref_text_file || 'en.texts'}).`);
+          lines.push(`Everything looks good: ${res.playlist_tracks || 0} playlist tracks and ${res.total_sounds || 0} sounds checked (${res.ref_text_file || 'en.texts'}).`);
         } else {
           if ((res.orphan_files || []).length) {
-            lines.push(`Orphan .mpc (${res.orphan_files.length}, ${formatBytes(res.orphan_total_bytes)}): ` + res.orphan_files.slice(0, 8).map((o) => o.filename).join(', ') + (res.orphan_files.length > 8 ? ' ...' : ''));
+            lines.push(`Unused .mpc files (${res.orphan_files.length}, ${formatBytes(res.orphan_total_bytes)}): ` + res.orphan_files.slice(0, 8).map((o) => o.filename).join(', ') + (res.orphan_files.length > 8 ? ' ...' : ''));
           }
           if ((res.missing_files || []).length) {
-            lines.push(`Missing .mpc (${res.missing_files.length}): ` + res.missing_files.slice(0, 8).map((m) => m.filename).join(', '));
+            lines.push(`Missing .mpc files (${res.missing_files.length}): ` + res.missing_files.slice(0, 8).map((m) => m.filename).join(', '));
           }
           if ((res.broken_playlist_refs || []).length) {
-            lines.push(`Broken playlist refs (${res.broken_playlist_refs.length}): ` + res.broken_playlist_refs.slice(0, 8).map((b) => `${b.event}->${b.label}`).join(', '));
+            lines.push(`Broken playlist entries (${res.broken_playlist_refs.length}): ` + res.broken_playlist_refs.slice(0, 8).map((b) => `${b.event}->${b.label}`).join(', '));
           }
           if ((res.missing_events || []).length) {
-            lines.push(`Missing individual events (${res.missing_events.length}): ` + res.missing_events.slice(0, 8).join(', '));
+            lines.push(`Missing track events (${res.missing_events.length}): ` + res.missing_events.slice(0, 8).join(', '));
           }
           if ((res.missing_texts || []).length) {
-            lines.push(`Missing localization keys (${res.missing_texts.length}): ` + res.missing_texts.slice(0, 8).map((m) => m.key).join(', '));
+            lines.push(`Missing song titles (${res.missing_texts.length}): ` + res.missing_texts.slice(0, 8).map((m) => m.key).join(', '));
           }
         }
         $('health-findings-list').textContent = lines.join('\n');
@@ -4199,7 +4597,7 @@
           renderHealthResult(state.healthAudit);
           return;
         }
-        $('health-findings-list').textContent = 'Scanning soundpack, Data/music/*.mpc, and localization strings...';
+        $('health-findings-list').textContent = 'Checking soundpack playlists, music files, and song titles...';
         const res = await callApi('audit_health', state.gameDir);
         if (!res || !res.ok) {
           $('health-error-text').textContent = (res && res.error) || 'Health audit failed.';
@@ -4223,9 +4621,10 @@
           fix_events: $('chk-fix-events').checked,
           delete_orphans: $('chk-delete-orphans').checked,
           prune_missing: $('chk-prune-missing').checked,
+          auto_backup: state.autoBackup,
         });
         $('btn-health-repair').disabled = false;
-        $('btn-health-repair').textContent = 'Repair selected';
+        $('btn-health-repair').textContent = 'Repair';
         if (!res || !res.ok) {
           $('health-error-text').textContent = (res && res.error) || 'Repair failed.';
           $('health-error-box').classList.remove('hidden');
@@ -4281,8 +4680,9 @@
               return;
             }
             $('profiles-scrim').classList.remove('open');
-            const warnMiss = r.missing_files > 0 ? ` (${r.missing_files} .mpc files missing from Data/music)` : '';
-            showBanner(`Applied profile "${r.name}"${warnMiss}. Backup saved to ${r.backup_dir}.`, r.missing_files > 0);
+            const warnMiss = r.missing_files > 0 ? ` (${r.missing_files} .mpc files missing from music folder)` : '';
+            const bakTxt = r.backup_dir ? ` Backup saved to ${r.backup_dir}.` : '';
+            showBanner(`Loaded profile "${r.name}"${warnMiss}.${bakTxt}`, r.missing_files > 0);
             await refreshBackupsCount();
             await refreshHealthBadge();
             await refreshConflicts();
@@ -4401,11 +4801,34 @@
           return;
         }
         $('export-scrim').classList.remove('open');
+        if (state.view === 'import') {
+          persistQueueState(false);
+          await flushQueueState();
+        }
         showBanner(`Exported ${res.exported_tracks} track(s) (${formatBytes(res.total_bytes || 0)}) to ${res.dest_path}.`, false);
       });
 
       /* ---------- In-App Self-Updater ---------- */
       const LOCAL_RELEASE_CHANGELOG = {
+        '1.4.0': [
+          {
+            title: 'Fixed',
+            items: [
+              'Removed ffmpeg loudnorm dynamic compression so converted tracks keep their original mastered volume and quiet outros stay full level.',
+              'Verified exact minute, second, and millisecond audio duration before writing to game music, and direct-copied valid untrimmed .mpc tracks (including outros) with zero fade or re-encoding.',
+              'Fixed .ogg outro cutoff and rounding by decoding full streams to EOF and raising outro trim controls to 0.01s precision.',
+              'Added Spicetify-style WindowsApps and exact Asphalt 8 folder ownership/ACL repair alongside completely hidden PowerShell calls on startup.',
+            ],
+          },
+          {
+            title: 'Added',
+            items: [
+              'Added Auto backup toggle (saved in preferences), manual Backup buttons, Outro editor visibility toggle, and Loop playback toggle across the Radio Deck and Outro Editor.',
+              'Saved the Import Queue state across app restarts and added an unsaved-playlist confirmation before closing or clearing.',
+              'Added smooth modal transitions, tactile press responses, row entrance motion, and a live playing equalizer indicator, plus clearer UI wording and Repair button text in Health Check.',
+            ],
+          },
+        ],
         '1.3.2': [
           {
             title: 'Fixed',
@@ -4670,7 +5093,7 @@
       $('btn-close-shortcuts').addEventListener('click', () => $('shortcuts-scrim').classList.remove('open'));
 
       function getTopOpenScrim() {
-        const ids = ['shortcuts-scrim', 'update-scrim', 'export-scrim', 'profiles-scrim', 'health-scrim', 'backups-scrim', 'outro-scrim'];
+        const ids = ['unsaved-scrim', 'shortcuts-scrim', 'update-scrim', 'export-scrim', 'profiles-scrim', 'health-scrim', 'backups-scrim', 'outro-scrim'];
         for (const id of ids) {
           const el = $(id);
           if (el && el.classList.contains('open')) return el;
@@ -4760,6 +5183,7 @@
         }
 
         if (e.key === 'Enter' && !isTextEntry && tag !== 'BUTTON') {
+          if (!state.outroEditorEnabled) return;
           const list = getFilteredTracks();
           const target = list.find((t) => t.uid === state.focusedUid) || list[0];
           if (target) {
@@ -4912,16 +5336,41 @@
         }
         state.qualityPreset = init.quality_preset || 'high';
         $('quality-select').value = state.qualityPreset;
-        state.appVersion = init.app_version || '1.3.2';
+        state.autoBackup = init.auto_backup !== undefined ? !!init.auto_backup : true;
+        state.outroEditorEnabled = init.outro_editor_enabled !== undefined ? !!init.outro_editor_enabled : true;
+        state.loopPlayback = !!init.loop_playback;
+        state.appVersion = init.app_version || '1.4.0';
         state.isFrozen = !!init.is_frozen;
         $('app-version-pill').textContent = `v${state.appVersion}`;
+
+        const savedQueue = init.saved_queue;
+        if (savedQueue && Array.isArray(savedQueue.tracks) && savedQueue.tracks.length > 0) {
+          state.importTracks = savedQueue.tracks.map((t) => {
+            state.uidSeq += 1;
+            return { ...t, uid: `imp_${state.uidSeq}_${t.base_id || state.uidSeq}` };
+          });
+          state.musicDir = savedQueue.music_dir || '';
+          state.musicSources = Array.isArray(savedQueue.music_sources) ? savedQueue.music_sources.slice() : [];
+          if (savedQueue.keep_original !== undefined) state.keepOriginal = !!savedQueue.keep_original;
+          if (savedQueue.on_conflict === 'skip' || savedQueue.on_conflict === 'overwrite') {
+            state.onConflict = savedQueue.on_conflict;
+          }
+          state.playlistDirty = !!savedQueue.playlist_dirty;
+        }
+
         applyGameStatus(init);
         if (init.tools) {
           const okTools = init.tools.ffmpeg && init.tools.mpcenc;
           $('tools-readout').textContent = okTools ? 'FFmpeg + mpcenc ready' : 'Encoder missing in tools';
         }
         $('backups-count').textContent = init.backups_count || 0;
+        syncLoopControlsUI();
+        syncPreferenceControlsUI();
         renderWorkspace();
+        if (state.importTracks.length > 0) {
+          await refreshConflicts();
+          triggerBackgroundAudioAnalysis(state.importTracks);
+        }
         refreshProfilesCount();
         refreshHealthBadge();
       }
