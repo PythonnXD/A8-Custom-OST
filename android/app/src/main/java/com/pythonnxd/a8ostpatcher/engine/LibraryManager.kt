@@ -67,10 +67,15 @@ object LibraryManager {
     fun profilesRoot(appFilesDir: File): File =
         File(appFilesDir, "profiles").apply { mkdirs() }
 
-    fun createBackup(appFilesDir: File, gameDirPath: String, reason: String = "patch"): File {
+    fun createBackup(
+        appFilesDir: File,
+        gameDirPath: String,
+        reason: String = "patch",
+        backupKeyDir: String = gameDirPath,
+    ): File {
         val paths = GamePathResolver.resolve(gameDirPath)
             ?: throw IllegalStateException("Valid Asphalt 8 folder is required.")
-        val bRoot = backupsRoot(appFilesDir, gameDirPath)
+        val bRoot = backupsRoot(appFilesDir, backupKeyDir)
         val backupDir = File(bRoot, "music_mod_backup_${stampNow()}").apply { mkdirs() }
 
         if (paths.soundpackFile.isFile) {
@@ -83,7 +88,7 @@ object LibraryManager {
             }
         }
         val meta = JSONObject().apply {
-            put("game_dir", gameDirPath)
+            put("game_dir", backupKeyDir)
             put("created_at", isoNow())
             put("reason", reason)
         }
@@ -149,7 +154,10 @@ object LibraryManager {
         return backupDir.deleteRecursively()
     }
 
-    fun listInstalledTracks(gameDirPath: String): List<InstalledTrack> {
+    fun listInstalledTracks(
+        gameDirPath: String,
+        remoteMusicIndex: Map<String, Pair<String, Long>>? = null,
+    ): List<InstalledTrack> {
         val paths = GamePathResolver.resolve(gameDirPath) ?: return emptyList()
         if (!paths.soundpackFile.isFile) return emptyList()
 
@@ -218,8 +226,14 @@ object LibraryManager {
             val (title, artist) = parseSongDisplay(songStrings[label] ?: "", label)
             val mainFile = attrs["filename"].orEmpty().ifBlank { "$label.mpc" }
             val mainPath = File(paths.musicDir, mainFile)
+            val mainExists = if (remoteMusicIndex != null) mainFile.lowercase() in remoteMusicIndex else mainPath.isFile
             val outroFile = outroAttrs?.get("filename")?.ifBlank { "$outroId.mpc" }
             val outroPath = outroFile?.let { File(paths.musicDir, it) }
+            val outroExists = if (remoteMusicIndex != null) {
+                outroFile?.lowercase()?.let { it in remoteMusicIndex } == true
+            } else {
+                outroPath?.isFile == true
+            }
 
             tracks.add(
                 InstalledTrack(
@@ -231,12 +245,12 @@ object LibraryManager {
                     rawCategoryName = rawCatName,
                     mainFile = mainFile,
                     mainPath = mainPath.absolutePath,
-                    mainExists = mainPath.isFile,
+                    mainExists = mainExists,
                     hasOutro = outroAttrs != null,
                     outroId = if (outroAttrs != null) outroId else null,
                     outroFile = outroFile,
                     outroPath = outroPath?.absolutePath,
-                    outroExists = outroPath?.isFile == true,
+                    outroExists = outroExists,
                 )
             )
         }
@@ -253,6 +267,7 @@ object LibraryManager {
         conflictPolicy: ConflictPolicy,
         autoBackup: Boolean,
         onProgress: (current: Int, total: Int, stage: String) -> Unit,
+        backupKeyDir: String = gameDirPath,
     ): InstallResult {
         val paths = GamePathResolver.resolve(gameDirPath)
             ?: throw IllegalStateException("Select a valid Asphalt 8 folder first.")
@@ -264,7 +279,7 @@ object LibraryManager {
 
         val backupPath = if (autoBackup) {
             onProgress(0, selected.size, "Backing up soundpack and titles...")
-            createBackup(appFilesDir, gameDirPath, reason = "install").absolutePath
+            createBackup(appFilesDir, gameDirPath, reason = "install", backupKeyDir = backupKeyDir).absolutePath
         } else null
 
         val existingIds = SoundpackManager.getExistingTrackIds(paths.soundpackFile)
@@ -347,10 +362,11 @@ object LibraryManager {
         newArtist: String,
         newCategory: StationCategory,
         autoBackup: Boolean,
+        backupKeyDir: String = gameDirPath,
     ) {
         val paths = GamePathResolver.resolve(gameDirPath)
             ?: throw IllegalStateException("Select a valid Asphalt 8 folder.")
-        if (autoBackup) createBackup(appFilesDir, gameDirPath, reason = "edit_metadata")
+        if (autoBackup) createBackup(appFilesDir, gameDirPath, reason = "edit_metadata", backupKeyDir = backupKeyDir)
 
         if (paths.textDir.isDirectory) {
             TextsManager.addSongTitles(
@@ -397,10 +413,11 @@ object LibraryManager {
         fadeOutSec: Double,
         qualityPreset: QualityPreset,
         autoBackup: Boolean,
+        backupKeyDir: String = gameDirPath,
     ) {
         val paths = GamePathResolver.resolve(gameDirPath)
             ?: throw IllegalStateException("Select a valid Asphalt 8 folder.")
-        if (autoBackup) createBackup(appFilesDir, gameDirPath, reason = "edit_outro")
+        if (autoBackup) createBackup(appFilesDir, gameDirPath, reason = "edit_outro", backupKeyDir = backupKeyDir)
 
         val stripped = baseId.removePrefix("m_")
         val outroId = "m_outro_$stripped"
@@ -459,10 +476,12 @@ object LibraryManager {
         baseId: String,
         deleteFile: Boolean,
         autoBackup: Boolean,
+        backupKeyDir: String = gameDirPath,
+        deletedFileNamesOut: MutableList<String>? = null,
     ) {
         val paths = GamePathResolver.resolve(gameDirPath)
             ?: throw IllegalStateException("Select a valid Asphalt 8 folder.")
-        if (autoBackup) createBackup(appFilesDir, gameDirPath, reason = "remove_outro")
+        if (autoBackup) createBackup(appFilesDir, gameDirPath, reason = "remove_outro", backupKeyDir = backupKeyDir)
 
         val outroId = "m_outro_${baseId.removePrefix("m_")}"
         val doc = SoundpackManager.parseXml(paths.soundpackFile)
@@ -489,6 +508,7 @@ object LibraryManager {
 
         if (deleteFile) {
             (toDelete.ifEmpty { listOf("$outroId.mpc") }).forEach { fn ->
+                deletedFileNamesOut?.add(fn)
                 File(paths.musicDir, fn).takeIf { it.isFile }?.delete()
             }
         }
@@ -500,11 +520,13 @@ object LibraryManager {
         baseIds: List<String>,
         deleteFiles: Boolean,
         autoBackup: Boolean,
+        backupKeyDir: String = gameDirPath,
+        deletedFileNamesOut: MutableList<String>? = null,
     ): Int {
         if (baseIds.isEmpty()) return 0
         val paths = GamePathResolver.resolve(gameDirPath)
             ?: throw IllegalStateException("Select a valid Asphalt 8 folder.")
-        if (autoBackup) createBackup(appFilesDir, gameDirPath, reason = "remove_tracks")
+        if (autoBackup) createBackup(appFilesDir, gameDirPath, reason = "remove_tracks", backupKeyDir = backupKeyDir)
 
         val rmLabels = HashSet<String>()
         for (bid in baseIds) {
@@ -548,27 +570,43 @@ object LibraryManager {
         if (paths.textDir.isDirectory) {
             TextsManager.removeSongTitles(paths.textDir, baseIds)
         }
-        if (deleteFiles && paths.musicDir.isDirectory) {
-            val musicCanon = paths.musicDir.canonicalPath
-            for (fn in filesToDelete) {
-                val f = File(paths.musicDir, fn)
-                if (f.canonicalPath.startsWith(musicCanon + File.separator) && f.isFile) {
-                    f.delete()
+        if (deleteFiles) {
+            deletedFileNamesOut?.addAll(filesToDelete)
+            if (paths.musicDir.isDirectory) {
+                val musicCanon = paths.musicDir.canonicalPath
+                for (fn in filesToDelete) {
+                    val f = File(paths.musicDir, fn)
+                    if (f.canonicalPath.startsWith(musicCanon + File.separator) && f.isFile) {
+                        f.delete()
+                    }
                 }
             }
         }
         return baseIds.size
     }
 
-    fun auditHealth(gameDirPath: String): HealthAudit {
+    fun auditHealth(
+        gameDirPath: String,
+        remoteMusicIndex: Map<String, Pair<String, Long>>? = null,
+    ): HealthAudit {
         val paths = GamePathResolver.resolve(gameDirPath)
             ?: throw IllegalStateException("Select a valid Asphalt 8 folder.")
         val diskAllLower = HashMap<String, String>()
         val diskMpcLower = HashMap<String, String>()
-        paths.musicDir.listFiles { f -> f.isFile }?.sortedBy { it.name.lowercase() }?.forEach { f ->
-            val low = f.name.lowercase()
-            diskAllLower[low] = f.name
-            if (low.endsWith(".mpc")) diskMpcLower[low] = f.name
+        val diskSizeLower = HashMap<String, Long>()
+        if (remoteMusicIndex != null) {
+            remoteMusicIndex.entries.sortedBy { it.key }.forEach { (low, pair) ->
+                diskAllLower[low] = pair.first
+                diskSizeLower[low] = pair.second
+                if (low.endsWith(".mpc")) diskMpcLower[low] = pair.first
+            }
+        } else {
+            paths.musicDir.listFiles { f -> f.isFile }?.sortedBy { it.name.lowercase() }?.forEach { f ->
+                val low = f.name.lowercase()
+                diskAllLower[low] = f.name
+                diskSizeLower[low] = f.length()
+                if (low.endsWith(".mpc")) diskMpcLower[low] = f.name
+            }
         }
 
         val doc = SoundpackManager.parseXml(paths.soundpackFile)
@@ -605,7 +643,7 @@ object LibraryManager {
         for ((low, realFn) in diskMpcLower.entries.sortedBy { it.key }) {
             if (low !in referencedLower) {
                 val f = File(paths.musicDir, realFn)
-                val sz = f.length()
+                val sz = diskSizeLower[low] ?: f.length()
                 orphanFiles.add(OrphanFileIssue(realFn, f.absolutePath, sz))
                 orphanBytes += sz
             }
@@ -673,8 +711,11 @@ object LibraryManager {
         pruneMissing: Boolean = false,
         deleteOrphans: Boolean = false,
         autoBackup: Boolean = true,
+        remoteMusicIndex: Map<String, Pair<String, Long>>? = null,
+        backupKeyDir: String = gameDirPath,
+        deletedOrphanNamesOut: MutableList<String>? = null,
     ): HealthRepairResult {
-        val before = auditHealth(gameDirPath)
+        val before = auditHealth(gameDirPath, remoteMusicIndex)
         val doTexts = fixTexts && before.missingTexts.isNotEmpty()
         val doEvents = fixEvents && (before.brokenPlaylistRefs.isNotEmpty() || before.missingEvents.isNotEmpty())
         val doPrune = pruneMissing && before.missingFiles.isNotEmpty()
@@ -684,7 +725,7 @@ object LibraryManager {
         }
 
         val paths = GamePathResolver.resolve(gameDirPath)!!
-        val bakPath = if (autoBackup) createBackup(appFilesDir, gameDirPath, reason = "health_repair").absolutePath else null
+        val bakPath = if (autoBackup) createBackup(appFilesDir, gameDirPath, reason = "health_repair", backupKeyDir = backupKeyDir).absolutePath else null
 
         var textsFixed = 0
         if (doTexts && paths.textDir.isDirectory) {
@@ -765,13 +806,23 @@ object LibraryManager {
 
         var orphansDeleted = 0
         var reclaimed = 0L
+        val updatedRemoteIndex = remoteMusicIndex?.toMutableMap()
         if (doOrphans) {
-            val musicCanon = paths.musicDir.canonicalPath
-            for (o in before.orphanFiles) {
-                val f = File(o.path)
-                if (f.canonicalPath.startsWith(musicCanon + File.separator) && f.isFile && f.delete()) {
+            if (remoteMusicIndex != null) {
+                for (o in before.orphanFiles) {
+                    deletedOrphanNamesOut?.add(o.filename)
+                    updatedRemoteIndex?.remove(o.filename.lowercase())
                     orphansDeleted++
                     reclaimed += o.sizeBytes
+                }
+            } else {
+                val musicCanon = paths.musicDir.canonicalPath
+                for (o in before.orphanFiles) {
+                    val f = File(o.path)
+                    if (f.canonicalPath.startsWith(musicCanon + File.separator) && f.isFile && f.delete()) {
+                        orphansDeleted++
+                        reclaimed += o.sizeBytes
+                    }
                 }
             }
         }
@@ -783,16 +834,21 @@ object LibraryManager {
             soundsPruned = soundsPruned,
             orphansDeleted = orphansDeleted,
             reclaimedBytes = reclaimed,
-            auditAfter = auditHealth(gameDirPath),
+            auditAfter = auditHealth(gameDirPath, updatedRemoteIndex),
         )
     }
 
-    fun saveProfile(appFilesDir: File, gameDirPath: String, name: String): ModProfile {
+    fun saveProfile(
+        appFilesDir: File,
+        gameDirPath: String,
+        name: String,
+        remoteMusicIndex: Map<String, Pair<String, Long>>? = null,
+    ): ModProfile {
         val clean = name.trim()
         require(clean.isNotEmpty()) { "Profile name is required." }
         val paths = GamePathResolver.resolve(gameDirPath)
             ?: throw IllegalStateException("Select a valid Asphalt 8 folder.")
-        val tracks = listInstalledTracks(gameDirPath)
+        val tracks = listInstalledTracks(gameDirPath, remoteMusicIndex)
         val slug = clean.lowercase().replace(Regex("[^a-z0-9]+"), "_").trim('_').take(32).ifBlank { "profile" }
         val pid = "${slug}_${stampNow()}"
         val pdir = File(profilesRoot(appFilesDir), pid).apply { mkdirs() }
@@ -844,13 +900,19 @@ object LibraryManager {
         return out.sortedByDescending { it.createdAt }
     }
 
-    fun applyProfile(appFilesDir: File, gameDirPath: String, profileId: String, autoBackup: Boolean): Int {
+    fun applyProfile(
+        appFilesDir: File,
+        gameDirPath: String,
+        profileId: String,
+        autoBackup: Boolean,
+        backupKeyDir: String = gameDirPath,
+    ): Int {
         val pdir = File(profilesRoot(appFilesDir), profileId)
         val srcSp = File(pdir, "soundpack")
         require(srcSp.isFile) { "Profile soundpack not found." }
         val paths = GamePathResolver.resolve(gameDirPath)
             ?: throw IllegalStateException("Select a valid Asphalt 8 folder.")
-        if (autoBackup) createBackup(appFilesDir, gameDirPath, reason = "apply_profile")
+        if (autoBackup) createBackup(appFilesDir, gameDirPath, reason = "apply_profile", backupKeyDir = backupKeyDir)
         srcSp.copyTo(paths.soundpackFile, overwrite = true)
         var texts = 0
         val pTexts = File(pdir, "text")

@@ -1,6 +1,7 @@
 package com.pythonnxd.a8ostpatcher
 
 import com.pythonnxd.a8ostpatcher.engine.*
+import com.pythonnxd.a8ostpatcher.privileged.*
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -172,5 +173,106 @@ class EngineUnitTests {
 
         // Ensure user GitHub page is NOT inside open-source licenses
         assertTrue(UpdateChecker.OPEN_SOURCE_ACKNOWLEDGEMENTS.none { it.url.contains("PythonnXD") })
+    }
+
+    @Test
+    fun privilegedBridgeMirrorsAndPushesAndroidDataChanges() {
+        assertTrue(PrivilegedAccessManager.isRestrictedAndroidDataPath("/storage/emulated/0/Android/data/com.gameloft.android.ANMP.GloftA8HM/files"))
+        assertFalse(PrivilegedAccessManager.isRestrictedAndroidDataPath("/storage/emulated/0/Download/Asphalt8_Loose"))
+        assertEquals("'hello'\\''world'", PrivilegedAccessManager.shellQuote("hello'world"))
+        val parsed = PrivilegedAccessManager.parseEntryLine("F|m_track.mpc|12345")!!
+        assertEquals("m_track.mpc", parsed.name)
+        assertFalse(parsed.isDirectory)
+        assertEquals(12345L, parsed.sizeBytes)
+
+        // Simulate a restricted /Android/data/com.gameloft.android.ANMP.GloftA8HM/files tree via fake backend
+        val fakeStorage = tmp.newFolder("fake_storage")
+        val remoteFiles = File(fakeStorage, "Android/data/com.gameloft.android.ANMP.GloftA8HM/files").apply { mkdirs() }
+        createSampleSoundpack(File(remoteFiles, "soundpack/soundpack"))
+        val remoteMusic = File(remoteFiles, "music").apply { mkdirs() }
+        val remoteText = File(remoteFiles, "text").apply { mkdirs() }
+        File(remoteMusic, "m_stock_rock.mpc").writeBytes(byteArrayOf(0x4D, 0x50, 0x43, 0x4B))
+        File(remoteMusic, "m_stock_menu.mpc").writeBytes(byteArrayOf(0x4D, 0x50, 0x43, 0x4B))
+        File(remoteMusic, "m_orphan_remote.mpc").writeBytes(byteArrayOf(9, 8, 7, 6, 5))
+        TextsManager.writeTexts(
+            File(remoteText, "en.texts"),
+            listOf(TextEntry("STR_SONG_m_stock_rock".toByteArray(), "\"Stock Rock\" - A8".toByteArray())),
+        )
+
+        val fakeBackend = object : PrivilegedFileBackend {
+            override val mode: GameAccessMode = GameAccessMode.SHIZUKU
+            override fun exists(path: String): Boolean = File(path).exists()
+            override fun isDirectory(path: String): Boolean = File(path).isDirectory
+            override fun isFile(path: String): Boolean = File(path).isFile
+            override fun listEntries(dirPath: String): List<RemoteFileEntry> =
+                File(dirPath).listFiles().orEmpty().map { f ->
+                    RemoteFileEntry(f.name, f.isDirectory, if (f.isFile) f.length() else 0L)
+                }
+            override fun mkdirs(path: String): Boolean = File(path).let { it.isDirectory || it.mkdirs() }
+            override fun deletePath(path: String): Boolean = File(path).delete()
+            override fun testWrite(dirPath: String): Boolean = File(dirPath).isDirectory
+            override fun copyFromRemote(remotePath: String, localDst: File): Boolean {
+                val src = File(remotePath)
+                if (!src.isFile) return false
+                localDst.parentFile?.mkdirs()
+                src.copyTo(localDst, overwrite = true)
+                return true
+            }
+            override fun copyToRemote(localSrc: File, remotePath: String): Boolean {
+                if (!localSrc.isFile) return false
+                val dst = File(remotePath)
+                dst.parentFile?.mkdirs()
+                localSrc.copyTo(dst, overwrite = true)
+                return true
+            }
+        }
+
+        val detected = PrivilegedGameBridge.detectRestrictedGameDirs(fakeBackend, fakeStorage.absolutePath)
+        assertEquals(1, detected.size)
+        val layout = PrivilegedGameBridge.resolveRemoteLayout(fakeBackend, detected.first())!!
+        val mirrorDir = tmp.newFolder("mirror")
+        val appFiles = tmp.newFolder("app_files_priv")
+
+        val ws = PrivilegedGameBridge.pullMirror(fakeBackend, layout, mirrorDir)
+        assertEquals(3, ws.remoteMusicIndex.size)
+        // Stock .mpc files must NOT be copied into mirrorDir/music
+        assertEquals(0, File(mirrorDir, "music").listFiles().orEmpty().size)
+
+        val tracks = LibraryManager.listInstalledTracks(ws.mirrorDir.absolutePath, ws.remoteMusicIndex)
+        assertEquals(2, tracks.size)
+        assertTrue(tracks.all { it.mainExists })
+
+        val audit = LibraryManager.auditHealth(ws.mirrorDir.absolutePath, ws.remoteMusicIndex)
+        assertEquals(1, audit.orphanFiles.size)
+        assertEquals("m_orphan_remote.mpc", audit.orphanFiles.first().filename)
+        assertEquals(5L, audit.orphanTotalBytes)
+
+        // Repair orphans via mirror and push deletions back to simulated /Android/data/
+        val orphansToDelete = mutableListOf<String>()
+        val rep = LibraryManager.repairHealth(
+            appFilesDir = appFiles,
+            gameDirPath = ws.mirrorDir.absolutePath,
+            fixTexts = true,
+            fixEvents = true,
+            pruneMissing = false,
+            deleteOrphans = true,
+            autoBackup = true,
+            remoteMusicIndex = ws.remoteMusicIndex,
+            backupKeyDir = detected.first(),
+            deletedOrphanNamesOut = orphansToDelete,
+        )
+        assertEquals(1, rep.orphansDeleted)
+        assertEquals(listOf("m_orphan_remote.mpc"), orphansToDelete)
+        PrivilegedGameBridge.pushMirrorChanges(
+            backend = fakeBackend,
+            workspace = ws,
+            pushSoundpack = false,
+            pushTexts = rep.textsFixed > 0,
+            pushStagedMusic = false,
+            deleteRemoteMusicFiles = orphansToDelete,
+        )
+        assertFalse(File(remoteMusic, "m_orphan_remote.mpc").exists())
+        // Backup must be indexed under real remote gameDir key
+        assertEquals(1, LibraryManager.listBackups(appFiles, detected.first()).size)
     }
 }

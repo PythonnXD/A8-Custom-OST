@@ -1,1 +1,2 @@
 -keep class com.pythonnxd.a8ostpatcher.engine.NativeMpcCodec { *; }
+-keep class com.pythonnxd.a8ostpatcher.privileged.** { *; }

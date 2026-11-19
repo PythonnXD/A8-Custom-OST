@@ -210,30 +210,8 @@ fun LibraryScreen(
                                 showEditButton = false,
                                 onSelectToggle = { vm.toggleLibrarySelection(track.uid) },
                                 onClick = { vm.focusLibraryTrack(track.uid) },
-                                onPlayMain = {
-                                    vm.player.togglePlay(
-                                        uid = track.uid,
-                                        title = track.title,
-                                        artist = track.artist,
-                                        category = track.category,
-                                        srcFile = File(track.mainPath),
-                                        isOutro = false,
-                                        onError = { vm.showBanner(it, isError = true) },
-                                    )
-                                },
-                                onPlayOutro = {
-                                    track.outroPath?.let { op ->
-                                        vm.player.togglePlay(
-                                            uid = track.uid,
-                                            title = track.title,
-                                            artist = track.artist,
-                                            category = track.category,
-                                            srcFile = File(op),
-                                            isOutro = true,
-                                            onError = { vm.showBanner(it, isError = true) },
-                                        )
-                                    }
-                                },
+                                onPlayMain = { vm.playInstalledTrack(track, isOutro = false) },
+                                onPlayOutro = { vm.playInstalledTrack(track, isOutro = true) },
                                 onEdit = { vm.focusLibraryTrack(track.uid); tabletTab = 0 },
                             )
                         }
@@ -273,10 +251,7 @@ fun LibraryScreen(
                                     LibraryOutroPane(
                                         track = focusedTrack,
                                         onAttachCustom = { onPickCustomOutroForLibrary(focusedTrack) },
-                                        onTrimLast20 = {
-                                            val dur = com.pythonnxd.a8ostpatcher.engine.AudioPipeline.probeDuration(File(focusedTrack.mainPath)) ?: 180.0
-                                            vm.saveLibraryTrackOutro(focusedTrack, null, maxOf(0.0, dur - 20.0), dur, 0.0, 1.2)
-                                        },
+                                        onTrimLast20 = { vm.trimInstalledTrackLast20s(focusedTrack) },
                                         onRemoveOutro = { vm.removeLibraryTrackOutro(focusedTrack, deleteFile = true) },
                                     )
                                 }
@@ -307,30 +282,8 @@ fun LibraryScreen(
                             showEditButton = true,
                             onSelectToggle = { vm.toggleLibrarySelection(track.uid) },
                             onClick = { vm.focusLibraryTrack(track.uid) },
-                            onPlayMain = {
-                                vm.player.togglePlay(
-                                    uid = track.uid,
-                                    title = track.title,
-                                    artist = track.artist,
-                                    category = track.category,
-                                    srcFile = File(track.mainPath),
-                                    isOutro = false,
-                                    onError = { vm.showBanner(it, isError = true) },
-                                )
-                            },
-                            onPlayOutro = {
-                                track.outroPath?.let { op ->
-                                    vm.player.togglePlay(
-                                        uid = track.uid,
-                                        title = track.title,
-                                        artist = track.artist,
-                                        category = track.category,
-                                        srcFile = File(op),
-                                        isOutro = true,
-                                        onError = { vm.showBanner(it, isError = true) },
-                                    )
-                                }
-                            },
+                            onPlayMain = { vm.playInstalledTrack(track, isOutro = false) },
+                            onPlayOutro = { vm.playInstalledTrack(track, isOutro = true) },
                             onEdit = { editingTrack = track },
                         )
                     }
@@ -385,8 +338,7 @@ fun LibraryScreen(
                             onPickCustomOutroForLibrary(tr)
                         },
                         onTrimLast20 = {
-                            val dur = com.pythonnxd.a8ostpatcher.engine.AudioPipeline.probeDuration(File(tr.mainPath)) ?: 180.0
-                            vm.saveLibraryTrackOutro(tr, null, maxOf(0.0, dur - 20.0), dur, 0.0, 1.2)
+                            vm.trimInstalledTrackLast20s(tr)
                             editingTrack = null
                         },
                         onRemoveOutro = {

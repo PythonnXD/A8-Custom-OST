@@ -1,5 +1,7 @@
 package com.pythonnxd.a8ostpatcher.engine
 
+import com.pythonnxd.a8ostpatcher.privileged.GameAccessMode
+
 enum class StationCategory(val displayName: String, val badgeText: String, val eventLabel: String) {
     ROCK("Rock", "ROCK", "ev_radio_rock"),
     ELECTRO("Electro", "ELECTRO", "ev_radio_electro"),
@@ -192,6 +194,7 @@ data class AppPrefs(
     val loopPlayback: Boolean = false,
     val conflictPolicy: ConflictPolicy = ConflictPolicy.OVERWRITE,
     val gameDir: String = "",
+    val accessMode: GameAccessMode = GameAccessMode.STANDARD,
 )
 
 data class InstallProgress(

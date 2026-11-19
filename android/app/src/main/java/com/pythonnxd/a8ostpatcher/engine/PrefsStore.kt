@@ -1,6 +1,7 @@
 package com.pythonnxd.a8ostpatcher.engine
 
 import android.content.Context
+import com.pythonnxd.a8ostpatcher.privileged.GameAccessMode
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -21,6 +22,7 @@ class PrefsStore(context: Context) {
             loopPlayback = sp.getBoolean("loop_playback", false),
             conflictPolicy = ConflictPolicy.fromId(sp.getString("conflict_policy", ConflictPolicy.OVERWRITE.id)),
             gameDir = sp.getString("game_dir", "") ?: "",
+            accessMode = GameAccessMode.fromId(sp.getString("access_mode", GameAccessMode.STANDARD.id)),
         )
     }
 
@@ -36,6 +38,7 @@ class PrefsStore(context: Context) {
             .putBoolean("loop_playback", prefs.loopPlayback)
             .putString("conflict_policy", prefs.conflictPolicy.id)
             .putString("game_dir", prefs.gameDir)
+            .putString("access_mode", prefs.accessMode.id)
             .apply()
     }
 

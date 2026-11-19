@@ -15,8 +15,9 @@ object UpdateChecker {
     val LOCAL_CHANGELOG: Map<String, List<ReleaseNoteSection>> = linkedMapOf(
         "1.0.1" to listOf(
             ReleaseNoteSection(
-                title = "UI & Motion Polish",
+                title = "Direct /Android/data/ Access & UI Polish",
                 items = listOf(
+                    "Added Storage Access Mode choice in Settings: Standard folder, Shizuku (recommended for direct /Android/data/ patching with no root), and optional Root (su) fallback.",
                     "Frosted Apple Liquid Glass interface with real-time GPU backdrop blur across the floating Pill Nav Bar, Now Playing Bar, cards, sheets, and banners.",
                     "Draggable Liquid Glass Pill Nav Bar highlight: grab and slide across tabs with 1:1 tracking, rubber-band edge resistance, live tick haptics, and momentum spring settle.",
                     "Resized floating Pill Nav Bar and upgraded universal DPI typography & touch targets for comfortable reading on all phones and tablets.",
@@ -66,6 +67,13 @@ object UpdateChecker {
             license = "Apache-2.0",
             displayUrl = "github.com/chrisbanes/haze",
             url = "https://github.com/chrisbanes/haze",
+        ),
+        OpenSourceAck(
+            name = "Shizuku API (RikkaApps)",
+            role = "Privileged UserService IPC for direct /Android/data/ access without root",
+            license = "MIT",
+            displayUrl = "github.com/RikkaApps/Shizuku-API",
+            url = "https://github.com/RikkaApps/Shizuku-API",
         ),
         OpenSourceAck(
             name = "AndroidX Core, Activity, Lifecycle & DocumentFile",

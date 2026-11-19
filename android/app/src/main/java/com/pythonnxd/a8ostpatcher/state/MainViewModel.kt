@@ -8,6 +8,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.pythonnxd.a8ostpatcher.BuildConfig
 import com.pythonnxd.a8ostpatcher.engine.*
+import com.pythonnxd.a8ostpatcher.privileged.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -45,6 +46,9 @@ data class MainUiState(
     val gameDirValid: Boolean = false,
     val gameDirWritable: Boolean = false,
     val gameDirHint: String = "",
+    val shizukuStatus: ShizukuStatus = ShizukuStatus.NOT_RUNNING,
+    val shizukuUid: Int = -1,
+    val rootStatus: RootStatus = RootStatus.UNKNOWN,
     val queueTracks: List<QueueTrack> = emptyList(),
     val playlistDirty: Boolean = false,
     val queueCategoryFilter: StationCategory? = null,
@@ -76,45 +80,142 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val prefsStore = PrefsStore(appCtx)
     private val uidCounter = AtomicInteger(1)
 
+    val privileged = PrivilegedAccessManager(appCtx)
     val player = AudioPreviewPlayer(appCtx.cacheDir, viewModelScope)
 
     private val _ui = MutableStateFlow(MainUiState())
     val ui: StateFlow<MainUiState> = _ui.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            privileged.shizukuStatus.collect { st ->
+                _ui.update { it.copy(shizukuStatus = st, shizukuUid = privileged.shizukuUid.value) }
+            }
+        }
+        viewModelScope.launch {
+            privileged.rootStatus.collect { st ->
+                _ui.update { it.copy(rootStatus = st) }
+            }
+        }
+        privileged.onPermissionGrantedCallback = {
+            if (_ui.value.prefs.accessMode == GameAccessMode.SHIZUKU) {
+                connectPrivilegedGameDir(customPath = _ui.value.prefs.gameDir.takeIf { it.isNotBlank() })
+            }
+        }
         boot()
     }
+
+    private fun mirrorDir(): File = File(appCtx.filesDir, "privileged_mirror").apply { mkdirs() }
 
     private fun nextUid(prefix: String = "imp"): String =
         "${prefix}_${uidCounter.getAndIncrement()}_${System.currentTimeMillis() % 100000}"
 
+    private fun activeBackendOrNull(mode: GameAccessMode = _ui.value.prefs.accessMode): PrivilegedFileBackend? {
+        if (!mode.isPrivileged) return null
+        return privileged.getBackend(mode)
+    }
+
+    private fun validateGameLocationSync(
+        path: String,
+        mode: GameAccessMode,
+    ): Triple<Boolean, Boolean, String> {
+        val clean = path.trim()
+        if (clean.isEmpty()) return Triple(false, false, "")
+        if (mode.isPrivileged) {
+            val backend = privileged.getBackend(mode)
+            if (backend == null) {
+                val hint = if (mode == GameAccessMode.SHIZUKU) {
+                    "Start Shizuku and grant permission to access /Android/data/."
+                } else {
+                    "Root (su) permission is required to access /Android/data/."
+                }
+                return Triple(false, false, hint)
+            }
+            val layout = PrivilegedGameBridge.resolveRemoteLayout(backend, clean)
+                ?: return Triple(false, false, "No Asphalt 8 soundpack and music folders were found at $clean.")
+            val (writable, wErr) = PrivilegedGameBridge.checkWritable(backend, layout)
+            return Triple(true, writable, wErr)
+        } else {
+            if (PrivilegedAccessManager.isRestrictedAndroidDataPath(clean) && !GamePathResolver.isValidGameDir(clean)) {
+                return Triple(
+                    false,
+                    false,
+                    "All files access to /Android/data/ only works on Android 12 and below. On Android 13+, switch Permission method to Shizuku (recommended, no root) or Root (su).",
+                )
+            }
+            val valid = GamePathResolver.isValidGameDir(clean)
+            if (!valid) {
+                return Triple(false, false, "No Asphalt 8 soundpack and music folders were found in that directory.")
+            }
+            val (writable, wErr) = GamePathResolver.isWritable(clean)
+            return Triple(true, writable, wErr)
+        }
+    }
+
+    private fun pullExistingTrackIdsSync(path: String, mode: GameAccessMode): Set<String> {
+        if (path.isBlank()) return emptySet()
+        return if (mode.isPrivileged) {
+            val backend = privileged.getBackend(mode) ?: return emptySet()
+            val layout = PrivilegedGameBridge.resolveRemoteLayout(backend, path) ?: return emptySet()
+            val ws = PrivilegedGameBridge.pullMirror(backend, layout, mirrorDir())
+            GamePathResolver.resolve(ws.mirrorDir.absolutePath)?.soundpackFile?.let {
+                SoundpackManager.getExistingTrackIds(it)
+            }.orEmpty()
+        } else {
+            GamePathResolver.resolve(path)?.soundpackFile?.let {
+                SoundpackManager.getExistingTrackIds(it)
+            }.orEmpty()
+        }
+    }
+
     private fun boot() {
         viewModelScope.launch {
             var prefs = withContext(Dispatchers.IO) { prefsStore.loadPrefs() }
-            if (prefs.gameDir.isBlank() || !GamePathResolver.isValidGameDir(prefs.gameDir)) {
-                val detected = withContext(Dispatchers.IO) {
-                    GamePathResolver.autoDetectAndroidPaths(Environment.getExternalStorageDirectory()).firstOrNull()
+            val shizukuSt = withContext(Dispatchers.IO) { privileged.refreshShizukuStatus() }
+
+            if (prefs.accessMode == GameAccessMode.STANDARD) {
+                if (prefs.gameDir.isBlank() || !GamePathResolver.isValidGameDir(prefs.gameDir)) {
+                    val detected = withContext(Dispatchers.IO) {
+                        GamePathResolver.autoDetectAndroidPaths(Environment.getExternalStorageDirectory()).firstOrNull()
+                    }
+                    if (detected != null) {
+                        prefs = prefs.copy(gameDir = detected)
+                        withContext(Dispatchers.IO) { prefsStore.savePrefs(prefs) }
+                    }
                 }
-                if (detected != null) {
-                    prefs = prefs.copy(gameDir = detected)
-                    withContext(Dispatchers.IO) { prefsStore.savePrefs(prefs) }
+            } else if (prefs.accessMode == GameAccessMode.SHIZUKU && shizukuSt == ShizukuStatus.READY) {
+                if (prefs.gameDir.isBlank()) {
+                    val detected = withContext(Dispatchers.IO) {
+                        privileged.getBackend(GameAccessMode.SHIZUKU)?.let {
+                            PrivilegedGameBridge.detectRestrictedGameDirs(it).firstOrNull()
+                        }
+                    }
+                    if (detected != null) {
+                        prefs = prefs.copy(gameDir = detected)
+                        withContext(Dispatchers.IO) { prefsStore.savePrefs(prefs) }
+                    }
                 }
             }
+
             player.setLoop(prefs.loopPlayback)
-            val gameValid = GamePathResolver.isValidGameDir(prefs.gameDir)
-            val (writable, writeErr) = if (gameValid) GamePathResolver.isWritable(prefs.gameDir) else (false to "")
-            val existingIds = if (gameValid) {
-                withContext(Dispatchers.IO) {
-                    GamePathResolver.resolve(prefs.gameDir)?.soundpackFile?.let {
-                        SoundpackManager.getExistingTrackIds(it)
-                    }.orEmpty()
+            val (gameValid, writable, writeErr) = withContext(Dispatchers.IO) {
+                if (prefs.accessMode == GameAccessMode.ROOT) {
+                    // Never invoke `su` silently during cold boot unless root was already granted
+                    Triple(false, false, "Tap Connect via Root in Settings to access /Android/data/.")
+                } else {
+                    validateGameLocationSync(prefs.gameDir, prefs.accessMode)
                 }
+            }
+            val existingIds = if (gameValid) {
+                withContext(Dispatchers.IO) { pullExistingTrackIdsSync(prefs.gameDir, prefs.accessMode) }
             } else emptySet()
 
             val (savedQueue, dirty) = withContext(Dispatchers.IO) { prefsStore.loadQueue(existingIds) }
             _ui.update {
                 it.copy(
                     prefs = prefs,
+                    shizukuStatus = shizukuSt,
+                    shizukuUid = privileged.shizukuUid.value,
                     gameDirValid = gameValid,
                     gameDirWritable = writable,
                     gameDirHint = writeErr,
@@ -128,6 +229,160 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             analyzeTracksInBackground(savedQueue)
             checkForUpdates(silentPopup = true)
+        }
+    }
+
+    fun refreshPrivilegedAccess() {
+        viewModelScope.launch {
+            val st = withContext(Dispatchers.IO) { privileged.refreshShizukuStatus() }
+            _ui.update { it.copy(shizukuStatus = st, shizukuUid = privileged.shizukuUid.value) }
+            val cur = _ui.value
+            if (cur.prefs.accessMode == GameAccessMode.SHIZUKU && st == ShizukuStatus.READY && !cur.gameDirValid) {
+                connectPrivilegedGameDir(customPath = cur.prefs.gameDir.takeIf { it.isNotBlank() })
+            }
+        }
+    }
+
+    fun selectAccessMode(mode: GameAccessMode) {
+        viewModelScope.launch {
+            val updated = _ui.value.prefs.copy(accessMode = mode)
+            withContext(Dispatchers.IO) { prefsStore.savePrefs(updated) }
+            _ui.update { it.copy(prefs = updated) }
+
+            when (mode) {
+                GameAccessMode.STANDARD -> {
+                    val (valid, writable, hint) = withContext(Dispatchers.IO) {
+                        validateGameLocationSync(updated.gameDir, GameAccessMode.STANDARD)
+                    }
+                    _ui.update { it.copy(gameDirValid = valid, gameDirWritable = writable, gameDirHint = hint) }
+                    if (valid) {
+                        refreshGameData()
+                        refreshQueueConflicts()
+                    }
+                }
+                GameAccessMode.SHIZUKU -> {
+                    val st = withContext(Dispatchers.IO) { privileged.refreshShizukuStatus() }
+                    _ui.update { it.copy(shizukuStatus = st, shizukuUid = privileged.shizukuUid.value) }
+                    if (st == ShizukuStatus.READY) {
+                        connectPrivilegedGameDir(customPath = updated.gameDir.takeIf { PrivilegedAccessManager.isRestrictedAndroidDataPath(it) })
+                    } else {
+                        val hint = when (st) {
+                            ShizukuStatus.NOT_INSTALLED -> "Install and start the Shizuku app to patch /Android/data/ without root."
+                            ShizukuStatus.NOT_RUNNING -> "Open Shizuku and start its Wireless Debugging service first."
+                            ShizukuStatus.PERMISSION_REQUIRED -> "Shizuku is running! Tap Grant Shizuku permission below."
+                            ShizukuStatus.READY -> ""
+                        }
+                        _ui.update { it.copy(gameDirValid = false, gameDirWritable = false, gameDirHint = hint) }
+                    }
+                }
+                GameAccessMode.ROOT -> {
+                    _ui.update {
+                        it.copy(
+                            gameDirValid = false,
+                            gameDirWritable = false,
+                            gameDirHint = "Tap Connect via Root below to request su access for /Android/data/.",
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    fun requestShizukuPermission() {
+        val status = privileged.refreshShizukuStatus()
+        when (status) {
+            ShizukuStatus.READY -> connectPrivilegedGameDir(customPath = _ui.value.prefs.gameDir.takeIf { it.isNotBlank() })
+            ShizukuStatus.PERMISSION_REQUIRED -> {
+                if (!privileged.requestShizukuPermission()) {
+                    showBanner("Could not request Shizuku permission. Update Shizuku to v11+.", isError = true)
+                }
+            }
+            ShizukuStatus.NOT_RUNNING -> showBanner("Shizuku service is not running. Start Shizuku via Wireless Debugging first.", isError = true)
+            ShizukuStatus.NOT_INSTALLED -> showBanner("Shizuku is not installed on this device.", isError = true)
+        }
+    }
+
+    fun connectPrivilegedGameDir(customPath: String? = null) {
+        val mode = _ui.value.prefs.accessMode
+        if (!mode.isPrivileged) {
+            autoDetectGameFolder()
+            return
+        }
+        viewModelScope.launch {
+            _ui.update { it.copy(busyAction = true) }
+            try {
+                if (mode == GameAccessMode.SHIZUKU) {
+                    val st = withContext(Dispatchers.IO) { privileged.refreshShizukuStatus() }
+                    if (st == ShizukuStatus.PERMISSION_REQUIRED) {
+                        privileged.requestShizukuPermission()
+                        return@launch
+                    } else if (st != ShizukuStatus.READY) {
+                        val msg = if (st == ShizukuStatus.NOT_INSTALLED) {
+                            "Install Shizuku first to access /Android/data/ without root."
+                        } else {
+                            "Start Shizuku via Wireless Debugging, then try connecting again."
+                        }
+                        _ui.update { it.copy(gameDirValid = false, gameDirWritable = false, gameDirHint = msg) }
+                        showBanner(msg, isError = true)
+                        return@launch
+                    }
+                } else if (mode == GameAccessMode.ROOT) {
+                    val hasRoot = withContext(Dispatchers.IO) { privileged.checkRootAvailable() }
+                    if (!hasRoot) {
+                        val msg = "Root (su) access was denied or is unavailable on this device. Try Shizuku mode instead."
+                        _ui.update { it.copy(gameDirValid = false, gameDirWritable = false, gameDirHint = msg) }
+                        showBanner(msg, isError = true)
+                        return@launch
+                    }
+                }
+
+                val backend = withContext(Dispatchers.IO) { privileged.getBackend(mode) }
+                if (backend == null) {
+                    showBanner("Could not initialize ${mode.label} file service.", isError = true)
+                    return@launch
+                }
+
+                val targetPath = withContext(Dispatchers.IO) {
+                    val explicit = customPath?.trim().orEmpty()
+                    if (explicit.isNotEmpty() && PrivilegedGameBridge.resolveRemoteLayout(backend, explicit) != null) {
+                        explicit
+                    } else {
+                        PrivilegedGameBridge.detectRestrictedGameDirs(backend).firstOrNull() ?: explicit
+                    }
+                }
+
+                if (targetPath.isBlank()) {
+                    val msg = "Asphalt 8 data was not found inside /Android/data/. Launch Asphalt 8 once or enter a custom path."
+                    _ui.update { it.copy(gameDirValid = false, gameDirWritable = false, gameDirHint = msg) }
+                    showBanner(msg, isError = true)
+                    return@launch
+                }
+
+                val (valid, writable, hint) = withContext(Dispatchers.IO) {
+                    validateGameLocationSync(targetPath, mode)
+                }
+                val updated = _ui.value.prefs.copy(gameDir = targetPath, accessMode = mode)
+                withContext(Dispatchers.IO) { prefsStore.savePrefs(updated) }
+                _ui.update {
+                    it.copy(
+                        prefs = updated,
+                        gameDirValid = valid,
+                        gameDirWritable = writable,
+                        gameDirHint = hint,
+                    )
+                }
+                if (valid) {
+                    showBanner("Connected to Asphalt 8 via ${mode.label}.")
+                    refreshGameData()
+                    refreshQueueConflicts()
+                } else {
+                    showBanner(hint.ifBlank { "No Asphalt 8 soundpack/music found at $targetPath." }, isError = true)
+                }
+            } catch (e: Exception) {
+                showBanner("Connection failed: ${e.message}", isError = true)
+            } finally {
+                _ui.update { it.copy(busyAction = false) }
+            }
         }
     }
 
@@ -164,13 +419,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setGameDirectory(path: String) {
+        val clean = path.trim()
+        val mode = _ui.value.prefs.accessMode
+        if (mode.isPrivileged) {
+            connectPrivilegedGameDir(customPath = clean)
+            return
+        }
         viewModelScope.launch {
-            val clean = path.trim()
-            val valid = withContext(Dispatchers.IO) { GamePathResolver.isValidGameDir(clean) }
-            val (writable, writeErr) = if (valid) {
-                withContext(Dispatchers.IO) { GamePathResolver.isWritable(clean) }
-            } else {
-                false to "No Asphalt 8 soundpack and music folders were found in that directory."
+            val (valid, writable, writeErr) = withContext(Dispatchers.IO) {
+                validateGameLocationSync(clean, GameAccessMode.STANDARD)
             }
             val updated = _ui.value.prefs.copy(gameDir = clean)
             withContext(Dispatchers.IO) { prefsStore.savePrefs(updated) }
@@ -193,14 +450,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun autoDetectGameFolder() {
+        val mode = _ui.value.prefs.accessMode
+        if (mode.isPrivileged) {
+            connectPrivilegedGameDir(customPath = null)
+            return
+        }
         viewModelScope.launch {
             val detected = withContext(Dispatchers.IO) {
                 GamePathResolver.autoDetectAndroidPaths(Environment.getExternalStorageDirectory()).firstOrNull()
             }
             if (detected != null) {
                 setGameDirectory(detected)
+            } else if (privileged.refreshShizukuStatus() == ShizukuStatus.READY) {
+                // Seamless assist: if Shizuku is already authorized and no loose folder exists, detect /Android/data/
+                selectAccessMode(GameAccessMode.SHIZUKU)
             } else {
-                showBanner("No unpacked Asphalt 8 folder was found automatically. Tap Choose folder to pick it.", isError = true)
+                showBanner(
+                    "No loose Asphalt 8 folder found. Choose a loose folder or switch to Shizuku mode in Settings for /Android/data/.",
+                    isError = true,
+                )
             }
         }
     }
@@ -212,11 +480,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun refreshLibrary() {
         val gdir = _ui.value.prefs.gameDir
+        val mode = _ui.value.prefs.accessMode
         if (!_ui.value.gameDirValid || gdir.isBlank()) return
         viewModelScope.launch {
             _ui.update { it.copy(libraryLoading = true) }
             try {
-                val tracks = withContext(Dispatchers.IO) { LibraryManager.listInstalledTracks(gdir) }
+                val tracks = withContext(Dispatchers.IO) {
+                    if (mode.isPrivileged) {
+                        val backend = activeBackendOrNull(mode)
+                            ?: throw IllegalStateException("${mode.label} service is not connected.")
+                        val layout = PrivilegedGameBridge.resolveRemoteLayout(backend, gdir)
+                            ?: throw IllegalStateException("Asphalt 8 folder is unreachable via ${mode.label}.")
+                        val ws = PrivilegedGameBridge.pullMirror(backend, layout, mirrorDir())
+                        LibraryManager.listInstalledTracks(ws.mirrorDir.absolutePath, ws.remoteMusicIndex)
+                    } else {
+                        LibraryManager.listInstalledTracks(gdir)
+                    }
+                }
                 _ui.update { cur ->
                     val nextFocus = cur.focusedLibraryUid?.takeIf { uid -> tracks.any { it.uid == uid } }
                         ?: tracks.firstOrNull()?.uid
@@ -231,6 +511,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun refreshTools() {
         val gdir = _ui.value.prefs.gameDir
+        val mode = _ui.value.prefs.accessMode
         viewModelScope.launch {
             val profiles = withContext(Dispatchers.IO) { LibraryManager.listProfiles(appCtx.filesDir) }
             if (!_ui.value.gameDirValid || gdir.isBlank()) {
@@ -239,7 +520,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             val backups = withContext(Dispatchers.IO) { LibraryManager.listBackups(appCtx.filesDir, gdir) }
             val audit = withContext(Dispatchers.IO) {
-                try { LibraryManager.auditHealth(gdir) } catch (_: Exception) { null }
+                try {
+                    if (mode.isPrivileged) {
+                        val backend = activeBackendOrNull(mode) ?: return@withContext null
+                        val layout = PrivilegedGameBridge.resolveRemoteLayout(backend, gdir) ?: return@withContext null
+                        val ws = PrivilegedGameBridge.pullMirror(backend, layout, mirrorDir())
+                        LibraryManager.auditHealth(ws.mirrorDir.absolutePath, ws.remoteMusicIndex)
+                    } else {
+                        LibraryManager.auditHealth(gdir)
+                    }
+                } catch (_: Exception) {
+                    null
+                }
             }
             _ui.update { it.copy(backups = backups, healthAudit = audit, profiles = profiles) }
         }
@@ -247,15 +539,99 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun refreshQueueConflicts() {
         val gdir = _ui.value.prefs.gameDir
+        val mode = _ui.value.prefs.accessMode
         if (!_ui.value.gameDirValid || gdir.isBlank()) return
         viewModelScope.launch {
-            val ids = withContext(Dispatchers.IO) {
-                GamePathResolver.resolve(gdir)?.soundpackFile?.let {
-                    SoundpackManager.getExistingTrackIds(it)
-                }.orEmpty()
-            }
+            val ids = withContext(Dispatchers.IO) { pullExistingTrackIdsSync(gdir, mode) }
             _ui.update { cur ->
                 cur.copy(queueTracks = cur.queueTracks.map { it.copy(conflict = it.baseId in ids) })
+            }
+        }
+    }
+
+    /* ---------- Library Preview & On-Demand Remote Fetch ---------- */
+
+    fun playInstalledTrack(track: InstalledTrack, isOutro: Boolean) {
+        val mode = _ui.value.prefs.accessMode
+        val gdir = _ui.value.prefs.gameDir
+        val fileName = if (isOutro) track.outroFile else track.mainFile
+        val directPath = if (isOutro) track.outroPath else track.mainPath
+        if (fileName.isNullOrBlank() || directPath.isNullOrBlank()) return
+
+        if (!mode.isPrivileged) {
+            player.togglePlay(
+                uid = track.uid,
+                title = track.title,
+                artist = track.artist,
+                category = track.category,
+                srcFile = File(directPath),
+                isOutro = isOutro,
+                onError = { showBanner(it, isError = true) },
+            )
+            return
+        }
+
+        // Toggle pause immediately if already playing this exact track
+        val np = player.state.value
+        if (np.uid == track.uid && np.isOutro == isOutro && np.isLocked) {
+            player.toggleCurrentPlayPause()
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val cachedFile = withContext(Dispatchers.IO) {
+                    val backend = activeBackendOrNull(mode)
+                        ?: throw IllegalStateException("${mode.label} service is not connected.")
+                    val layout = PrivilegedGameBridge.resolveRemoteLayout(backend, gdir)
+                        ?: throw IllegalStateException("Asphalt 8 folder is unreachable.")
+                    PrivilegedGameBridge.fetchTrackToCache(backend, layout, fileName, appCtx.cacheDir)
+                }
+                player.togglePlay(
+                    uid = track.uid,
+                    title = track.title,
+                    artist = track.artist,
+                    category = track.category,
+                    srcFile = cachedFile,
+                    isOutro = isOutro,
+                    onError = { showBanner(it, isError = true) },
+                )
+            } catch (e: Exception) {
+                showBanner("Could not load track audio: ${e.message}", isError = true)
+            }
+        }
+    }
+
+    fun trimInstalledTrackLast20s(track: InstalledTrack) {
+        val mode = _ui.value.prefs.accessMode
+        val gdir = _ui.value.prefs.gameDir
+        viewModelScope.launch {
+            _ui.update { it.copy(busyAction = true) }
+            try {
+                val mainLocal = withContext(Dispatchers.IO) {
+                    if (mode.isPrivileged) {
+                        val backend = activeBackendOrNull(mode)
+                            ?: throw IllegalStateException("${mode.label} service is not connected.")
+                        val layout = PrivilegedGameBridge.resolveRemoteLayout(backend, gdir)
+                            ?: throw IllegalStateException("Asphalt 8 folder is unreachable.")
+                        PrivilegedGameBridge.fetchTrackToCache(backend, layout, track.mainFile, appCtx.cacheDir)
+                    } else {
+                        File(track.mainPath)
+                    }
+                }
+                val dur = withContext(Dispatchers.IO) { AudioPipeline.probeDuration(mainLocal) } ?: 180.0
+                saveLibraryTrackOutroInternal(
+                    track = track,
+                    srcFile = mainLocal,
+                    startSec = maxOf(0.0, dur - 20.0),
+                    endSec = dur,
+                    fadeInSec = 0.0,
+                    fadeOutSec = 1.2,
+                )
+            } catch (e: Exception) {
+                showBanner("Could not trim outro: ${e.message}", isError = true)
+            } finally {
+                _ui.update { it.copy(busyAction = false) }
             }
         }
     }
@@ -341,12 +717,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private suspend fun addScannedFiles(files: List<File>) {
         val gdir = _ui.value.prefs.gameDir
+        val mode = _ui.value.prefs.accessMode
         val existingIds = if (_ui.value.gameDirValid) {
-            withContext(Dispatchers.IO) {
-                GamePathResolver.resolve(gdir)?.soundpackFile?.let {
-                    SoundpackManager.getExistingTrackIds(it)
-                }.orEmpty()
-            }
+            withContext(Dispatchers.IO) { pullExistingTrackIdsSync(gdir, mode) }
         } else emptySet()
 
         val scanned = withContext(Dispatchers.IO) {
@@ -648,21 +1021,56 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             try {
                 val res = withContext(Dispatchers.IO) {
-                    LibraryManager.installQueueTracks(
-                        appFilesDir = appCtx.filesDir,
-                        tempDir = File(appCtx.cacheDir, "install_tmp"),
-                        gameDirPath = st.prefs.gameDir,
-                        tracks = st.queueTracks,
-                        qualityPreset = st.prefs.qualityPreset,
-                        keepOriginal = st.prefs.keepOriginal,
-                        conflictPolicy = st.prefs.conflictPolicy,
-                        autoBackup = st.prefs.autoBackup,
-                        onProgress = { cur, tot, stage ->
-                            _ui.update { s ->
-                                s.copy(installProgress = s.installProgress.copy(current = cur, total = tot, stage = stage))
-                            }
-                        },
-                    )
+                    val mode = st.prefs.accessMode
+                    if (mode.isPrivileged) {
+                        val backend = activeBackendOrNull(mode)
+                            ?: throw IllegalStateException("${mode.label} service is not connected.")
+                        val layout = PrivilegedGameBridge.resolveRemoteLayout(backend, st.prefs.gameDir)
+                            ?: throw IllegalStateException("Asphalt 8 folder is unreachable via ${mode.label}.")
+                        _ui.update { s -> s.copy(installProgress = s.installProgress.copy(stage = "Reading Asphalt 8 soundpack via ${mode.label}...")) }
+                        val ws = PrivilegedGameBridge.pullMirror(backend, layout, mirrorDir())
+                        val r = LibraryManager.installQueueTracks(
+                            appFilesDir = appCtx.filesDir,
+                            tempDir = File(appCtx.cacheDir, "install_tmp"),
+                            gameDirPath = ws.mirrorDir.absolutePath,
+                            tracks = st.queueTracks,
+                            qualityPreset = st.prefs.qualityPreset,
+                            keepOriginal = st.prefs.keepOriginal,
+                            conflictPolicy = st.prefs.conflictPolicy,
+                            autoBackup = st.prefs.autoBackup,
+                            onProgress = { cur, tot, stage ->
+                                _ui.update { s ->
+                                    s.copy(installProgress = s.installProgress.copy(current = cur, total = tot, stage = stage))
+                                }
+                            },
+                            backupKeyDir = st.prefs.gameDir,
+                        )
+                        _ui.update { s -> s.copy(installProgress = s.installProgress.copy(stage = "Writing files to /Android/data/ via ${mode.label}...")) }
+                        PrivilegedGameBridge.pushMirrorChanges(
+                            backend = backend,
+                            workspace = ws,
+                            pushSoundpack = true,
+                            pushTexts = true,
+                            pushStagedMusic = true,
+                        )
+                        r
+                    } else {
+                        LibraryManager.installQueueTracks(
+                            appFilesDir = appCtx.filesDir,
+                            tempDir = File(appCtx.cacheDir, "install_tmp"),
+                            gameDirPath = st.prefs.gameDir,
+                            tracks = st.queueTracks,
+                            qualityPreset = st.prefs.qualityPreset,
+                            keepOriginal = st.prefs.keepOriginal,
+                            conflictPolicy = st.prefs.conflictPolicy,
+                            autoBackup = st.prefs.autoBackup,
+                            onProgress = { cur, tot, stage ->
+                                _ui.update { s ->
+                                    s.copy(installProgress = s.installProgress.copy(current = cur, total = tot, stage = stage))
+                                }
+                            },
+                        )
+                    }
                 }
                 val summary = "Installed ${res.added} song(s)" +
                     (if (res.skipped > 0) ", skipped ${res.skipped}" else "") +
@@ -724,19 +1132,39 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun saveLibraryTrackEdit(track: InstalledTrack, title: String, artist: String, category: StationCategory) {
         val gdir = _ui.value.prefs.gameDir
+        val mode = _ui.value.prefs.accessMode
         viewModelScope.launch {
             _ui.update { it.copy(busyAction = true) }
             try {
                 withContext(Dispatchers.IO) {
-                    LibraryManager.updateInstalledTrack(
-                        appFilesDir = appCtx.filesDir,
-                        gameDirPath = gdir,
-                        track = track,
-                        newTitle = title,
-                        newArtist = artist,
-                        newCategory = category,
-                        autoBackup = _ui.value.prefs.autoBackup,
-                    )
+                    if (mode.isPrivileged) {
+                        val backend = activeBackendOrNull(mode)
+                            ?: throw IllegalStateException("${mode.label} service is not connected.")
+                        val layout = PrivilegedGameBridge.resolveRemoteLayout(backend, gdir)
+                            ?: throw IllegalStateException("Asphalt 8 folder is unreachable.")
+                        val ws = PrivilegedGameBridge.pullMirror(backend, layout, mirrorDir())
+                        LibraryManager.updateInstalledTrack(
+                            appFilesDir = appCtx.filesDir,
+                            gameDirPath = ws.mirrorDir.absolutePath,
+                            track = track,
+                            newTitle = title,
+                            newArtist = artist,
+                            newCategory = category,
+                            autoBackup = _ui.value.prefs.autoBackup,
+                            backupKeyDir = gdir,
+                        )
+                        PrivilegedGameBridge.pushMirrorChanges(backend, ws, pushSoundpack = true, pushTexts = true, pushStagedMusic = false)
+                    } else {
+                        LibraryManager.updateInstalledTrack(
+                            appFilesDir = appCtx.filesDir,
+                            gameDirPath = gdir,
+                            track = track,
+                            newTitle = title,
+                            newArtist = artist,
+                            newCategory = category,
+                            autoBackup = _ui.value.prefs.autoBackup,
+                        )
+                    }
                 }
                 player.syncMetadataIfActive(track.uid, title, artist, category)
                 showBanner("Saved changes for \"$title\".")
@@ -757,28 +1185,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         fadeInSec: Double,
         fadeOutSec: Double,
     ) {
-        val gdir = _ui.value.prefs.gameDir
         val src = customOutroFile ?: File(track.mainPath)
         viewModelScope.launch {
             _ui.update { it.copy(busyAction = true) }
             try {
-                withContext(Dispatchers.IO) {
-                    LibraryManager.saveInstalledTrackOutro(
-                        appFilesDir = appCtx.filesDir,
-                        tempDir = File(appCtx.cacheDir, "outro_tmp"),
-                        gameDirPath = gdir,
-                        baseId = track.baseId,
-                        srcFile = src,
-                        startSec = if (customOutroFile == null) startSec else null,
-                        endSec = if (customOutroFile == null) endSec else null,
-                        fadeInSec = fadeInSec,
-                        fadeOutSec = fadeOutSec,
-                        qualityPreset = _ui.value.prefs.qualityPreset,
-                        autoBackup = _ui.value.prefs.autoBackup,
-                    )
-                }
-                showBanner("Saved outro for \"${track.title}\".")
-                refreshGameData()
+                saveLibraryTrackOutroInternal(
+                    track = track,
+                    srcFile = src,
+                    startSec = if (customOutroFile == null) startSec else null,
+                    endSec = if (customOutroFile == null) endSec else null,
+                    fadeInSec = fadeInSec,
+                    fadeOutSec = fadeOutSec,
+                )
             } catch (e: Exception) {
                 showBanner("Could not save outro: ${e.message}", isError = true)
             } finally {
@@ -787,19 +1205,98 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private suspend fun saveLibraryTrackOutroInternal(
+        track: InstalledTrack,
+        srcFile: File,
+        startSec: Double?,
+        endSec: Double?,
+        fadeInSec: Double,
+        fadeOutSec: Double,
+    ) {
+        val gdir = _ui.value.prefs.gameDir
+        val mode = _ui.value.prefs.accessMode
+        withContext(Dispatchers.IO) {
+            if (mode.isPrivileged) {
+                val backend = activeBackendOrNull(mode)
+                    ?: throw IllegalStateException("${mode.label} service is not connected.")
+                val layout = PrivilegedGameBridge.resolveRemoteLayout(backend, gdir)
+                    ?: throw IllegalStateException("Asphalt 8 folder is unreachable.")
+                val ws = PrivilegedGameBridge.pullMirror(backend, layout, mirrorDir())
+                LibraryManager.saveInstalledTrackOutro(
+                    appFilesDir = appCtx.filesDir,
+                    tempDir = File(appCtx.cacheDir, "outro_tmp"),
+                    gameDirPath = ws.mirrorDir.absolutePath,
+                    baseId = track.baseId,
+                    srcFile = srcFile,
+                    startSec = startSec,
+                    endSec = endSec,
+                    fadeInSec = fadeInSec,
+                    fadeOutSec = fadeOutSec,
+                    qualityPreset = _ui.value.prefs.qualityPreset,
+                    autoBackup = _ui.value.prefs.autoBackup,
+                    backupKeyDir = gdir,
+                )
+                PrivilegedGameBridge.pushMirrorChanges(backend, ws, pushSoundpack = true, pushTexts = false, pushStagedMusic = true)
+            } else {
+                LibraryManager.saveInstalledTrackOutro(
+                    appFilesDir = appCtx.filesDir,
+                    tempDir = File(appCtx.cacheDir, "outro_tmp"),
+                    gameDirPath = gdir,
+                    baseId = track.baseId,
+                    srcFile = srcFile,
+                    startSec = startSec,
+                    endSec = endSec,
+                    fadeInSec = fadeInSec,
+                    fadeOutSec = fadeOutSec,
+                    qualityPreset = _ui.value.prefs.qualityPreset,
+                    autoBackup = _ui.value.prefs.autoBackup,
+                )
+            }
+        }
+        showBanner("Saved outro for \"${track.title}\".")
+        refreshGameData()
+    }
+
     fun removeLibraryTrackOutro(track: InstalledTrack, deleteFile: Boolean = true) {
         val gdir = _ui.value.prefs.gameDir
+        val mode = _ui.value.prefs.accessMode
         viewModelScope.launch {
             _ui.update { it.copy(busyAction = true) }
             try {
                 withContext(Dispatchers.IO) {
-                    LibraryManager.removeInstalledTrackOutro(
-                        appFilesDir = appCtx.filesDir,
-                        gameDirPath = gdir,
-                        baseId = track.baseId,
-                        deleteFile = deleteFile,
-                        autoBackup = _ui.value.prefs.autoBackup,
-                    )
+                    if (mode.isPrivileged) {
+                        val backend = activeBackendOrNull(mode)
+                            ?: throw IllegalStateException("${mode.label} service is not connected.")
+                        val layout = PrivilegedGameBridge.resolveRemoteLayout(backend, gdir)
+                            ?: throw IllegalStateException("Asphalt 8 folder is unreachable.")
+                        val ws = PrivilegedGameBridge.pullMirror(backend, layout, mirrorDir())
+                        val toDelete = mutableListOf<String>()
+                        LibraryManager.removeInstalledTrackOutro(
+                            appFilesDir = appCtx.filesDir,
+                            gameDirPath = ws.mirrorDir.absolutePath,
+                            baseId = track.baseId,
+                            deleteFile = deleteFile,
+                            autoBackup = _ui.value.prefs.autoBackup,
+                            backupKeyDir = gdir,
+                            deletedFileNamesOut = toDelete,
+                        )
+                        PrivilegedGameBridge.pushMirrorChanges(
+                            backend = backend,
+                            workspace = ws,
+                            pushSoundpack = true,
+                            pushTexts = false,
+                            pushStagedMusic = false,
+                            deleteRemoteMusicFiles = toDelete,
+                        )
+                    } else {
+                        LibraryManager.removeInstalledTrackOutro(
+                            appFilesDir = appCtx.filesDir,
+                            gameDirPath = gdir,
+                            baseId = track.baseId,
+                            deleteFile = deleteFile,
+                            autoBackup = _ui.value.prefs.autoBackup,
+                        )
+                    }
                 }
                 showBanner("Removed outro for \"${track.title}\".")
                 refreshGameData()
@@ -814,18 +1311,46 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun removeLibraryTracks(tracks: List<InstalledTrack>, deleteFiles: Boolean) {
         if (tracks.isEmpty()) return
         val gdir = _ui.value.prefs.gameDir
+        val mode = _ui.value.prefs.accessMode
         player.stopIfUidMatches(tracks.map { it.uid }.toSet())
         viewModelScope.launch {
             _ui.update { it.copy(busyAction = true) }
             try {
                 val removed = withContext(Dispatchers.IO) {
-                    LibraryManager.removeInstalledTracks(
-                        appFilesDir = appCtx.filesDir,
-                        gameDirPath = gdir,
-                        baseIds = tracks.map { it.baseId },
-                        deleteFiles = deleteFiles,
-                        autoBackup = _ui.value.prefs.autoBackup,
-                    )
+                    if (mode.isPrivileged) {
+                        val backend = activeBackendOrNull(mode)
+                            ?: throw IllegalStateException("${mode.label} service is not connected.")
+                        val layout = PrivilegedGameBridge.resolveRemoteLayout(backend, gdir)
+                            ?: throw IllegalStateException("Asphalt 8 folder is unreachable.")
+                        val ws = PrivilegedGameBridge.pullMirror(backend, layout, mirrorDir())
+                        val toDelete = mutableListOf<String>()
+                        val n = LibraryManager.removeInstalledTracks(
+                            appFilesDir = appCtx.filesDir,
+                            gameDirPath = ws.mirrorDir.absolutePath,
+                            baseIds = tracks.map { it.baseId },
+                            deleteFiles = deleteFiles,
+                            autoBackup = _ui.value.prefs.autoBackup,
+                            backupKeyDir = gdir,
+                            deletedFileNamesOut = toDelete,
+                        )
+                        PrivilegedGameBridge.pushMirrorChanges(
+                            backend = backend,
+                            workspace = ws,
+                            pushSoundpack = true,
+                            pushTexts = true,
+                            pushStagedMusic = false,
+                            deleteRemoteMusicFiles = toDelete,
+                        )
+                        n
+                    } else {
+                        LibraryManager.removeInstalledTracks(
+                            appFilesDir = appCtx.filesDir,
+                            gameDirPath = gdir,
+                            baseIds = tracks.map { it.baseId },
+                            deleteFiles = deleteFiles,
+                            autoBackup = _ui.value.prefs.autoBackup,
+                        )
+                    }
                 }
                 showBanner("Removed $removed song(s) from Asphalt 8.")
                 refreshGameData()
@@ -842,6 +1367,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun createManualBackup() {
         val gdir = _ui.value.prefs.gameDir
+        val mode = _ui.value.prefs.accessMode
         if (!_ui.value.gameDirValid) {
             showBanner("Select a valid Asphalt 8 folder first.", isError = true)
             return
@@ -849,7 +1375,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             _ui.update { it.copy(busyAction = true) }
             try {
-                withContext(Dispatchers.IO) { LibraryManager.createBackup(appCtx.filesDir, gdir, "manual") }
+                withContext(Dispatchers.IO) {
+                    if (mode.isPrivileged) {
+                        val backend = activeBackendOrNull(mode)
+                            ?: throw IllegalStateException("${mode.label} service is not connected.")
+                        val layout = PrivilegedGameBridge.resolveRemoteLayout(backend, gdir)
+                            ?: throw IllegalStateException("Asphalt 8 folder is unreachable.")
+                        val ws = PrivilegedGameBridge.pullMirror(backend, layout, mirrorDir())
+                        LibraryManager.createBackup(appCtx.filesDir, ws.mirrorDir.absolutePath, "manual", backupKeyDir = gdir)
+                    } else {
+                        LibraryManager.createBackup(appCtx.filesDir, gdir, "manual")
+                    }
+                }
                 showBanner("Backup snapshot created.")
                 refreshTools()
             } catch (e: Exception) {
@@ -862,10 +1399,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun restoreBackup(entry: BackupEntry) {
         val gdir = _ui.value.prefs.gameDir
+        val mode = _ui.value.prefs.accessMode
         viewModelScope.launch {
             _ui.update { it.copy(busyAction = true) }
             try {
-                val count = withContext(Dispatchers.IO) { LibraryManager.restoreBackup(gdir, File(entry.path)) }
+                val count = withContext(Dispatchers.IO) {
+                    if (mode.isPrivileged) {
+                        val backend = activeBackendOrNull(mode)
+                            ?: throw IllegalStateException("${mode.label} service is not connected.")
+                        val layout = PrivilegedGameBridge.resolveRemoteLayout(backend, gdir)
+                            ?: throw IllegalStateException("Asphalt 8 folder is unreachable.")
+                        val ws = PrivilegedGameBridge.pullMirror(backend, layout, mirrorDir())
+                        val c = LibraryManager.restoreBackup(ws.mirrorDir.absolutePath, File(entry.path))
+                        PrivilegedGameBridge.pushMirrorChanges(backend, ws, pushSoundpack = true, pushTexts = true, pushStagedMusic = false)
+                        c
+                    } else {
+                        LibraryManager.restoreBackup(gdir, File(entry.path))
+                    }
+                }
                 showBanner("Restored soundpack and $count language file(s).")
                 refreshGameData()
                 refreshQueueConflicts()
@@ -892,20 +1443,51 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun repairHealth(fixTexts: Boolean, fixEvents: Boolean, pruneMissing: Boolean, deleteOrphans: Boolean) {
         val gdir = _ui.value.prefs.gameDir
+        val mode = _ui.value.prefs.accessMode
         if (!_ui.value.gameDirValid) return
         viewModelScope.launch {
             _ui.update { it.copy(busyAction = true) }
             try {
                 val res = withContext(Dispatchers.IO) {
-                    LibraryManager.repairHealth(
-                        appFilesDir = appCtx.filesDir,
-                        gameDirPath = gdir,
-                        fixTexts = fixTexts,
-                        fixEvents = fixEvents,
-                        pruneMissing = pruneMissing,
-                        deleteOrphans = deleteOrphans,
-                        autoBackup = _ui.value.prefs.autoBackup,
-                    )
+                    if (mode.isPrivileged) {
+                        val backend = activeBackendOrNull(mode)
+                            ?: throw IllegalStateException("${mode.label} service is not connected.")
+                        val layout = PrivilegedGameBridge.resolveRemoteLayout(backend, gdir)
+                            ?: throw IllegalStateException("Asphalt 8 folder is unreachable.")
+                        val ws = PrivilegedGameBridge.pullMirror(backend, layout, mirrorDir())
+                        val orphansToDelete = mutableListOf<String>()
+                        val r = LibraryManager.repairHealth(
+                            appFilesDir = appCtx.filesDir,
+                            gameDirPath = ws.mirrorDir.absolutePath,
+                            fixTexts = fixTexts,
+                            fixEvents = fixEvents,
+                            pruneMissing = pruneMissing,
+                            deleteOrphans = deleteOrphans,
+                            autoBackup = _ui.value.prefs.autoBackup,
+                            remoteMusicIndex = ws.remoteMusicIndex,
+                            backupKeyDir = gdir,
+                            deletedOrphanNamesOut = orphansToDelete,
+                        )
+                        PrivilegedGameBridge.pushMirrorChanges(
+                            backend = backend,
+                            workspace = ws,
+                            pushSoundpack = r.eventsFixed > 0 || r.soundsPruned > 0,
+                            pushTexts = r.textsFixed > 0,
+                            pushStagedMusic = false,
+                            deleteRemoteMusicFiles = orphansToDelete,
+                        )
+                        r
+                    } else {
+                        LibraryManager.repairHealth(
+                            appFilesDir = appCtx.filesDir,
+                            gameDirPath = gdir,
+                            fixTexts = fixTexts,
+                            fixEvents = fixEvents,
+                            pruneMissing = pruneMissing,
+                            deleteOrphans = deleteOrphans,
+                            autoBackup = _ui.value.prefs.autoBackup,
+                        )
+                    }
                 }
                 _ui.update { it.copy(healthAudit = res.auditAfter) }
                 showBanner("Repair complete: ${res.textsFixed} titles, ${res.eventsFixed} events, ${res.soundsPruned} pruned, ${res.orphansDeleted} orphans cleaned.")
@@ -920,13 +1502,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun saveProfile(name: String) {
         val gdir = _ui.value.prefs.gameDir
+        val mode = _ui.value.prefs.accessMode
         if (!_ui.value.gameDirValid) {
             showBanner("Select a valid Asphalt 8 folder first.", isError = true)
             return
         }
         viewModelScope.launch {
             try {
-                val p = withContext(Dispatchers.IO) { LibraryManager.saveProfile(appCtx.filesDir, gdir, name) }
+                val p = withContext(Dispatchers.IO) {
+                    if (mode.isPrivileged) {
+                        val backend = activeBackendOrNull(mode)
+                            ?: throw IllegalStateException("${mode.label} service is not connected.")
+                        val layout = PrivilegedGameBridge.resolveRemoteLayout(backend, gdir)
+                            ?: throw IllegalStateException("Asphalt 8 folder is unreachable.")
+                        val ws = PrivilegedGameBridge.pullMirror(backend, layout, mirrorDir())
+                        LibraryManager.saveProfile(appCtx.filesDir, ws.mirrorDir.absolutePath, name, ws.remoteMusicIndex)
+                    } else {
+                        LibraryManager.saveProfile(appCtx.filesDir, gdir, name)
+                    }
+                }
                 showBanner("Saved profile \"${p.name}\" (${p.trackCount} tracks).")
                 refreshTools()
             } catch (e: Exception) {
@@ -937,12 +1531,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun applyProfile(profile: ModProfile) {
         val gdir = _ui.value.prefs.gameDir
+        val mode = _ui.value.prefs.accessMode
         if (!_ui.value.gameDirValid) return
         viewModelScope.launch {
             _ui.update { it.copy(busyAction = true) }
             try {
                 withContext(Dispatchers.IO) {
-                    LibraryManager.applyProfile(appCtx.filesDir, gdir, profile.id, _ui.value.prefs.autoBackup)
+                    if (mode.isPrivileged) {
+                        val backend = activeBackendOrNull(mode)
+                            ?: throw IllegalStateException("${mode.label} service is not connected.")
+                        val layout = PrivilegedGameBridge.resolveRemoteLayout(backend, gdir)
+                            ?: throw IllegalStateException("Asphalt 8 folder is unreachable.")
+                        val ws = PrivilegedGameBridge.pullMirror(backend, layout, mirrorDir())
+                        LibraryManager.applyProfile(appCtx.filesDir, ws.mirrorDir.absolutePath, profile.id, _ui.value.prefs.autoBackup, backupKeyDir = gdir)
+                        PrivilegedGameBridge.pushMirrorChanges(backend, ws, pushSoundpack = true, pushTexts = true, pushStagedMusic = false)
+                    } else {
+                        LibraryManager.applyProfile(appCtx.filesDir, gdir, profile.id, _ui.value.prefs.autoBackup)
+                    }
                 }
                 showBanner("Applied profile \"${profile.name}\".")
                 refreshGameData()
@@ -1074,6 +1679,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     override fun onCleared() {
         player.release()
+        privileged.release()
         super.onCleared()
     }
 }

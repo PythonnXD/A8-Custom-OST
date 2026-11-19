@@ -2,6 +2,7 @@ package com.pythonnxd.a8ostpatcher.ui.screens
 
 import android.os.Build
 import android.view.HapticFeedbackConstants
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -13,6 +14,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -42,9 +44,15 @@ import com.pythonnxd.a8ostpatcher.R
 import com.pythonnxd.a8ostpatcher.engine.AppThemeMode
 import com.pythonnxd.a8ostpatcher.engine.QualityPreset
 import com.pythonnxd.a8ostpatcher.engine.UpdateChecker
+import com.pythonnxd.a8ostpatcher.privileged.GameAccessMode
+import com.pythonnxd.a8ostpatcher.privileged.PrivilegedGameBridge
+import com.pythonnxd.a8ostpatcher.privileged.RootStatus
+import com.pythonnxd.a8ostpatcher.privileged.ShizukuStatus
 import com.pythonnxd.a8ostpatcher.state.MainUiState
 import com.pythonnxd.a8ostpatcher.state.MainViewModel
 import com.pythonnxd.a8ostpatcher.ui.components.LiquidGlassCard
+import com.pythonnxd.a8ostpatcher.ui.components.SegmentItem
+import com.pythonnxd.a8ostpatcher.ui.components.SlidingSegmentedControl
 import com.pythonnxd.a8ostpatcher.ui.components.interactivePressScale
 import com.pythonnxd.a8ostpatcher.ui.theme.LocalAppColors
 import com.pythonnxd.a8ostpatcher.ui.theme.LocalReduceMotion
@@ -56,12 +64,14 @@ fun SettingsScreen(
     isTablet: Boolean,
     hasAllFilesAccess: Boolean,
     onRequestAllFilesAccess: () -> Unit,
+    onOpenShizukuApp: () -> Unit,
     onChooseGameFolder: () -> Unit,
 ) {
     val colors = LocalAppColors.current
     val reduceMotion = LocalReduceMotion.current
     val view = LocalView.current
     val prefs = ui.prefs
+    var showCustomPathDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -79,61 +89,323 @@ fun SettingsScreen(
             letterSpacing = (-0.4).sp,
         )
 
-        // 1. Asphalt 8 Folder & Storage Access
-        SettingsGroupCard(title = "Asphalt 8 folder") {
+        // 1. Asphalt 8 Folder & /Android/data/ Permission Choice
+        SettingsGroupCard(title = "Asphalt 8 folder & access permission") {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        if (ui.gameDirValid) "Connected" else "Not configured",
-                        color = if (ui.gameDirValid) colors.ok else colors.warn,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !hasAllFilesAccess) {
-                        TextButton(onClick = onRequestAllFilesAccess) {
-                            Text("Grant all files access", color = colors.accentInk, fontSize = 13.5.sp, fontWeight = FontWeight.SemiBold)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(9.dp)
+                                .clip(CircleShape)
+                                .background(if (ui.gameDirValid) colors.ok else colors.warn)
+                        )
+                        Text(
+                            if (ui.gameDirValid) "Connected (${prefs.accessMode.label})" else "Not configured",
+                            color = if (ui.gameDirValid) colors.ok else colors.warn,
+                            fontSize = 14.5.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                    if (prefs.accessMode == GameAccessMode.STANDARD && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        if (hasAllFilesAccess) {
+                            Surface(shape = RoundedCornerShape(999.dp), color = colors.ok.copy(alpha = 0.16f)) {
+                                Text(
+                                    "All files granted",
+                                    color = colors.ok,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                )
+                            }
+                        } else {
+                            TextButton(onClick = onRequestAllFilesAccess) {
+                                Text("Grant all files", color = colors.accentInk, fontSize = 13.5.sp, fontWeight = FontWeight.SemiBold)
+                            }
                         }
                     }
                 }
-                Text(
-                    prefs.gameDir.ifBlank { "Pick your unpacked Asphalt 8 folder (contains soundpack, music, and text)." },
-                    color = colors.muted,
-                    fontSize = 14.sp,
-                    lineHeight = 20.sp,
-                )
-                if (ui.gameDirHint.isNotBlank() && !ui.gameDirWritable) {
-                    Text(ui.gameDirHint, color = colors.danger, fontSize = 13.5.sp, lineHeight = 19.sp)
+
+                // 3-way Permission Choice selector: All files | Shizuku | Root (su)
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Permission method", color = colors.text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                    SlidingSegmentedControl(
+                        items = listOf(
+                            SegmentItem("All files", Icons.Rounded.Folder),
+                            SegmentItem("Shizuku", Icons.Rounded.Bolt),
+                            SegmentItem("Root (su)", Icons.Rounded.Security),
+                        ),
+                        selectedIndex = GameAccessMode.entries.indexOf(prefs.accessMode).coerceAtLeast(0),
+                        onSelect = { idx -> vm.selectAccessMode(GameAccessMode.entries[idx]) },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    val chooseInteraction = remember { MutableInteractionSource() }
-                    Button(
-                        onClick = onChooseGameFolder,
-                        interactionSource = chooseInteraction,
-                        shape = RoundedCornerShape(999.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = colors.capsuleBg, contentColor = colors.capsuleInk),
-                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 11.dp),
-                        modifier = Modifier
-                            .defaultMinSize(minHeight = 46.dp)
-                            .interactivePressScale(chooseInteraction, 0.94f),
+
+                // Current configured path
+                if (prefs.gameDir.isNotBlank()) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = colors.ground.copy(alpha = 0.55f),
+                        border = BorderStroke(1.dp, colors.glassSpecularMid),
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("Choose folder", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            prefs.gameDir,
+                            color = colors.muted,
+                            fontSize = 13.sp,
+                            lineHeight = 18.sp,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                        )
                     }
-                    val autoInteraction = remember { MutableInteractionSource() }
-                    OutlinedButton(
-                        onClick = { vm.autoDetectGameFolder() },
-                        interactionSource = autoInteraction,
-                        shape = RoundedCornerShape(999.dp),
-                        border = BorderStroke(1.dp, colors.glassSpecularTop),
-                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 11.dp),
-                        modifier = Modifier
-                            .defaultMinSize(minHeight = 46.dp)
-                            .interactivePressScale(autoInteraction, 0.94f),
-                    ) {
-                        Text("Auto-detect", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                }
+
+                // Contextual guidance & actions per access mode
+                AnimatedContent(
+                    targetState = prefs.accessMode,
+                    transitionSpec = {
+                        if (reduceMotion) EnterTransition.None togetherWith ExitTransition.None
+                        else fadeIn(tween(160)) togetherWith fadeOut(tween(110))
+                    },
+                    label = "accessModeBody",
+                ) { mode ->
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        when (mode) {
+                            GameAccessMode.STANDARD -> {
+                                // Explicit warning: All files access for /Android/data/ only works on Android 12 and below
+                                Surface(
+                                    shape = RoundedCornerShape(14.dp),
+                                    color = colors.warn.copy(alpha = 0.13f),
+                                    border = BorderStroke(1.dp, colors.warn.copy(alpha = 0.42f)),
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(12.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                        verticalAlignment = Alignment.Top,
+                                    ) {
+                                        Icon(
+                                            Icons.Rounded.WarningAmber,
+                                            contentDescription = null,
+                                            tint = colors.warn,
+                                            modifier = Modifier.size(20.dp).padding(top = 1.dp),
+                                        )
+                                        Text(
+                                            "All files access for /Android/data/ only works on Android 12 and below (and for unpacked loose folders outside /Android/data/ on any Android version). On Android 13+, switch to Shizuku (no root) or Root (su).",
+                                            color = colors.text,
+                                            fontSize = 13.5.sp,
+                                            lineHeight = 19.sp,
+                                        )
+                                    }
+                                }
+
+                                if (ui.gameDirHint.isNotBlank() && (!ui.gameDirValid || !ui.gameDirWritable)) {
+                                    Text(ui.gameDirHint, color = colors.danger, fontSize = 13.5.sp, lineHeight = 19.sp)
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                ) {
+                                    val chooseInteraction = remember { MutableInteractionSource() }
+                                    Button(
+                                        onClick = onChooseGameFolder,
+                                        interactionSource = chooseInteraction,
+                                        shape = RoundedCornerShape(999.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = colors.capsuleBg, contentColor = colors.capsuleInk),
+                                        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 11.dp),
+                                        modifier = Modifier
+                                            .defaultMinSize(minHeight = 46.dp)
+                                            .interactivePressScale(chooseInteraction, 0.94f),
+                                    ) {
+                                        Text("Choose folder", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                                    }
+                                    val autoInteraction = remember { MutableInteractionSource() }
+                                    OutlinedButton(
+                                        onClick = { vm.autoDetectGameFolder() },
+                                        interactionSource = autoInteraction,
+                                        shape = RoundedCornerShape(999.dp),
+                                        border = BorderStroke(1.dp, colors.glassSpecularTop),
+                                        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 11.dp),
+                                        modifier = Modifier
+                                            .defaultMinSize(minHeight = 46.dp)
+                                            .interactivePressScale(autoInteraction, 0.94f),
+                                    ) {
+                                        Text("Auto-detect", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                                    }
+                                }
+
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !hasAllFilesAccess) {
+                                    val permInteraction = remember { MutableInteractionSource() }
+                                    OutlinedButton(
+                                        onClick = onRequestAllFilesAccess,
+                                        interactionSource = permInteraction,
+                                        shape = RoundedCornerShape(999.dp),
+                                        border = BorderStroke(1.dp, colors.accent.copy(alpha = 0.65f)),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .defaultMinSize(minHeight = 44.dp)
+                                            .interactivePressScale(permInteraction, 0.96f),
+                                    ) {
+                                        Text("Open All files access permission", color = colors.accentInk, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                                    }
+                                }
+                            }
+
+                            GameAccessMode.SHIZUKU -> {
+                                val statusColor = when (ui.shizukuStatus) {
+                                    ShizukuStatus.READY -> colors.ok
+                                    ShizukuStatus.PERMISSION_REQUIRED -> colors.accentInk
+                                    ShizukuStatus.NOT_RUNNING -> colors.warn
+                                    ShizukuStatus.NOT_INSTALLED -> colors.muted
+                                }
+                                val statusText = when (ui.shizukuStatus) {
+                                    ShizukuStatus.READY -> "Shizuku ready" + if (ui.shizukuUid >= 0) " (uid ${ui.shizukuUid})" else ""
+                                    ShizukuStatus.PERMISSION_REQUIRED -> "Shizuku running · permission required"
+                                    ShizukuStatus.NOT_RUNNING -> "Shizuku installed · service not running"
+                                    ShizukuStatus.NOT_INSTALLED -> "Shizuku app not installed"
+                                }
+                                Surface(
+                                    shape = RoundedCornerShape(14.dp),
+                                    color = statusColor.copy(alpha = 0.13f),
+                                    border = BorderStroke(1.dp, statusColor.copy(alpha = 0.42f)),
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    ) {
+                                        Box(Modifier.size(9.dp).clip(CircleShape).background(statusColor))
+                                        Text(statusText, color = statusColor, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                                    }
+                                }
+                                Text(
+                                    "Recommended on Android 13+ (no root needed). Uses Shizuku Wireless Debugging to read and write /Android/data/com.gameloft.android.ANMP.GloftA8HM/files directly.",
+                                    color = colors.muted,
+                                    fontSize = 13.5.sp,
+                                    lineHeight = 19.sp,
+                                )
+                                if (ui.gameDirHint.isNotBlank() && (!ui.gameDirValid || !ui.gameDirWritable)) {
+                                    Text(ui.gameDirHint, color = colors.danger, fontSize = 13.5.sp, lineHeight = 19.sp)
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    val primaryInteraction = remember { MutableInteractionSource() }
+                                    val primaryLabel = when (ui.shizukuStatus) {
+                                        ShizukuStatus.READY -> "Connect /Android/data"
+                                        ShizukuStatus.PERMISSION_REQUIRED -> "Grant Shizuku"
+                                        ShizukuStatus.NOT_RUNNING -> "Open Shizuku"
+                                        ShizukuStatus.NOT_INSTALLED -> "Get Shizuku"
+                                    }
+                                    Button(
+                                        onClick = {
+                                            when (ui.shizukuStatus) {
+                                                ShizukuStatus.READY -> vm.connectPrivilegedGameDir()
+                                                ShizukuStatus.PERMISSION_REQUIRED -> vm.requestShizukuPermission()
+                                                ShizukuStatus.NOT_RUNNING, ShizukuStatus.NOT_INSTALLED -> onOpenShizukuApp()
+                                            }
+                                        },
+                                        enabled = !ui.busyAction,
+                                        interactionSource = primaryInteraction,
+                                        shape = RoundedCornerShape(999.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = colors.capsuleBg, contentColor = colors.capsuleInk),
+                                        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 11.dp),
+                                        modifier = Modifier
+                                            .defaultMinSize(minHeight = 46.dp)
+                                            .interactivePressScale(primaryInteraction, 0.94f),
+                                    ) {
+                                        Text(primaryLabel, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                                    }
+                                    val customInteraction = remember { MutableInteractionSource() }
+                                    OutlinedButton(
+                                        onClick = { showCustomPathDialog = true },
+                                        interactionSource = customInteraction,
+                                        shape = RoundedCornerShape(999.dp),
+                                        border = BorderStroke(1.dp, colors.glassSpecularTop),
+                                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 11.dp),
+                                        modifier = Modifier
+                                            .defaultMinSize(minHeight = 46.dp)
+                                            .interactivePressScale(customInteraction, 0.94f),
+                                    ) {
+                                        Text("Custom path", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                                    }
+                                }
+                            }
+
+                            GameAccessMode.ROOT -> {
+                                val rootColor = when (ui.rootStatus) {
+                                    RootStatus.AVAILABLE -> colors.ok
+                                    RootStatus.CHECKING -> colors.accentInk
+                                    RootStatus.UNAVAILABLE -> colors.danger
+                                    RootStatus.UNKNOWN -> colors.muted
+                                }
+                                val rootText = when (ui.rootStatus) {
+                                    RootStatus.AVAILABLE -> "Root (su) ready"
+                                    RootStatus.CHECKING -> "Checking Root (su)..."
+                                    RootStatus.UNAVAILABLE -> "Root (su) denied or unavailable"
+                                    RootStatus.UNKNOWN -> "Root not checked yet"
+                                }
+                                Surface(
+                                    shape = RoundedCornerShape(14.dp),
+                                    color = rootColor.copy(alpha = 0.13f),
+                                    border = BorderStroke(1.dp, rootColor.copy(alpha = 0.42f)),
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    ) {
+                                        Box(Modifier.size(9.dp).clip(CircleShape).background(rootColor))
+                                        Text(rootText, color = rootColor, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                                    }
+                                }
+                                Text(
+                                    "Optional fallback for rooted phones (Magisk / KernelSU). Grants direct /Android/data/ read and write access via su.",
+                                    color = colors.muted,
+                                    fontSize = 13.5.sp,
+                                    lineHeight = 19.sp,
+                                )
+                                if (ui.gameDirHint.isNotBlank() && (!ui.gameDirValid || !ui.gameDirWritable)) {
+                                    Text(ui.gameDirHint, color = colors.danger, fontSize = 13.5.sp, lineHeight = 19.sp)
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    val rootInteraction = remember { MutableInteractionSource() }
+                                    Button(
+                                        onClick = { vm.connectPrivilegedGameDir() },
+                                        enabled = !ui.busyAction,
+                                        interactionSource = rootInteraction,
+                                        shape = RoundedCornerShape(999.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = colors.capsuleBg, contentColor = colors.capsuleInk),
+                                        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 11.dp),
+                                        modifier = Modifier
+                                            .defaultMinSize(minHeight = 46.dp)
+                                            .interactivePressScale(rootInteraction, 0.94f),
+                                    ) {
+                                        Text("Connect via Root", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                                    }
+                                    val customInteraction = remember { MutableInteractionSource() }
+                                    OutlinedButton(
+                                        onClick = { showCustomPathDialog = true },
+                                        interactionSource = customInteraction,
+                                        shape = RoundedCornerShape(999.dp),
+                                        border = BorderStroke(1.dp, colors.glassSpecularTop),
+                                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 11.dp),
+                                        modifier = Modifier
+                                            .defaultMinSize(minHeight = 46.dp)
+                                            .interactivePressScale(customInteraction, 0.94f),
+                                    ) {
+                                        Text("Custom path", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -332,6 +604,54 @@ fun SettingsScreen(
                 }
             }
         }
+    }
+
+    if (showCustomPathDialog) {
+        var customPath by remember {
+            mutableStateOf(prefs.gameDir.ifBlank { PrivilegedGameBridge.DEFAULT_ASPHALT8_DATA_PATH })
+        }
+        AlertDialog(
+            onDismissRequest = { showCustomPathDialog = false },
+            containerColor = colors.glassDockFallback,
+            titleContentColor = colors.text,
+            textContentColor = colors.muted,
+            title = { Text("Custom Asphalt 8 path", fontSize = 19.sp, fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        "Enter the Android folder path containing soundpack, music, and text (or files/).",
+                        fontSize = 14.sp,
+                        lineHeight = 19.sp,
+                        color = colors.muted,
+                    )
+                    OutlinedTextField(
+                        value = customPath,
+                        onValueChange = { customPath = it },
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodyMedium,
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCustomPathDialog = false }) {
+                    Text("Cancel", fontSize = 14.sp)
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showCustomPathDialog = false
+                        vm.connectPrivilegedGameDir(customPath = customPath)
+                    },
+                    shape = RoundedCornerShape(999.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = colors.capsuleBg, contentColor = colors.capsuleInk),
+                ) {
+                    Text("Connect", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                }
+            },
+        )
     }
 }
 

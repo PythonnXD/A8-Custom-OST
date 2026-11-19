@@ -2,6 +2,12 @@
 
 ## android-v1.0.1
 
+### Direct `/Android/data/` Access & Permission Choice
+- Added a 3-way **Permission method** selector in `Settings -> Asphalt 8 folder & access permission`:
+  - **Shizuku (recommended for Android 13+, no root):** Uses a Shizuku `UserService` with OS `ParcelFileDescriptor` streaming to read, preview, install, edit, back up, audit, and repair Asphalt 8 directly inside `/Android/data/com.gameloft.android.ANMP.GloftA8HM/files`.
+  - **Root (`su`):** Optional fallback for rooted devices (Magisk / KernelSU) with direct `/Android/data/` access.
+  - **All files access:** Kept for loose/unpacked folders on all Android versions and direct `/Android/data/` access on Android 12 and below (with a clear Android 12-and-below warning callout).
+
 ### UI & Motion Polish
 - Upgraded the entire UI to Apple Liquid Glass / Frosted Blur aesthetics with real-time GPU backdrop blur (`Haze` RenderEffect on Android 12L+) across the floating Pill Nav Bar, Now Playing Bar, status banners, frosted cards, sheets, and dialogs over a subtle theme-aware ambient light canvas.
 - Made the Pill Nav Bar highlight capsule draggable (`1:1` horizontal finger tracking) for fidgeting across tabs with crystalline lens swell while held, Apple rubber-band edge resistance, live tick haptics on every tab crossing, and velocity-projected momentum spring settle.

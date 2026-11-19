@@ -40,12 +40,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.pythonnxd.a8ostpatcher.engine.AudioPipeline
 import com.pythonnxd.a8ostpatcher.engine.InstalledTrack
+import com.pythonnxd.a8ostpatcher.privileged.PrivilegedAccessManager
 import com.pythonnxd.a8ostpatcher.state.AppTab
 import com.pythonnxd.a8ostpatcher.state.MainViewModel
 import com.pythonnxd.a8ostpatcher.ui.components.AmbientLiquidBackdrop
@@ -97,6 +101,7 @@ class MainActivity : ComponentActivity() {
                 MainAppShell(
                     vm = vm,
                     openExternalUrl = { url -> openUrlSafely(url) },
+                    openShizukuApp = { launchShizukuOrGuide() },
                     installDownloadedApk = { apk -> launchApkInstaller(apk) },
                     requestAllFilesPermission = { openAllFilesAccessSettings() },
                 )
@@ -111,6 +116,17 @@ class MainActivity : ComponentActivity() {
                 startActivity(Intent(Intent.ACTION_VIEW, uri))
             }
         } catch (_: Exception) {}
+    }
+
+    private fun launchShizukuOrGuide() {
+        val intent = vm.privileged.getShizukuLaunchIntent()
+        if (intent != null) {
+            try {
+                startActivity(intent)
+                return
+            } catch (_: Exception) {}
+        }
+        openUrlSafely(PrivilegedAccessManager.SHIZUKU_SETUP_URL)
     }
 
     private fun openAllFilesAccessSettings() {
@@ -153,6 +169,7 @@ private fun routeOrder(route: String): Int = when (route) {
 private fun MainAppShell(
     vm: MainViewModel,
     openExternalUrl: (String) -> Unit,
+    openShizukuApp: () -> Unit,
     installDownloadedApk: (File) -> Unit,
     requestAllFilesPermission: () -> Unit,
 ) {
@@ -161,6 +178,7 @@ private fun MainAppShell(
     val colors = LocalAppColors.current
     val reduceMotion = LocalReduceMotion.current
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
     val config = LocalConfiguration.current
     val isTablet = config.screenWidthDp >= 600
@@ -170,6 +188,19 @@ private fun MainAppShell(
         mutableStateOf(
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) Environment.isExternalStorageManager() else true
         )
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    hasAllFilesAccess = Environment.isExternalStorageManager()
+                }
+                vm.refreshPrivilegedAccess()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     LaunchedEffect(ui.tab) {
@@ -317,6 +348,7 @@ private fun MainAppShell(
                                 isTablet = isTablet,
                                 hasAllFilesAccess = hasAllFilesAccess,
                                 onRequestAllFilesAccess = requestAllFilesPermission,
+                                onOpenShizukuApp = openShizukuApp,
                                 onChooseGameFolder = { pickGameFolderLauncher.launch(null) },
                             )
                             "about" -> AboutScreen(
