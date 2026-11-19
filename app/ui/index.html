@@ -1058,6 +1058,100 @@
       padding-top: 2px;
     }
 
+    .about-back-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .about-hero {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px;
+      flex-wrap: wrap;
+    }
+
+    .about-identity {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .about-app-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 12px;
+      object-fit: cover;
+      border: 1px solid var(--border);
+      flex: none;
+    }
+
+    .about-app-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 22px;
+    }
+
+    .about-app-meta {
+      font-size: 12.5px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .about-update-body {
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .about-update-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .license-row {
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--rule);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .license-row:last-child {
+      border-bottom: 0;
+    }
+
+    .license-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .license-note {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .license-tag {
+      font-size: 11.5px;
+      font-weight: 500;
+      color: var(--muted);
+      background: var(--raised);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 3px 8px;
+      white-space: nowrap;
+    }
+
     #outro-scrim.simple-mode .outro-editor-only {
       display: none !important;
     }
@@ -2098,17 +2192,12 @@
 
       <div class="sidebar-foot">
         <div class="sidebar-foot-row">
-          <button id="btn-updates" class="nav-item" type="button" title="Check or install app updates">
-            <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="m7 10 5 5 5-5" /><path d="M12 15V3" /></svg>
-            <span>Updates</span>
-            <span id="app-version-pill" class="nav-count">v1.4.1</span>
+          <button id="btn-theme" class="nav-item" type="button" title="Switch Light or Dark theme">
+            <svg id="theme-icon" class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" /></svg>
+            <span id="theme-label">Light mode</span>
           </button>
           <button id="btn-shortcuts" class="btn compact" type="button" title="Keyboard shortcuts (?)">?</button>
         </div>
-        <button id="btn-theme" class="nav-item" type="button" title="Switch Light or Dark mode">
-          <svg id="theme-icon" class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" /></svg>
-          <span id="theme-label">Light mode</span>
-        </button>
       </div>
     </aside>
 
@@ -2134,7 +2223,7 @@
         <section class="title-row">
           <div class="title-group">
             <h1 id="page-title">Import Queue</h1>
-            <p id="page-sub" class="title-sub">Queue tracks, pick their radio stations, and adjust optional outro clips before installing</p>
+            <p id="page-sub" class="title-sub">Add songs, pick their stations, and set up outro clips before installing</p>
           </div>
           <div class="title-actions">
             <div id="dock-import-controls" class="dock-controls">
@@ -2240,9 +2329,9 @@
               <tbody id="track-tbody"></tbody>
             </table>
             <div id="empty-state" class="empty-state">
-              <div id="empty-title" class="empty-title">Drop music files or folders to start</div>
+              <div id="empty-title" class="empty-title">Drop songs or folders here to get started</div>
               <div id="empty-desc" class="empty-desc">
-                Add songs or folders from anywhere on your computer, pick their stations, and set up outro clips before installing
+                Add songs or folders from anywhere on your computer, pick their stations, and set up outros before installing.
               </div>
               <div id="empty-cta-row" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
                 <button id="btn-empty-files" class="btn primary" type="button">Add songs</button>
@@ -2252,14 +2341,14 @@
           </div>
         </section>
 
-        <section id="view-settings" class="settings-panel hidden" aria-label="Patcher settings">
+        <section id="view-settings" class="settings-panel hidden" aria-label="App settings">
           <div class="settings-group">
-            <div class="settings-group-head">Audio &amp; Soundtrack</div>
+            <div class="settings-group-head">Audio and soundtrack</div>
             <div class="setting-row">
               <div class="setting-copy">
                 <label class="setting-title" for="quality-select">Audio quality</label>
                 <p class="setting-desc">
-                  Choose the Musepack SV8 bitrate preset and sample rate used when encoding songs and outros. Original volume levels and exact millisecond track lengths are preserved without automatic dynamic compression. Valid untrimmed .mpc files are copied directly.
+                  Choose how converted songs and outros are encoded for the game. Your original volume and exact song length stay untouched, and valid untrimmed .mpc files are copied straight over.
                 </p>
               </div>
               <div class="setting-control">
@@ -2273,45 +2362,155 @@
             </div>
             <div class="setting-row">
               <div class="setting-copy">
-                <label class="setting-title" for="switch-keep-stock">Keep stock soundtrack</label>
+                <label class="setting-title" for="switch-keep-stock">Keep stock songs</label>
                 <p class="setting-desc">
-                  Keep Asphalt 8's built-in soundtrack alongside your custom songs. Turn this off to replace the stock radio rotation so only your custom tracks play in races and menus.
+                  Play Asphalt 8's built-in soundtrack alongside your custom songs. Turn this off if you only want to hear your own music.
                 </p>
               </div>
               <div class="setting-control">
-                <button id="switch-keep-stock" class="switch-btn" type="button" role="switch" aria-checked="true" aria-label="Keep stock soundtrack"></button>
+                <button id="switch-keep-stock" class="switch-btn" type="button" role="switch" aria-checked="true" aria-label="Keep stock songs"></button>
               </div>
             </div>
           </div>
 
           <div class="settings-group">
-            <div class="settings-group-head">Backups &amp; Safety</div>
+            <div class="settings-group-head">Backups and warnings</div>
             <div class="setting-row">
               <div class="setting-copy">
                 <label class="setting-title" for="switch-auto-backup">Auto backup</label>
                 <p class="setting-desc">
-                  Automatically save a timestamped snapshot of your soundpack and language title files before installing, editing, removing, or repairing tracks. Use Backup now anytime to create a manual snapshot before making changes.
+                  Save a copy of your game soundpack and title files before every install, edit, removal, or repair. Click Back up now anytime to save a manual copy.
                 </p>
               </div>
               <div class="setting-control">
-                <button id="btn-manual-backup" class="btn" type="button">Backup now</button>
+                <button id="btn-manual-backup" class="btn" type="button">Back up now</button>
                 <button id="switch-auto-backup" class="switch-btn" type="button" role="switch" aria-checked="true" aria-label="Auto backup"></button>
+              </div>
+            </div>
+            <div class="setting-row">
+              <div class="setting-copy">
+                <label class="setting-title" for="switch-warn-unsaved">Unsaved playlist warning</label>
+                <p class="setting-desc">
+                  Ask whether to save your queued songs before closing the app or clearing the queue.
+                </p>
+              </div>
+              <div class="setting-control">
+                <button id="switch-warn-unsaved" class="switch-btn" type="button" role="switch" aria-checked="true" aria-label="Unsaved playlist warning"></button>
               </div>
             </div>
           </div>
 
           <div class="settings-group">
-            <div class="settings-group-head">Outro Controls</div>
+            <div class="settings-group-head">Outros</div>
             <div class="setting-row">
               <div class="setting-copy">
                 <label class="setting-title" for="switch-outro-editor">Outro editor</label>
                 <p class="setting-desc">
-                  Show the full waveform editor with start and end trim sliders and fade controls when setting up a track outro. When turned off, tracks still display their outro status and let you attach, replace, or remove a custom outro audio file directly without trimming.
+                  Show the waveform editor with trim sliders and fades when setting up an outro. Turn this off to keep each song's outro status visible and attach or remove your own outro files directly.
                 </p>
               </div>
               <div class="setting-control">
                 <button id="switch-outro-editor" class="switch-btn" type="button" role="switch" aria-checked="true" aria-label="Outro editor"></button>
               </div>
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <div class="settings-group-head">App</div>
+            <div class="setting-row" style="align-items:center;">
+              <div class="setting-copy">
+                <div class="setting-title">About the app</div>
+                <p class="setting-desc">
+                  App version, GitHub page, open-source licenses, update check, and changelog.
+                </p>
+              </div>
+              <div class="setting-control" style="padding-top:0;">
+                <span id="settings-version-pill" class="license-tag">v1.4.2</span>
+                <button id="btn-open-about" class="btn" type="button">Open</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="view-about" class="settings-panel hidden" aria-label="About the app">
+          <div class="about-back-row">
+            <button id="btn-about-back" class="btn" type="button">Back to Settings</button>
+          </div>
+
+          <div class="settings-group">
+            <div class="about-hero">
+              <div class="about-identity">
+                <img class="about-app-icon" src="assets/app_icon.png" alt="Asphalt 8 Custom OST Patcher icon" />
+                <div style="min-width:0;">
+                  <div class="about-app-name">Asphalt 8 Custom OST Patcher</div>
+                  <div id="about-version-sub" class="about-app-meta">Installed v1.4.2</div>
+                  <div class="about-app-meta">Add custom songs, outros, and soundpacks to Asphalt 8: Airborne.</div>
+                </div>
+              </div>
+              <button id="btn-open-github" class="btn" type="button" title="Open PythonnXD/A8-Custom-OST on GitHub">GitHub page</button>
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <div class="settings-group-head">Updates and changelog</div>
+            <div class="about-update-body">
+              <div class="upd-hero">
+                <div class="upd-status-wrap">
+                  <span id="upd-status-dot" class="upd-dot"></span>
+                  <div style="min-width:0;">
+                    <div id="update-remote-status" class="upd-status-title">Checking for updates...</div>
+                    <div id="update-remote-meta" class="upd-status-meta"></div>
+                  </div>
+                </div>
+                <span id="upd-version-pill" class="upd-ver-pill">v1.4.2</span>
+              </div>
+
+              <div class="about-update-actions">
+                <button id="btn-check-updates" class="btn" type="button">Check for updates</button>
+                <button id="btn-install-remote-update" class="btn primary hidden" type="button">Download and install</button>
+              </div>
+
+              <div id="update-error-box" class="banner error hidden"><span id="update-error-text"></span></div>
+
+              <div class="upd-changelog-section">
+                <div class="upd-changelog-bar">
+                  <span id="upd-changelog-heading" class="upd-changelog-label">Changelog</span>
+                  <span id="upd-changelog-ver" class="upd-changelog-ver">v1.4.2</span>
+                </div>
+                <div id="update-changelog-list" class="upd-changelog-card"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <div class="settings-group-head">Open-source licenses</div>
+            <div class="license-row">
+              <div>
+                <div class="license-name">Asphalt 8 Custom OST Patcher</div>
+                <div class="license-note">Built by PythonnXD on GitHub (github.com/PythonnXD/A8-Custom-OST)</div>
+              </div>
+              <span class="license-tag">Open source</span>
+            </div>
+            <div class="license-row">
+              <div>
+                <div class="license-name">pywebview</div>
+                <div class="license-note">Desktop Edge WebView2 window bridge for Python</div>
+              </div>
+              <span class="license-tag">BSD-3-Clause</span>
+            </div>
+            <div class="license-row">
+              <div>
+                <div class="license-name">FFmpeg</div>
+                <div class="license-note">Audio decoding, resampling, and duration probing</div>
+              </div>
+              <span class="license-tag">LGPL / GPL</span>
+            </div>
+            <div class="license-row">
+              <div>
+                <div class="license-name">Musepack SV8 (mpcenc)</div>
+                <div class="license-note">Musepack Stream Version 8 audio encoder</div>
+              </div>
+              <span class="license-tag">BSD / LGPL</span>
             </div>
           </div>
         </section>
@@ -2345,7 +2544,7 @@
 
         <div id="outro-src-readout" class="sub-filename" style="font-size:12px;color:var(--muted);"></div>
         <div id="outro-ogg-hint" class="banner visible hidden" style="padding:8px 12px;border-color:var(--accent);font-size:12px;">
-          <span>Note: .mp3 or .wav is recommended over .ogg for outros to avoid container padding differences; full-stream decoding and exact length checks are still active.</span>
+          <span>Tip: .mp3 or .wav works more reliably than .ogg for outros. Full-stream decoding and exact length checks are still active.</span>
         </div>
 
         <div class="outro-timeline-card outro-editor-only">
@@ -2471,8 +2670,8 @@
     <div class="sheet wide">
       <div class="sheet-head">
         <div>
-          <span id="health-sheet-title" class="sheet-title">Health Check &amp; Cleanup</span>
-          <div id="health-sheet-sub" style="font-size:12px;color:var(--muted);margin-top:2px;">Checks soundpack playlists, music files, and song title entries</div>
+          <span id="health-sheet-title" class="sheet-title">Health Check</span>
+          <div id="health-sheet-sub" style="font-size:12px;color:var(--muted);margin-top:2px;">Scans your soundpack playlists, music files, and song titles for problems</div>
         </div>
         <button id="btn-close-health" class="btn compact ghost" type="button">Close</button>
       </div>
@@ -2555,59 +2754,66 @@
     </div>
   </div>
 
-  <div id="update-scrim" class="scrim" role="dialog" aria-modal="true" aria-labelledby="update-sheet-title">
-    <div class="sheet wide">
-      <div class="sheet-head">
-        <div>
-          <span id="update-sheet-title" class="sheet-title">App Updates</span>
-          <div id="update-current-sub" style="font-size:12px;color:var(--muted);margin-top:2px;">Installed v1.4.1</div>
-        </div>
-        <button id="btn-close-update" class="btn compact ghost" type="button">Close</button>
-      </div>
-      <div class="sheet-body">
-        <div class="upd-hero">
-          <div class="upd-status-wrap">
-            <span id="upd-status-dot" class="upd-dot"></span>
-            <div style="min-width:0;">
-              <div id="update-remote-status" class="upd-status-title">Checking for updates...</div>
-              <div id="update-remote-meta" class="upd-status-meta"></div>
-            </div>
-          </div>
-          <span id="upd-version-pill" class="upd-ver-pill">v1.4.1</span>
-        </div>
-
-        <div id="update-error-box" class="banner error hidden"><span id="update-error-text"></span></div>
-
-        <div class="upd-changelog-section">
-          <div class="upd-changelog-bar">
-            <span id="upd-changelog-heading" class="upd-changelog-label">Changelog</span>
-            <span id="upd-changelog-ver" class="upd-changelog-ver">v1.4.1</span>
-          </div>
-          <div id="update-changelog-list" class="upd-changelog-card"></div>
-        </div>
-      </div>
-      <div class="sheet-footer">
-        <button id="btn-check-updates" class="btn" type="button">Check for updates</button>
-        <button id="btn-install-remote-update" class="btn primary hidden" type="button">Download &amp; Install</button>
-      </div>
-    </div>
-  </div>
-
   <div id="unsaved-scrim" class="scrim" role="dialog" aria-modal="true" aria-labelledby="unsaved-sheet-title">
     <div class="sheet">
       <div class="sheet-head">
-        <span id="unsaved-sheet-title" class="sheet-title">Save current playlist?</span>
+        <span id="unsaved-sheet-title" class="sheet-title">Save your playlist?</span>
         <button id="btn-close-unsaved" class="btn compact ghost" type="button">Close</button>
       </div>
       <div class="sheet-body">
         <div id="unsaved-desc" style="font-size:13px;color:var(--muted);line-height:20px;">
-          You have queued songs that haven't been saved to a Mod Pack or installed yet. Do you want to save your playlist first?
+          You have songs in the Import Queue that have not been saved to a Mod Pack or installed yet. Do you want to save them first?
         </div>
+        <label class="check-option" style="margin-top:4px;">
+          <input id="chk-unsaved-dont-show" type="checkbox" />
+          <span>Don't show this again</span>
+        </label>
       </div>
       <div class="sheet-footer">
         <button id="btn-unsaved-cancel" class="btn" type="button">Cancel</button>
         <button id="btn-unsaved-discard" class="btn danger-outline" type="button">Close without saving</button>
         <button id="btn-unsaved-save" class="btn primary" type="button">Save playlist</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="update-popup-scrim" class="scrim" role="dialog" aria-modal="true" aria-labelledby="update-popup-title">
+    <div class="sheet">
+      <div class="sheet-head">
+        <div>
+          <span id="update-popup-title" class="sheet-title">Update available</span>
+          <div id="update-popup-sub" style="font-size:12px;color:var(--muted);margin-top:2px;">A newer release is ready to install</div>
+        </div>
+        <button id="btn-close-update-popup" class="btn compact ghost" type="button">Close</button>
+      </div>
+      <div class="sheet-body">
+        <div class="upd-hero">
+          <div class="upd-status-wrap">
+            <span class="upd-dot available"></span>
+            <div style="min-width:0;">
+              <div id="update-popup-headline" class="upd-status-title">New version available</div>
+              <div id="update-popup-meta" class="upd-status-meta"></div>
+            </div>
+          </div>
+          <span id="update-popup-ver-pill" class="upd-ver-pill available"></span>
+        </div>
+
+        <div class="upd-changelog-section">
+          <div class="upd-changelog-bar">
+            <span class="upd-changelog-label">What's new</span>
+            <span id="update-popup-log-ver" class="upd-changelog-ver"></span>
+          </div>
+          <div id="update-popup-changelog" class="upd-changelog-card" style="max-height:220px;"></div>
+        </div>
+
+        <div id="update-popup-error-box" class="banner error hidden">
+          <span id="update-popup-error-text"></span>
+        </div>
+      </div>
+      <div class="sheet-footer">
+        <button id="btn-popup-open-about" class="btn ghost" type="button" style="margin-right:auto;">About the app</button>
+        <button id="btn-popup-update-later" class="btn" type="button">Later</button>
+        <button id="btn-popup-install-update" class="btn primary" type="button">Download and install</button>
       </div>
     </div>
   </div>
@@ -2642,7 +2848,7 @@
       const state = {
         view: 'import',
         theme: 'dark',
-        appVersion: '1.4.1',
+        appVersion: '1.4.2',
         isFrozen: false,
         gameDir: '',
         gameValid: false,
@@ -2663,6 +2869,7 @@
         onConflict: 'overwrite',
         autoBackup: true,
         outroEditorEnabled: true,
+        warnUnsavedPlaylist: true,
         loopPlayback: false,
         playlistDirty: false,
         unsavedContext: null,
@@ -2809,6 +3016,9 @@
         $('switch-auto-backup').setAttribute('aria-checked', String(!!state.autoBackup));
         $('switch-outro-editor').setAttribute('aria-checked', String(!!state.outroEditorEnabled));
         $('switch-keep-stock').setAttribute('aria-checked', String(!!state.keepOriginal));
+        if ($('switch-warn-unsaved')) {
+          $('switch-warn-unsaved').setAttribute('aria-checked', String(!!state.warnUnsavedPlaylist));
+        }
         $('btn-conflict-overwrite').classList.toggle('active', state.onConflict !== 'skip');
         $('btn-conflict-skip').classList.toggle('active', state.onConflict === 'skip');
         $('btn-manual-backup').disabled = !state.gameValid;
@@ -3093,14 +3303,24 @@
 
       function updateTitleAndActions() {
         const isSettings = state.view === 'settings';
+        const isAbout = state.view === 'about';
+        const isPrefsView = isSettings || isAbout;
         const isImport = state.view === 'import';
-        $('radio-deck').classList.toggle('hidden', isSettings);
-        $('workspace-panel').classList.toggle('hidden', isSettings);
+        $('radio-deck').classList.toggle('hidden', isPrefsView);
+        $('workspace-panel').classList.toggle('hidden', isPrefsView);
         $('view-settings').classList.toggle('hidden', !isSettings);
+        $('view-about').classList.toggle('hidden', !isAbout);
 
         if (isSettings) {
           $('page-title').textContent = 'Settings';
-          $('page-sub').textContent = 'Configure audio encoding quality, soundtrack behavior, backups, and outro controls';
+          $('page-sub').textContent = 'Audio quality, stock songs, backups, outros, and app info';
+          $('dock-import-controls').classList.add('hidden');
+          $('dock-library-controls').classList.add('hidden');
+          return;
+        }
+        if (isAbout) {
+          $('page-title').textContent = 'About the app';
+          $('page-sub').textContent = 'Version info, GitHub page, updates, changelog, and licenses';
           $('dock-import-controls').classList.add('hidden');
           $('dock-library-controls').classList.add('hidden');
           return;
@@ -3121,7 +3341,7 @@
           const selected = state.importTracks.filter((t) => t.selected);
           const conflicts = selected.filter((t) => t.conflict).length;
           if (total === 0) {
-            $('page-sub').textContent = 'Queue tracks or folders, pick radio stations, and configure optional outro clips';
+            $('page-sub').textContent = 'Add songs, pick their stations, and set up outro clips before installing';
           } else {
             const parts = [`${selected.length} of ${total} selected`];
             if (conflicts > 0) parts.push(`${conflicts} already in game`);
@@ -3129,16 +3349,16 @@
           }
           const installCount = state.onConflict === 'skip' ? selected.length - conflicts : selected.length;
           const label = conflicts > 0 && state.onConflict === 'skip'
-            ? `Install ${installCount} tracks (${conflicts} skipped)`
-            : `Install ${selected.length} tracks`;
+            ? `Install ${installCount} songs (${conflicts} skipped)`
+            : `Install ${selected.length} songs`;
           $('btn-install-label').textContent = label;
           $('btn-install').disabled = !state.gameValid || selected.length === 0 || (conflicts === selected.length && state.onConflict === 'skip');
         } else {
           const selLib = state.libraryTracks.filter((t) => t.selected).length;
           const dirty = state.dirtyLibraryIds.size;
           $('page-sub').textContent = state.gameValid
-            ? `${state.libraryTracks.length} tracks in soundpack \u00b7 ${dirty} edited`
-            : 'Choose an Asphalt 8 folder to manage installed songs';
+            ? `${state.libraryTracks.length} songs in game \u00b7 ${dirty} edited`
+            : 'Pick your Asphalt 8 folder on the left to manage installed songs';
           $('btn-remove-label').textContent = `Remove (${selLib})`;
           $('btn-remove-selected').disabled = !state.gameValid || selLib === 0;
           $('btn-save-label').textContent = `Save edits (${dirty})`;
@@ -3162,7 +3382,7 @@
         updateSourceUI();
         syncPreferenceControlsUI();
         updateTitleAndActions();
-        if (state.view === 'settings') return;
+        if (state.view === 'settings' || state.view === 'about') return;
         renderCategoryTabs();
 
         const tbody = $('track-tbody');
@@ -3556,12 +3776,13 @@
       function switchNav(view) {
         state.view = view;
         state.categoryFilter = 'All';
+        const isSettingsArea = view === 'settings' || view === 'about';
         $('nav-import').classList.toggle('active', view === 'import');
         $('nav-import').setAttribute('aria-current', view === 'import' ? 'page' : 'false');
         $('nav-library').classList.toggle('active', view === 'library');
         $('nav-library').setAttribute('aria-current', view === 'library' ? 'page' : 'false');
-        $('nav-settings').classList.toggle('active', view === 'settings');
-        $('nav-settings').setAttribute('aria-current', view === 'settings' ? 'page' : 'false');
+        $('nav-settings').classList.toggle('active', isSettingsArea);
+        $('nav-settings').setAttribute('aria-current', isSettingsArea ? 'page' : 'false');
         closeMobileDrawer();
       }
 
@@ -4088,7 +4309,7 @@
             await openBackupsModal();
           }
         } finally {
-          if ($('btn-manual-backup')) $('btn-manual-backup').textContent = 'Backup now';
+          if ($('btn-manual-backup')) $('btn-manual-backup').textContent = 'Back up now';
           syncPreferenceControlsUI();
         }
       }
@@ -4105,16 +4326,26 @@
       function openUnsavedModal(context) {
         state.unsavedContext = context || 'close';
         const isClose = state.unsavedContext === 'close';
-        $('unsaved-sheet-title').textContent = isClose ? 'Save playlist before closing?' : 'Save playlist before clearing?';
+        $('unsaved-sheet-title').textContent = isClose ? 'Save your playlist before closing?' : 'Save your playlist before clearing?';
         $('unsaved-desc').textContent = isClose
-          ? 'Your Import Queue has tracks that have not been saved to a Mod Pack or installed yet. Do you want to save them before closing?'
-          : 'Your Import Queue has tracks that have not been saved to a Mod Pack or installed yet. Do you want to save them before clearing the list?';
+          ? 'You have songs in the Import Queue that have not been saved to a Mod Pack or installed yet. Do you want to save them before closing?'
+          : 'You have songs in the Import Queue that have not been saved to a Mod Pack or installed yet. Do you want to save them before clearing the list?';
         $('btn-unsaved-discard').textContent = isClose ? 'Close without saving' : 'Clear queue';
+        if ($('chk-unsaved-dont-show')) $('chk-unsaved-dont-show').checked = false;
         $('unsaved-scrim').classList.add('open');
       }
 
+      async function persistDontShowUnsavedIfChecked() {
+        const chk = $('chk-unsaved-dont-show');
+        if (chk && chk.checked) {
+          state.warnUnsavedPlaylist = false;
+          syncPreferenceControlsUI();
+          if (hasBridge()) await callApi('set_warn_unsaved_playlist', false);
+        }
+      }
+
       window.__onConfirmUnsavedClose = () => {
-        if (!state.playlistDirty || !state.importTracks.length) {
+        if (!state.warnUnsavedPlaylist || !state.playlistDirty || !state.importTracks.length) {
           callApi('force_close_window');
           return;
         }
@@ -4127,10 +4358,16 @@
         if (hasBridge()) callApi('set_auto_backup', state.autoBackup);
       });
 
+      $('switch-warn-unsaved').addEventListener('click', () => {
+        state.warnUnsavedPlaylist = !state.warnUnsavedPlaylist;
+        syncPreferenceControlsUI();
+        if (hasBridge()) callApi('set_warn_unsaved_playlist', state.warnUnsavedPlaylist);
+      });
+
       $('switch-outro-editor').addEventListener('click', () => {
         state.outroEditorEnabled = !state.outroEditorEnabled;
         syncPreferenceControlsUI();
-        if (state.view !== 'settings') renderWorkspace();
+        if (state.view !== 'settings' && state.view !== 'about') renderWorkspace();
         if (hasBridge()) callApi('set_outro_editor_enabled', state.outroEditorEnabled);
       });
 
@@ -4140,8 +4377,9 @@
 
       $('btn-close-unsaved').addEventListener('click', () => $('unsaved-scrim').classList.remove('open'));
       $('btn-unsaved-cancel').addEventListener('click', () => $('unsaved-scrim').classList.remove('open'));
-      $('btn-unsaved-discard').addEventListener('click', () => {
+      $('btn-unsaved-discard').addEventListener('click', async () => {
         const ctx = state.unsavedContext;
+        await persistDontShowUnsavedIfChecked();
         $('unsaved-scrim').classList.remove('open');
         state.unsavedContext = null;
         if (ctx === 'clear') {
@@ -4150,7 +4388,8 @@
           callApi('force_close_window');
         }
       });
-      $('btn-unsaved-save').addEventListener('click', () => {
+      $('btn-unsaved-save').addEventListener('click', async () => {
+        await persistDontShowUnsavedIfChecked();
         $('unsaved-scrim').classList.remove('open');
         state.unsavedContext = null;
         if (state.view !== 'import') switchNav('import');
@@ -4167,7 +4406,7 @@
       $('btn-add-files').addEventListener('click', () => addMusicFiles(state.importTracks.length > 0));
       $('btn-empty-files').addEventListener('click', () => addMusicFiles(state.importTracks.length > 0));
       $('btn-clear-music').addEventListener('click', () => {
-        if (state.playlistDirty && state.importTracks.length > 0) {
+        if (state.warnUnsavedPlaylist && state.playlistDirty && state.importTracks.length > 0) {
           openUnsavedModal('clear');
           return;
         }
@@ -5080,8 +5319,25 @@
         showBanner(`Exported ${res.exported_tracks} track(s) (${formatBytes(res.total_bytes || 0)}) to ${res.dest_path}.`, false);
       });
 
-      /* ---------- In-App Self-Updater ---------- */
+      /* ---------- About the App & Self-Updater ---------- */
       const LOCAL_RELEASE_CHANGELOG = {
+        '1.4.2': [
+          {
+            title: 'Added',
+            items: [
+              'Added an About the app page inside Settings with the app name, GitHub link, open-source licenses, update check, and changelog.',
+              'Added an automatic update pop-up on launch whenever a newer release is available on GitHub.',
+              'Added a "Don\'t show this again" checkbox on the unsaved playlist warning, plus an Unsaved playlist warning switch in Settings.',
+            ],
+          },
+          {
+            title: 'Changed',
+            items: [
+              'Moved update checking from the sidebar into Settings -> About the app.',
+              'Rewrote in-app labels and setting descriptions to read more naturally.',
+            ],
+          },
+        ],
         '1.4.1': [
           {
             title: 'Fixed',
@@ -5235,11 +5491,11 @@
         return sections;
       }
 
-      function renderChangelog(notes, version) {
-        const host = $('update-changelog-list');
+      function renderChangelogInto(host, verEl, notes, version) {
+        if (!host) return;
         host.textContent = '';
         const verClean = String(version || state.appVersion || '').replace(/^[vV]/, '');
-        $('upd-changelog-ver').textContent = verClean ? `v${verClean}` : '';
+        if (verEl) verEl.textContent = verClean ? `v${verClean}` : '';
 
         const sections = parseChangelogSections(notes, verClean);
         if (!sections.length) {
@@ -5280,11 +5536,23 @@
         }
       }
 
+      function renderChangelog(notes, version) {
+        renderChangelogInto($('update-changelog-list'), $('upd-changelog-ver'), notes, version);
+      }
+
       function formatReleaseDate(iso) {
         if (!iso) return '';
         const d = new Date(iso);
         if (Number.isNaN(d.getTime())) return '';
         return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+      }
+
+      function buildUpdateMetaLine(res) {
+        const metaParts = [`Installed v${res.current_version || state.appVersion}`];
+        const dateTxt = formatReleaseDate(res.published_at);
+        if (dateTxt) metaParts.push(`Released ${dateTxt}`);
+        if (res.size_bytes > 0) metaParts.push(formatBytes(res.size_bytes));
+        return metaParts.join(' · ');
       }
 
       function setUpdateStatusUI(kind, title, meta, verText) {
@@ -5294,6 +5562,53 @@
         const pill = $('upd-version-pill');
         pill.className = `upd-ver-pill ${kind || ''}`.trim();
         pill.textContent = verText || `v${state.appVersion}`;
+      }
+
+      function applyRemoteUpdateResult(res) {
+        state.updateRemoteInfo = res;
+        const metaLine = buildUpdateMetaLine(res);
+        if (res.update_available) {
+          setUpdateStatusUI(
+            'available',
+            `Update available: v${res.latest_version}`,
+            metaLine,
+            `v${res.current_version} -> v${res.latest_version}`,
+          );
+          $('btn-install-remote-update').classList.toggle('hidden', !res.download_url);
+        } else {
+          setUpdateStatusUI(
+            'latest',
+            'You are up to date',
+            metaLine,
+            `v${res.latest_version}`,
+          );
+          $('btn-install-remote-update').classList.add('hidden');
+        }
+        renderChangelog(res.notes || '', res.latest_version || state.appVersion);
+      }
+
+      function openUpdatePopup(res) {
+        if (!res || !res.latest_version) return;
+        const curVer = res.current_version || state.appVersion;
+        const nextVer = res.latest_version;
+        $('update-popup-title').textContent = 'Update available';
+        $('update-popup-sub').textContent = `Asphalt 8 Custom OST Patcher v${nextVer}`;
+        $('update-popup-headline').textContent = `Version ${nextVer} is ready to install`;
+        $('update-popup-meta').textContent = buildUpdateMetaLine(res);
+        $('update-popup-ver-pill').textContent = `v${curVer} -> v${nextVer}`;
+        $('update-popup-error-box').classList.add('hidden');
+        $('btn-popup-install-update').classList.toggle('hidden', !res.download_url);
+        renderChangelogInto($('update-popup-changelog'), $('update-popup-log-ver'), res.notes || '', nextVer);
+        $('update-popup-scrim').classList.add('open');
+      }
+
+      async function checkForUpdateOnStartup() {
+        if (!hasBridge()) return;
+        const res = await callApi('check_for_updates');
+        if (!res || !res.ok || !res.update_available) return;
+        applyRemoteUpdateResult(res);
+        if (state.view === 'about' || getTopOpenScrim()) return;
+        openUpdatePopup(res);
       }
 
       async function runUpdateCheck() {
@@ -5315,49 +5630,12 @@
           return;
         }
 
-        state.updateRemoteInfo = res;
-        const metaParts = [`Installed v${res.current_version}`];
-        const dateTxt = formatReleaseDate(res.published_at);
-        if (dateTxt) metaParts.push(`Released ${dateTxt}`);
-        if (res.size_bytes > 0) metaParts.push(formatBytes(res.size_bytes));
-
-        if (res.update_available) {
-          setUpdateStatusUI(
-            'available',
-            `Update available: v${res.latest_version}`,
-            metaParts.join(' · '),
-            `v${res.current_version} -> v${res.latest_version}`,
-          );
-          $('btn-install-remote-update').classList.toggle('hidden', !res.download_url);
-        } else {
-          setUpdateStatusUI(
-            'latest',
-            'You are up to date',
-            metaParts.join(' · '),
-            `v${res.latest_version}`,
-          );
-          $('btn-install-remote-update').classList.add('hidden');
-        }
-        renderChangelog(res.notes || '', res.latest_version || state.appVersion);
+        applyRemoteUpdateResult(res);
       }
 
-      function openUpdateModal() {
-        closeMobileDrawer();
-        const modeTxt = state.isFrozen ? 'Standalone App' : 'Python Source';
-        $('update-current-sub').textContent = `Current version: v${state.appVersion} · ${modeTxt}`;
-        renderChangelog('', state.appVersion);
-        $('update-scrim').classList.add('open');
-        runUpdateCheck();
-      }
-
-      $('btn-updates').addEventListener('click', openUpdateModal);
-      $('btn-close-update').addEventListener('click', () => $('update-scrim').classList.remove('open'));
-      $('btn-check-updates').addEventListener('click', runUpdateCheck);
-
-      $('btn-install-remote-update').addEventListener('click', async () => {
+      async function installRemoteUpdate(btn, errBox, errText) {
         if (!state.updateRemoteInfo || !state.updateRemoteInfo.download_url) return;
-        $('update-error-box').classList.add('hidden');
-        const btn = $('btn-install-remote-update');
+        errBox.classList.add('hidden');
         const prevTxt = btn.textContent;
         btn.disabled = true;
         btn.textContent = 'Installing...';
@@ -5369,12 +5647,47 @@
         btn.disabled = false;
         btn.textContent = prevTxt;
         if (!res || !res.ok) {
-          $('update-error-text').textContent = (res && res.error) || 'Update installation failed.';
-          $('update-error-box').classList.remove('hidden');
+          errText.textContent = (res && res.error) || 'Update installation failed.';
+          errBox.classList.remove('hidden');
           return;
         }
-        $('update-scrim').classList.remove('open');
-        showBanner('Update staged. Restarting A8 Custom OST Patcher...', false);
+        $('update-popup-scrim').classList.remove('open');
+        showBanner('Update ready. Restarting Asphalt 8 Custom OST Patcher...', false);
+      }
+
+      function openAboutPage() {
+        const modeTxt = state.isFrozen ? 'Standalone App' : 'Python Source';
+        if ($('about-version-sub')) {
+          $('about-version-sub').textContent = `Installed v${state.appVersion} · ${modeTxt}`;
+        }
+        switchNav('about');
+        renderWorkspace();
+        renderChangelog('', state.appVersion);
+        runUpdateCheck();
+      }
+
+      $('btn-open-about').addEventListener('click', openAboutPage);
+      $('btn-about-back').addEventListener('click', () => {
+        switchNav('settings');
+        renderWorkspace();
+      });
+      $('btn-open-github').addEventListener('click', () => {
+        const repoUrl = 'https://github.com/PythonnXD/A8-Custom-OST';
+        if (hasBridge()) callApi('open_external_url', repoUrl);
+        else window.open(repoUrl, '_blank', 'noopener');
+      });
+      $('btn-check-updates').addEventListener('click', runUpdateCheck);
+      $('btn-install-remote-update').addEventListener('click', () => {
+        installRemoteUpdate($('btn-install-remote-update'), $('update-error-box'), $('update-error-text'));
+      });
+      $('btn-close-update-popup').addEventListener('click', () => $('update-popup-scrim').classList.remove('open'));
+      $('btn-popup-update-later').addEventListener('click', () => $('update-popup-scrim').classList.remove('open'));
+      $('btn-popup-open-about').addEventListener('click', () => {
+        $('update-popup-scrim').classList.remove('open');
+        openAboutPage();
+      });
+      $('btn-popup-install-update').addEventListener('click', () => {
+        installRemoteUpdate($('btn-popup-install-update'), $('update-popup-error-box'), $('update-popup-error-text'));
       });
 
       /* ---------- Keyboard Shortcuts ---------- */
@@ -5382,7 +5695,7 @@
       $('btn-close-shortcuts').addEventListener('click', () => $('shortcuts-scrim').classList.remove('open'));
 
       function getTopOpenScrim() {
-        const ids = ['unsaved-scrim', 'shortcuts-scrim', 'update-scrim', 'export-scrim', 'profiles-scrim', 'health-scrim', 'backups-scrim', 'outro-scrim'];
+        const ids = ['unsaved-scrim', 'update-popup-scrim', 'shortcuts-scrim', 'export-scrim', 'profiles-scrim', 'health-scrim', 'backups-scrim', 'outro-scrim'];
         for (const id of ids) {
           const el = $(id);
           if (el && el.classList.contains('open')) return el;
@@ -5472,7 +5785,7 @@
         }
 
         if (e.key === 'Enter' && !isTextEntry && tag !== 'BUTTON') {
-          if (state.view === 'settings') return;
+          if (state.view === 'settings' || state.view === 'about') return;
           const list = getFilteredTracks();
           const target = list.find((t) => t.uid === state.focusedUid) || list[0];
           if (target) {
@@ -5595,8 +5908,24 @@
             openHealthModal();
           } else if (params.get('modal') === 'profiles') {
             openProfilesModal();
-          } else if (params.get('modal') === 'update') {
-            openUpdateModal();
+          } else if (params.get('modal') === 'update-popup') {
+            const sample = {
+              ok: true,
+              current_version: state.appVersion,
+              latest_version: '1.4.3',
+              update_available: true,
+              published_at: '2026-11-20T10:00:00Z',
+              size_bytes: 15420000,
+              download_url: 'https://github.com/PythonnXD/A8-Custom-OST/releases/download/v1.4.3/A8_Custom_OST_Patcher.zip',
+              notes: '### Added\n- Automatic update pop-up when a new release is ready.\n- Faster soundtrack scanning on large music folders.',
+            };
+            state.updateRemoteInfo = sample;
+            openUpdatePopup(sample);
+          } else if (params.get('modal') === 'update' || params.get('view') === 'about') {
+            openAboutPage();
+          } else if (params.get('view') === 'settings') {
+            switchNav('settings');
+            renderWorkspace();
           } else if (params.get('modal') === 'export') {
             openExportModal();
           } else if (params.get('modal') === 'shortcuts') {
@@ -5632,10 +5961,15 @@
         state.autoBackup = init.auto_backup !== undefined ? !!init.auto_backup : true;
         state.outroEditorEnabled = init.outro_editor_enabled !== undefined ? !!init.outro_editor_enabled : true;
         state.keepOriginal = init.keep_original !== undefined ? !!init.keep_original : true;
+        state.warnUnsavedPlaylist = init.warn_unsaved_playlist !== undefined ? !!init.warn_unsaved_playlist : true;
         state.loopPlayback = !!init.loop_playback;
-        state.appVersion = init.app_version || '1.4.1';
+        state.appVersion = init.app_version || '1.4.2';
         state.isFrozen = !!init.is_frozen;
-        $('app-version-pill').textContent = `v${state.appVersion}`;
+        if ($('settings-version-pill')) $('settings-version-pill').textContent = `v${state.appVersion}`;
+        if ($('about-version-sub')) {
+          const modeTxt = state.isFrozen ? 'Standalone App' : 'Python Source';
+          $('about-version-sub').textContent = `Installed v${state.appVersion} · ${modeTxt}`;
+        }
 
         const savedQueue = init.saved_queue;
         if (savedQueue && Array.isArray(savedQueue.tracks) && savedQueue.tracks.length > 0) {
@@ -5665,6 +5999,9 @@
         }
         refreshProfilesCount();
         refreshHealthBadge();
+        setTimeout(() => {
+          checkForUpdateOnStartup();
+        }, 1400);
       }
 
       boot();

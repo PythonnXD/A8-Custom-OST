@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.4.2
+
+### Added
+- Added an About the app page inside Settings containing the app name, GitHub repository link, open-source licenses, update check, and changelog.
+- Added an automatic update pop-up on launch when a newer version is available on GitHub.
+- Added a "Don't show this again" checkbox on the unsaved playlist warning prompt, plus an Unsaved playlist warning toggle in Settings.
+
+### Changed
+- Moved app update checking out of the sidebar into Settings under About the app.
+- Rewrote in-app labels, empty states, and setting descriptions to read more naturally.
+
 ## v1.4.1
 
 ### Fixed

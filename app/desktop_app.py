@@ -12,6 +12,7 @@ import mimetypes
 import subprocess
 import threading
 import tempfile
+import webbrowser
 import urllib.request
 import urllib.error
 from concurrent.futures import ThreadPoolExecutor
@@ -20,7 +21,7 @@ from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse
 from typing import Any, Dict, List, Optional
 
-APP_VERSION = '1.4.1'
+APP_VERSION = '1.4.2'
 DEFAULT_UPDATE_MANIFEST_URL = 'https://api.github.com/repos/PythonnXD/A8-Custom-OST/releases/latest'
 _LEGACY_UPDATE_URLS = {
     '',
@@ -478,6 +479,7 @@ def load_prefs() -> Dict[str, Any]:
         'auto_backup': True,
         'outro_editor_enabled': True,
         'keep_original': True,
+        'warn_unsaved_playlist': True,
         'loop_playback': False,
     }
     if os.path.isfile(path):
@@ -805,6 +807,7 @@ class PatcherDesktopAPI:
         self._install_lock = threading.Lock()
         self._installing = False
         self._has_unsaved_playlist = False
+        self._warn_unsaved_playlist = True
         self._allow_close = False
         self._close_prompt_pending = False
 
@@ -856,7 +859,9 @@ class PatcherDesktopAPI:
         auto_backup = bool(prefs.get('auto_backup', True))
         outro_editor_enabled = bool(prefs.get('outro_editor_enabled', True))
         keep_original = bool(prefs.get('keep_original', True))
+        warn_unsaved_playlist = bool(prefs.get('warn_unsaved_playlist', True))
         loop_playback = bool(prefs.get('loop_playback', False))
+        self._warn_unsaved_playlist = warn_unsaved_playlist
 
         saved_q = load_queue_state()
         existing_ids = set()
@@ -893,6 +898,7 @@ class PatcherDesktopAPI:
             'auto_backup': auto_backup,
             'outro_editor_enabled': outro_editor_enabled,
             'keep_original': keep_original,
+            'warn_unsaved_playlist': warn_unsaved_playlist,
             'loop_playback': loop_playback,
             'saved_queue': saved_q,
             'quality_presets': [
@@ -934,6 +940,12 @@ class PatcherDesktopAPI:
         val = bool(enabled)
         save_prefs({'keep_original': val})
         return {'ok': True, 'keep_original': val}
+
+    def set_warn_unsaved_playlist(self, enabled: bool) -> Dict[str, Any]:
+        val = bool(enabled)
+        self._warn_unsaved_playlist = val
+        save_prefs({'warn_unsaved_playlist': val})
+        return {'ok': True, 'warn_unsaved_playlist': val}
 
     def set_loop_playback(self, enabled: bool) -> Dict[str, Any]:
         val = bool(enabled)
@@ -1373,6 +1385,17 @@ class PatcherDesktopAPI:
                 os.startfile(target)
             return {'ok': True}
         return {'ok': False, 'error': 'Folder does not exist.'}
+
+    def open_external_url(self, url: str) -> Dict[str, Any]:
+        clean = str(url or '').strip()
+        parsed = urlparse(clean)
+        if parsed.scheme not in ('https', 'http') or not parsed.netloc:
+            return {'ok': False, 'error': 'Invalid web address.'}
+        try:
+            webbrowser.open(clean)
+            return {'ok': True}
+        except Exception as e:
+            return {'ok': False, 'error': str(e)}
 
     def analyze_tracks_audio(self, file_paths: List[str]) -> Dict[str, Any]:
         clean_paths = []
@@ -1818,7 +1841,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     api._attach_window(window)
 
     def on_closing() -> Any:
-        if verify_window or api._allow_close or not api._has_unsaved_playlist:
+        if verify_window or api._allow_close or not api._has_unsaved_playlist or not api._warn_unsaved_playlist:
             return True
         if not api._close_prompt_pending:
             api._close_prompt_pending = True
