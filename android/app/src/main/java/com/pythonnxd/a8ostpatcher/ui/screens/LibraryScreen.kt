@@ -1,10 +1,19 @@
 package com.pythonnxd.a8ostpatcher.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -29,9 +38,14 @@ import com.pythonnxd.a8ostpatcher.engine.StationCategory
 import com.pythonnxd.a8ostpatcher.state.MainUiState
 import com.pythonnxd.a8ostpatcher.state.MainViewModel
 import com.pythonnxd.a8ostpatcher.state.NowPlayingState
+import com.pythonnxd.a8ostpatcher.ui.components.AnimatedCategoryFilterRow
+import com.pythonnxd.a8ostpatcher.ui.components.CategoryFilterItem
+import com.pythonnxd.a8ostpatcher.ui.components.LiquidGlassCard
 import com.pythonnxd.a8ostpatcher.ui.components.SegmentItem
 import com.pythonnxd.a8ostpatcher.ui.components.SlidingSegmentedControl
+import com.pythonnxd.a8ostpatcher.ui.components.interactivePressScale
 import com.pythonnxd.a8ostpatcher.ui.theme.LocalAppColors
+import com.pythonnxd.a8ostpatcher.ui.theme.LocalReduceMotion
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,6 +59,7 @@ fun LibraryScreen(
     onPickCustomOutroForLibrary: (InstalledTrack) -> Unit,
 ) {
     val colors = LocalAppColors.current
+    val reduceMotion = LocalReduceMotion.current
 
     val filtered = remember(ui.libraryTracks, ui.libraryCategoryFilter, ui.librarySearch) {
         val q = ui.librarySearch.trim().lowercase()
@@ -61,11 +76,24 @@ fun LibraryScreen(
     var deleteAudioFiles by remember { mutableStateOf(false) }
     var tabletTab by remember { mutableIntStateOf(0) }
 
+    val categoryItems = remember(ui.libraryTracks) {
+        buildList {
+            add(CategoryFilterItem("all", "All ${ui.libraryTracks.size}"))
+            StationCategory.entries.forEach { cat ->
+                val count = ui.libraryTracks.count { it.category == cat }
+                add(CategoryFilterItem(cat.name, "${cat.displayName} $count"))
+            }
+        }
+    }
+    val selectedCategoryIdx = remember(ui.libraryCategoryFilter) {
+        if (ui.libraryCategoryFilter == null) 0 else StationCategory.entries.indexOf(ui.libraryCategoryFilter) + 1
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = if (isTablet) 20.dp else 14.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+            .padding(horizontal = if (isTablet) 24.dp else 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Row(
             modifier = Modifier
@@ -74,23 +102,31 @@ fun LibraryScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Column {
-                Text("In-Game Library", color = colors.text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("In-Game Library", color = colors.text, fontSize = 26.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.4).sp)
                 Text(
                     if (ui.gameDirValid) "${ui.libraryTracks.size} registered tracks" else "Connect an Asphalt 8 folder",
                     color = colors.muted,
-                    fontSize = 12.sp,
+                    fontSize = 14.sp,
                 )
             }
-            if (selectedTracks.isNotEmpty()) {
+            AnimatedVisibility(
+                visible = selectedTracks.isNotEmpty(),
+                enter = if (reduceMotion) EnterTransition.None else scaleIn(spring(0.70f, 480f)) + fadeIn(tween(150)),
+                exit = if (reduceMotion) ExitTransition.None else scaleOut(tween(110)) + fadeOut(tween(110)),
+            ) {
+                val removeInteraction = remember { MutableInteractionSource() }
                 Button(
                     onClick = { showRemoveConfirm = true },
+                    interactionSource = removeInteraction,
                     colors = ButtonDefaults.buttonColors(containerColor = colors.danger, contentColor = Color.White),
                     shape = RoundedCornerShape(999.dp),
-                    contentPadding = PaddingValues(horizontal = 14.dp),
-                    modifier = Modifier.height(34.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    modifier = Modifier
+                        .defaultMinSize(minHeight = 42.dp)
+                        .interactivePressScale(removeInteraction, 0.94f),
                 ) {
-                    Text("Remove ${selectedTracks.size}", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text("Remove ${selectedTracks.size}", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -109,37 +145,42 @@ fun LibraryScreen(
             return@Column
         }
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            StationFilterChip("All ${ui.libraryTracks.size}", ui.libraryCategoryFilter == null) { vm.setLibraryFilter(null) }
-            StationCategory.entries.forEach { cat ->
-                val count = ui.libraryTracks.count { it.category == cat }
-                StationFilterChip("${cat.displayName} $count", ui.libraryCategoryFilter == cat) { vm.setLibraryFilter(cat) }
-            }
-        }
+        // Animated Frosted Category Selection Row
+        AnimatedCategoryFilterRow(
+            items = categoryItems,
+            selectedIndex = selectedCategoryIdx,
+            onSelect = { idx ->
+                if (idx == 0) vm.setLibraryFilter(null)
+                else vm.setLibraryFilter(StationCategory.entries[idx - 1])
+            },
+        )
 
         OutlinedTextField(
             value = ui.librarySearch,
             onValueChange = { vm.setLibrarySearch(it) },
-            placeholder = { Text("Search installed songs...", fontSize = 13.sp, color = colors.faint) },
-            leadingIcon = { Icon(Icons.Rounded.Search, null, tint = colors.faint, modifier = Modifier.size(18.dp)) },
+            placeholder = { Text("Search installed songs...", fontSize = 14.5.sp, color = colors.faint) },
+            leadingIcon = { Icon(Icons.Rounded.Search, null, tint = colors.faint, modifier = Modifier.size(20.dp)) },
+            trailingIcon = if (ui.librarySearch.isNotEmpty()) {
+                {
+                    IconButton(onClick = { vm.setLibrarySearch("") }) {
+                        Icon(Icons.Rounded.Close, "Clear search", tint = colors.muted, modifier = Modifier.size(18.dp))
+                    }
+                }
+            } else null,
             singleLine = true,
-            shape = RoundedCornerShape(12.dp),
+            textStyle = MaterialTheme.typography.bodyMedium,
+            shape = RoundedCornerShape(16.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = colors.surface,
-                unfocusedContainerColor = colors.surface,
+                focusedContainerColor = colors.glassCardBg,
+                unfocusedContainerColor = colors.glassCardBg,
                 focusedBorderColor = colors.accent,
-                unfocusedBorderColor = colors.border,
+                unfocusedBorderColor = colors.glassSpecularMid,
                 focusedTextColor = colors.text,
                 unfocusedTextColor = colors.text,
             ),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp),
+                .defaultMinSize(minHeight = 52.dp),
         )
 
         if (ui.libraryLoading) {
@@ -147,65 +188,71 @@ fun LibraryScreen(
                 CircularProgressIndicator(color = colors.accent)
             }
         } else if (isTablet) {
-            Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 LazyColumn(
                     modifier = Modifier.weight(1.05f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(bottom = 152.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(bottom = 172.dp),
                 ) {
                     items(filtered, key = { it.uid }) { track ->
-                        LibraryTrackRowCard(
-                            track = track,
-                            isFocused = focusedTrack?.uid == track.uid,
-                            isPlayingMain = nowPlaying.isPlaying && nowPlaying.uid == track.uid && !nowPlaying.isOutro,
-                            isPlayingOutro = nowPlaying.isPlaying && nowPlaying.uid == track.uid && nowPlaying.isOutro,
-                            showEditButton = false,
-                            onSelectToggle = { vm.toggleLibrarySelection(track.uid) },
-                            onClick = { vm.focusLibraryTrack(track.uid) },
-                            onPlayMain = {
-                                vm.player.togglePlay(
-                                    uid = track.uid,
-                                    title = track.title,
-                                    artist = track.artist,
-                                    category = track.category,
-                                    srcFile = File(track.mainPath),
-                                    isOutro = false,
-                                    onError = { vm.showBanner(it, isError = true) },
-                                )
-                            },
-                            onPlayOutro = {
-                                track.outroPath?.let { op ->
+                        Box(
+                            modifier = if (reduceMotion) Modifier else Modifier.animateItem(
+                                fadeInSpec = tween(180),
+                                placementSpec = spring(dampingRatio = 0.80f, stiffness = 420f),
+                                fadeOutSpec = tween(140),
+                            )
+                        ) {
+                            LibraryTrackRowCard(
+                                track = track,
+                                isFocused = focusedTrack?.uid == track.uid,
+                                isPlayingMain = nowPlaying.isPlaying && nowPlaying.uid == track.uid && !nowPlaying.isOutro,
+                                isPlayingOutro = nowPlaying.isPlaying && nowPlaying.uid == track.uid && nowPlaying.isOutro,
+                                showEditButton = false,
+                                onSelectToggle = { vm.toggleLibrarySelection(track.uid) },
+                                onClick = { vm.focusLibraryTrack(track.uid) },
+                                onPlayMain = {
                                     vm.player.togglePlay(
                                         uid = track.uid,
                                         title = track.title,
                                         artist = track.artist,
                                         category = track.category,
-                                        srcFile = File(op),
-                                        isOutro = true,
+                                        srcFile = File(track.mainPath),
+                                        isOutro = false,
                                         onError = { vm.showBanner(it, isError = true) },
                                     )
-                                }
-                            },
-                            onEdit = { vm.focusLibraryTrack(track.uid); tabletTab = 0 },
-                        )
+                                },
+                                onPlayOutro = {
+                                    track.outroPath?.let { op ->
+                                        vm.player.togglePlay(
+                                            uid = track.uid,
+                                            title = track.title,
+                                            artist = track.artist,
+                                            category = track.category,
+                                            srcFile = File(op),
+                                            isOutro = true,
+                                            onError = { vm.showBanner(it, isError = true) },
+                                        )
+                                    }
+                                },
+                                onEdit = { vm.focusLibraryTrack(track.uid); tabletTab = 0 },
+                            )
+                        }
                     }
                 }
 
-                Surface(
-                    shape = RoundedCornerShape(18.dp),
-                    color = colors.surface,
-                    border = BorderStroke(1.dp, colors.border),
+                LiquidGlassCard(
+                    shape = RoundedCornerShape(22.dp),
                     modifier = Modifier
                         .weight(0.95f)
                         .fillMaxHeight()
-                        .padding(bottom = 148.dp),
+                        .padding(bottom = 166.dp),
                 ) {
                     if (focusedTrack == null) {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("Select an installed track", color = colors.muted, fontSize = 13.sp)
+                            Text("Select an installed track", color = colors.muted, fontSize = 15.sp)
                         }
                     } else {
-                        Column(Modifier.fillMaxSize().padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                             SlidingSegmentedControl(
                                 items = listOf(
                                     SegmentItem("Song details", Icons.Rounded.Edit),
@@ -241,44 +288,52 @@ fun LibraryScreen(
         } else {
             LazyColumn(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(bottom = 160.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                contentPadding = PaddingValues(bottom = 186.dp),
             ) {
                 items(filtered, key = { it.uid }) { track ->
-                    LibraryTrackRowCard(
-                        track = track,
-                        isFocused = focusedTrack?.uid == track.uid,
-                        isPlayingMain = nowPlaying.isPlaying && nowPlaying.uid == track.uid && !nowPlaying.isOutro,
-                        isPlayingOutro = nowPlaying.isPlaying && nowPlaying.uid == track.uid && nowPlaying.isOutro,
-                        showEditButton = true,
-                        onSelectToggle = { vm.toggleLibrarySelection(track.uid) },
-                        onClick = { vm.focusLibraryTrack(track.uid) },
-                        onPlayMain = {
-                            vm.player.togglePlay(
-                                uid = track.uid,
-                                title = track.title,
-                                artist = track.artist,
-                                category = track.category,
-                                srcFile = File(track.mainPath),
-                                isOutro = false,
-                                onError = { vm.showBanner(it, isError = true) },
-                            )
-                        },
-                        onPlayOutro = {
-                            track.outroPath?.let { op ->
+                    Box(
+                        modifier = if (reduceMotion) Modifier else Modifier.animateItem(
+                            fadeInSpec = tween(180),
+                            placementSpec = spring(dampingRatio = 0.80f, stiffness = 420f),
+                            fadeOutSpec = tween(140),
+                        )
+                    ) {
+                        LibraryTrackRowCard(
+                            track = track,
+                            isFocused = focusedTrack?.uid == track.uid,
+                            isPlayingMain = nowPlaying.isPlaying && nowPlaying.uid == track.uid && !nowPlaying.isOutro,
+                            isPlayingOutro = nowPlaying.isPlaying && nowPlaying.uid == track.uid && nowPlaying.isOutro,
+                            showEditButton = true,
+                            onSelectToggle = { vm.toggleLibrarySelection(track.uid) },
+                            onClick = { vm.focusLibraryTrack(track.uid) },
+                            onPlayMain = {
                                 vm.player.togglePlay(
                                     uid = track.uid,
                                     title = track.title,
                                     artist = track.artist,
                                     category = track.category,
-                                    srcFile = File(op),
-                                    isOutro = true,
+                                    srcFile = File(track.mainPath),
+                                    isOutro = false,
                                     onError = { vm.showBanner(it, isError = true) },
                                 )
-                            }
-                        },
-                        onEdit = { editingTrack = track },
-                    )
+                            },
+                            onPlayOutro = {
+                                track.outroPath?.let { op ->
+                                    vm.player.togglePlay(
+                                        uid = track.uid,
+                                        title = track.title,
+                                        artist = track.artist,
+                                        category = track.category,
+                                        srcFile = File(op),
+                                        isOutro = true,
+                                        onError = { vm.showBanner(it, isError = true) },
+                                    )
+                                }
+                            },
+                            onEdit = { editingTrack = track },
+                        )
+                    }
                 }
             }
         }
@@ -289,17 +344,17 @@ fun LibraryScreen(
         var sheetTab by remember(tr.uid) { mutableIntStateOf(0) }
         ModalBottomSheet(
             onDismissRequest = { editingTrack = null },
-            containerColor = colors.surface,
+            containerColor = colors.glassDockFallback,
             contentColor = colors.text,
-            dragHandle = { BottomSheetDefaults.DragHandle(color = colors.muted.copy(alpha = 0.4f)) },
+            dragHandle = { BottomSheetDefaults.DragHandle(color = colors.muted.copy(alpha = 0.48f)) },
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 18.dp)
-                    .padding(bottom = 28.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 SlidingSegmentedControl(
                     items = listOf(
@@ -347,22 +402,27 @@ fun LibraryScreen(
     if (showRemoveConfirm) {
         AlertDialog(
             onDismissRequest = { showRemoveConfirm = false },
-            containerColor = colors.surface,
-            title = { Text("Remove ${selectedTracks.size} song(s)?", color = colors.text, fontWeight = FontWeight.Bold) },
+            containerColor = colors.glassDockFallback,
+            title = { Text("Remove ${selectedTracks.size} song(s)?", color = colors.text, fontSize = 19.sp, fontWeight = FontWeight.Bold) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Selected songs will be removed from soundpack playlists and game title tables.", color = colors.muted, fontSize = 13.sp)
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        "Selected songs will be removed from soundpack playlists and game title tables.",
+                        color = colors.muted,
+                        fontSize = 14.5.sp,
+                        lineHeight = 20.sp,
+                    )
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.clickable { deleteAudioFiles = !deleteAudioFiles },
                     ) {
                         Checkbox(checked = deleteAudioFiles, onCheckedChange = { deleteAudioFiles = it })
-                        Spacer(Modifier.width(6.dp))
-                        Text("Also delete .mpc files from music folder", color = colors.text, fontSize = 13.sp)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Also delete .mpc files from music folder", color = colors.text, fontSize = 14.5.sp)
                     }
                 }
             },
-            dismissButton = { TextButton(onClick = { showRemoveConfirm = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { showRemoveConfirm = false }) { Text("Cancel", fontSize = 14.sp) } },
             confirmButton = {
                 Button(
                     onClick = {
@@ -372,7 +432,7 @@ fun LibraryScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = colors.danger, contentColor = Color.White),
                     shape = RoundedCornerShape(999.dp),
                 ) {
-                    Text("Remove")
+                    Text("Remove", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                 }
             },
         )
@@ -393,70 +453,94 @@ private fun LibraryTrackRowCard(
     onEdit: () -> Unit,
 ) {
     val colors = LocalAppColors.current
-    Surface(
-        shape = RoundedCornerShape(15.dp),
-        color = if (isPlayingMain || isPlayingOutro) colors.accentSoft.copy(alpha = 0.24f) else colors.surface,
-        border = BorderStroke(1.dp, if (isFocused || isPlayingMain || isPlayingOutro) colors.accent.copy(alpha = 0.55f) else colors.border),
+    val highlighted = isFocused || isPlayingMain || isPlayingOutro
+    val playInteraction = remember { MutableInteractionSource() }
+    val editInteraction = remember { MutableInteractionSource() }
+
+    LiquidGlassCard(
+        shape = RoundedCornerShape(18.dp),
+        tintColor = if (isPlayingMain || isPlayingOutro) colors.accentSoft.copy(alpha = 0.28f) else null,
+        accentBorder = if (highlighted) colors.accent else null,
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Checkbox(checked = track.selected, onCheckedChange = { onSelectToggle() }, modifier = Modifier.size(24.dp))
+            Checkbox(checked = track.selected, onCheckedChange = { onSelectToggle() }, modifier = Modifier.size(26.dp))
             Box(
                 modifier = Modifier
-                    .size(34.dp)
+                    .size(42.dp)
+                    .interactivePressScale(playInteraction, 0.90f)
                     .clip(CircleShape)
-                    .background(if (isPlayingMain) colors.accent else colors.raised)
-                    .border(1.dp, if (isPlayingMain) colors.accent else colors.border, CircleShape)
-                    .clickable(enabled = track.mainExists) { onPlayMain() },
+                    .background(if (isPlayingMain) colors.accent else colors.glassCardRaised)
+                    .border(1.dp, if (isPlayingMain) colors.accent else colors.glassSpecularTop, CircleShape)
+                    .clickable(enabled = track.mainExists, interactionSource = playInteraction, indication = null) { onPlayMain() },
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     imageVector = if (isPlayingMain) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                     contentDescription = "Preview",
                     tint = if (isPlayingMain) Color(0xFF0B0C0F) else if (track.mainExists) colors.text else colors.faint,
-                    modifier = Modifier.size(18.dp),
+                    modifier = Modifier.size(21.dp),
                 )
             }
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(track.title, color = colors.text, fontSize = 13.5.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(
+                    track.title,
+                    color = colors.text,
+                    fontSize = 15.5.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(track.artist, color = colors.muted, fontSize = 11.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                    Text(
+                        track.artist,
+                        color = colors.muted,
+                        fontSize = 13.5.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
                     MiniTag(track.rawCategoryName, colors.accentSoft, colors.accentInk)
-                    if (!track.mainExists) MiniTag("Missing", colors.danger.copy(alpha = 0.16f), colors.danger)
+                    if (!track.mainExists) MiniTag("Missing", colors.danger.copy(alpha = 0.18f), colors.danger)
                 }
             }
             if (track.hasOutro && track.outroExists) {
+                val outroInteraction = remember { MutableInteractionSource() }
                 Box(
                     modifier = Modifier
-                        .size(28.dp)
+                        .size(34.dp)
+                        .interactivePressScale(outroInteraction, 0.90f)
                         .clip(CircleShape)
                         .background(if (isPlayingOutro) colors.accent else colors.accentSoft)
-                        .clickable { onPlayOutro() },
+                        .clickable(interactionSource = outroInteraction, indication = null) { onPlayOutro() },
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         if (isPlayingOutro) Icons.Rounded.Pause else Icons.Rounded.GraphicEq,
                         contentDescription = "Preview outro",
                         tint = if (isPlayingOutro) Color(0xFF0B0C0F) else colors.accentInk,
-                        modifier = Modifier.size(14.dp),
+                        modifier = Modifier.size(17.dp),
                     )
                 }
             }
             if (showEditButton) {
                 Surface(
-                    shape = RoundedCornerShape(9.dp),
-                    color = colors.raised,
-                    border = BorderStroke(1.dp, colors.border),
-                    modifier = Modifier.height(30.dp).clickable { onEdit() },
+                    shape = RoundedCornerShape(12.dp),
+                    color = colors.glassCardRaised,
+                    border = BorderStroke(1.dp, colors.glassSpecularMid),
+                    modifier = Modifier
+                        .defaultMinSize(minHeight = 36.dp)
+                        .interactivePressScale(editInteraction, 0.93f)
+                        .clickable(interactionSource = editInteraction, indication = null) { onEdit() },
                 ) {
-                    Box(Modifier.padding(horizontal = 10.dp), contentAlignment = Alignment.Center) {
-                        Text("Edit", color = colors.text, fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold)
+                    Box(Modifier.padding(horizontal = 13.dp, vertical = 7.dp), contentAlignment = Alignment.Center) {
+                        Text("Edit", color = colors.text, fontSize = 13.5.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
@@ -475,32 +559,47 @@ private fun LibraryDetailsForm(
     var artist by remember(track.uid, track.artist) { mutableStateOf(track.artist) }
     var station by remember(track.uid, track.category) { mutableStateOf(track.category) }
 
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Song title") }, singleLine = true, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = artist, onValueChange = { artist = it }, label = { Text("Artist") }, singleLine = true, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth())
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            StationCategory.entries.forEach { cat ->
-                val active = station == cat
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = if (active) colors.accentSoft else colors.ground,
-                    border = BorderStroke(1.dp, if (active) colors.accent else colors.border),
-                    modifier = Modifier.weight(1f).height(36.dp).clickable { station = cat },
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(cat.displayName, color = if (active) colors.accentInk else colors.muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                    }
-                }
-            }
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        OutlinedTextField(
+            value = title,
+            onValueChange = { title = it },
+            label = { Text("Song title", fontSize = 14.sp) },
+            textStyle = MaterialTheme.typography.bodyMedium,
+            singleLine = true,
+            shape = RoundedCornerShape(14.dp),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+            value = artist,
+            onValueChange = { artist = it },
+            label = { Text("Artist", fontSize = 14.sp) },
+            textStyle = MaterialTheme.typography.bodyMedium,
+            singleLine = true,
+            shape = RoundedCornerShape(14.dp),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Station", color = colors.muted, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            SlidingSegmentedControl(
+                items = StationCategory.entries.map { SegmentItem(it.displayName) },
+                selectedIndex = StationCategory.entries.indexOf(station).coerceAtLeast(0),
+                onSelect = { station = StationCategory.entries[it] },
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            TextButton(onClick = onRemove) { Text("Remove from game", color = colors.danger) }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = onRemove) { Text("Remove from game", color = colors.danger, fontSize = 14.sp, fontWeight = FontWeight.SemiBold) }
+            val saveInteraction = remember { MutableInteractionSource() }
             Button(
                 onClick = { onSave(title, artist, station) },
+                interactionSource = saveInteraction,
                 shape = RoundedCornerShape(999.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = colors.capsuleBg, contentColor = colors.capsuleInk),
+                modifier = Modifier
+                    .defaultMinSize(minHeight = 44.dp)
+                    .interactivePressScale(saveInteraction, 0.94f),
             ) {
-                Text("Save changes", fontWeight = FontWeight.SemiBold)
+                Text("Save changes", fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -514,25 +613,34 @@ private fun LibraryOutroPane(
     onRemoveOutro: () -> Unit,
 ) {
     val colors = LocalAppColors.current
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
             if (track.hasOutro) "Registered outro: ${track.outroFile ?: track.outroId}" else "No outro attached to this track yet.",
             color = colors.muted,
-            fontSize = 12.5.sp,
+            fontSize = 14.5.sp,
+            lineHeight = 20.sp,
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = onAttachCustom, shape = RoundedCornerShape(999.dp)) {
-                Text("Attach custom audio")
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Button(
+                onClick = onAttachCustom,
+                shape = RoundedCornerShape(999.dp),
+                modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+            ) {
+                Text("Attach custom audio", fontSize = 14.sp)
             }
             if (track.mainExists) {
-                OutlinedButton(onClick = onTrimLast20, shape = RoundedCornerShape(999.dp)) {
-                    Text("Cut last 20s")
+                OutlinedButton(
+                    onClick = onTrimLast20,
+                    shape = RoundedCornerShape(999.dp),
+                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                ) {
+                    Text("Cut last 20s", fontSize = 14.sp)
                 }
             }
         }
         if (track.hasOutro) {
             TextButton(onClick = onRemoveOutro) {
-                Text("Remove outro", color = colors.danger)
+                Text("Remove outro", color = colors.danger, fontSize = 14.sp)
             }
         }
     }

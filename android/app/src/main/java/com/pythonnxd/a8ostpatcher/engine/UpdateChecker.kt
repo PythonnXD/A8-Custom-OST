@@ -13,6 +13,17 @@ object UpdateChecker {
     const val ANDROID_TAG_PREFIX = "android-v"
 
     val LOCAL_CHANGELOG: Map<String, List<ReleaseNoteSection>> = linkedMapOf(
+        "1.0.1" to listOf(
+            ReleaseNoteSection(
+                title = "UI & Motion Polish",
+                items = listOf(
+                    "Frosted Apple Liquid Glass interface with real-time GPU backdrop blur across the floating Pill Nav Bar, Now Playing Bar, cards, sheets, and banners.",
+                    "Draggable Liquid Glass Pill Nav Bar highlight: grab and slide across tabs with 1:1 tracking, rubber-band edge resistance, live tick haptics, and momentum spring settle.",
+                    "Resized floating Pill Nav Bar and upgraded universal DPI typography & touch targets for comfortable reading on all phones and tablets.",
+                    "Animated sliding category filter pills, lively spring press feedback, spatial tab transitions, and smooth list item animations (all respecting Reduce motion).",
+                ),
+            ),
+        ),
         "1.0.0" to listOf(
             ReleaseNoteSection(
                 title = "Added",
@@ -48,6 +59,13 @@ object UpdateChecker {
             license = "Apache-2.0",
             displayUrl = "developer.android.com/compose",
             url = "https://developer.android.com/compose",
+        ),
+        OpenSourceAck(
+            name = "Haze (Chris Banes)",
+            role = "Real-time GPU backdrop blur and frosted glass rendering for Jetpack Compose",
+            license = "Apache-2.0",
+            displayUrl = "github.com/chrisbanes/haze",
+            url = "https://github.com/chrisbanes/haze",
         ),
         OpenSourceAck(
             name = "AndroidX Core, Activity, Lifecycle & DocumentFile",

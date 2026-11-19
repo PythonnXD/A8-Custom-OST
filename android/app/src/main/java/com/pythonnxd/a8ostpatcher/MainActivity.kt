@@ -15,16 +15,20 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -44,12 +48,17 @@ import com.pythonnxd.a8ostpatcher.engine.AudioPipeline
 import com.pythonnxd.a8ostpatcher.engine.InstalledTrack
 import com.pythonnxd.a8ostpatcher.state.AppTab
 import com.pythonnxd.a8ostpatcher.state.MainViewModel
+import com.pythonnxd.a8ostpatcher.ui.components.AmbientLiquidBackdrop
 import com.pythonnxd.a8ostpatcher.ui.components.FloatingPillNavBar
+import com.pythonnxd.a8ostpatcher.ui.components.LocalChromeHazeState
 import com.pythonnxd.a8ostpatcher.ui.components.NowPlayingBar
+import com.pythonnxd.a8ostpatcher.ui.components.liquidGlassChrome
 import com.pythonnxd.a8ostpatcher.ui.screens.*
 import com.pythonnxd.a8ostpatcher.ui.theme.A8PatcherTheme
 import com.pythonnxd.a8ostpatcher.ui.theme.LocalAppColors
 import com.pythonnxd.a8ostpatcher.ui.theme.LocalReduceMotion
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.haze
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -64,7 +73,6 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val ui by vm.ui.collectAsState()
-            val nowPlaying by vm.player.state.collectAsState()
             val isLight = ui.prefs.themeMode.isLight
 
             LaunchedEffect(isLight) {
@@ -132,6 +140,15 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+private fun routeOrder(route: String): Int = when (route) {
+    AppTab.QUEUE.name -> 0
+    AppTab.LIBRARY.name -> 1
+    AppTab.TOOLS.name -> 2
+    AppTab.SETTINGS.name -> 3
+    "about" -> 4
+    else -> 0
+}
+
 @Composable
 private fun MainAppShell(
     vm: MainViewModel,
@@ -147,6 +164,7 @@ private fun MainAppShell(
     val scope = rememberCoroutineScope()
     val config = LocalConfiguration.current
     val isTablet = config.screenWidthDp >= 600
+    val chromeHazeState = remember { HazeState() }
 
     var hasAllFilesAccess by remember {
         mutableStateOf(
@@ -220,143 +238,193 @@ private fun MainAppShell(
         vm.closeAboutScreen()
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(colors.ground)
-            .windowInsetsPadding(WindowInsets.statusBars)
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Optional dismissible status banner
-            ui.banner?.let { banner ->
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = if (banner.isError) colors.danger.copy(alpha = 0.16f) else colors.ok.copy(alpha = 0.16f),
-                    border = BorderStroke(1.dp, if (banner.isError) colors.danger.copy(alpha = 0.5f) else colors.ok.copy(alpha = 0.5f)),
+    CompositionLocalProvider(LocalChromeHazeState provides chromeHazeState) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Haze source layer: ambient Liquid Glass backdrop + full edge-to-edge screen content
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .haze(state = chromeHazeState)
+            ) {
+                AmbientLiquidBackdrop(modifier = Modifier.fillMaxSize())
+
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = if (isTablet) 20.dp else 14.dp, vertical = 6.dp),
+                        .fillMaxSize()
+                        .windowInsetsPadding(WindowInsets.statusBars)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                    val routeKey = if (ui.tab == AppTab.SETTINGS && ui.showAboutScreen) "about" else ui.tab.name
+                    AnimatedContent(
+                        targetState = routeKey,
+                        transitionSpec = {
+                            if (reduceMotion) {
+                                EnterTransition.None togetherWith ExitTransition.None
+                            } else if (targetState == "about" && initialState == AppTab.SETTINGS.name) {
+                                (slideInHorizontally(spring(0.86f, 420f)) { it / 3 } + fadeIn(tween(200))) togetherWith
+                                    (slideOutHorizontally(spring(0.86f, 420f)) { -it / 6 } + fadeOut(tween(150)))
+                            } else if (initialState == "about" && targetState == AppTab.SETTINGS.name) {
+                                (slideInHorizontally(spring(0.86f, 420f)) { -it / 6 } + fadeIn(tween(200))) togetherWith
+                                    (slideOutHorizontally(spring(0.86f, 420f)) { it / 3 } + fadeOut(tween(150)))
+                            } else {
+                                val dir = if (routeOrder(targetState) >= routeOrder(initialState)) 1 else -1
+                                (slideInHorizontally(spring(0.84f, 460f)) { dir * (it / 16) } +
+                                    fadeIn(tween(190)) +
+                                    scaleIn(tween(210), initialScale = 0.985f)) togetherWith
+                                    (slideOutHorizontally(tween(150)) { -dir * (it / 24) } +
+                                        fadeOut(tween(120)) +
+                                        scaleOut(tween(130), targetScale = 0.99f))
+                            }
+                        },
+                        label = "mainContent",
+                        modifier = Modifier.weight(1f),
+                    ) { route ->
+                        when (route) {
+                            AppTab.QUEUE.name -> QueueScreen(
+                                ui = ui,
+                                nowPlaying = nowPlaying,
+                                vm = vm,
+                                isTablet = isTablet,
+                                onAddSongs = { pickSongsLauncher.launch(arrayOf("audio/*", "application/zip", "application/octet-stream")) },
+                                onAddFolder = { pickMusicFolderLauncher.launch(null) },
+                                onExportZip = { exportZipLauncher.launch("A8_Custom_OST_Pack.zip") },
+                                onPickCustomOutroForQueue = { uid ->
+                                    pendingQueueOutroUid = uid
+                                    pendingLibraryOutroTrack = null
+                                    pickCustomOutroLauncher.launch(arrayOf("audio/*", "application/octet-stream"))
+                                },
+                            )
+                            AppTab.LIBRARY.name -> LibraryScreen(
+                                ui = ui,
+                                nowPlaying = nowPlaying,
+                                vm = vm,
+                                isTablet = isTablet,
+                                onChooseGameFolder = { pickGameFolderLauncher.launch(null) },
+                                onPickCustomOutroForLibrary = { track ->
+                                    pendingQueueOutroUid = null
+                                    pendingLibraryOutroTrack = track
+                                    pickCustomOutroLauncher.launch(arrayOf("audio/*", "application/octet-stream"))
+                                },
+                            )
+                            AppTab.TOOLS.name -> ToolsScreen(
+                                ui = ui,
+                                vm = vm,
+                                isTablet = isTablet,
+                                onChooseGameFolder = { pickGameFolderLauncher.launch(null) },
+                            )
+                            AppTab.SETTINGS.name -> SettingsScreen(
+                                ui = ui,
+                                vm = vm,
+                                isTablet = isTablet,
+                                hasAllFilesAccess = hasAllFilesAccess,
+                                onRequestAllFilesAccess = requestAllFilesPermission,
+                                onChooseGameFolder = { pickGameFolderLauncher.launch(null) },
+                            )
+                            "about" -> AboutScreen(
+                                ui = ui,
+                                vm = vm,
+                                isTablet = isTablet,
+                                onOpenUrl = openExternalUrl,
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Floating Frosted Liquid Glass Status Banner (drops smoothly from top with real GPU blur)
+            var lastBanner by remember { mutableStateOf(ui.banner) }
+            LaunchedEffect(ui.banner) {
+                if (ui.banner != null) lastBanner = ui.banner
+            }
+            AnimatedVisibility(
+                visible = ui.banner != null,
+                enter = if (reduceMotion) EnterTransition.None
+                else slideInVertically(spring(0.74f, 440f)) { -it } + fadeIn(tween(180)) + scaleIn(tween(180), initialScale = 0.96f),
+                exit = if (reduceMotion) ExitTransition.None
+                else slideOutVertically(tween(160)) { -it } + fadeOut(tween(140)),
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.statusBars)
+                    .padding(horizontal = if (isTablet) 24.dp else 16.dp, vertical = 10.dp),
+            ) {
+                val banner = lastBanner
+                if (banner != null) {
+                    val accent = if (banner.isError) colors.danger else colors.ok
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .widthIn(max = 560.dp)
+                            .liquidGlassChrome(
+                                shape = RoundedCornerShape(18.dp),
+                                blurRadius = 24.dp,
+                                shadowElevation = 14.dp,
+                                borderAccent = accent,
+                                tintOverride = accent.copy(alpha = if (colors.isLight) 0.16f else 0.22f),
+                            )
                     ) {
-                        Text(
-                            text = banner.text,
-                            color = if (banner.isError) colors.danger else colors.ok,
-                            fontSize = 12.5.sp,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.weight(1f),
-                        )
-                        Icon(
-                            Icons.Rounded.Close,
-                            contentDescription = "Dismiss",
-                            tint = colors.muted,
-                            modifier = Modifier
-                                .size(18.dp)
-                                .clickable { vm.dismissBanner() },
-                        )
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 13.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Text(
+                                text = banner.text,
+                                color = if (banner.isError) colors.danger else colors.ok,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Icon(
+                                Icons.Rounded.Close,
+                                contentDescription = "Dismiss",
+                                tint = colors.muted,
+                                modifier = Modifier
+                                    .size(22.dp)
+                                    .clickable { vm.dismissBanner() },
+                            )
+                        }
                     }
                 }
             }
 
-            // Peer tabs use clean crossfade; Settings <-> About uses directional push/pop (instant when Reduce motion is ON)
-            val routeKey = if (ui.tab == AppTab.SETTINGS && ui.showAboutScreen) "about" else ui.tab.name
-            AnimatedContent(
-                targetState = routeKey,
-                transitionSpec = {
-                    if (reduceMotion) {
-                        EnterTransition.None togetherWith ExitTransition.None
-                    } else if (targetState == "about" && initialState == AppTab.SETTINGS.name) {
-                        (slideInHorizontally(tween(240)) { it / 3 } + fadeIn(tween(220))) togetherWith
-                            (slideOutHorizontally(tween(240)) { -it / 6 } + fadeOut(tween(180)))
-                    } else if (initialState == "about" && targetState == AppTab.SETTINGS.name) {
-                        (slideInHorizontally(tween(240)) { -it / 6 } + fadeIn(tween(220))) togetherWith
-                            (slideOutHorizontally(tween(240)) { it / 3 } + fadeOut(tween(180)))
-                    } else {
-                        fadeIn(tween(160)) togetherWith fadeOut(tween(120))
-                    }
-                },
-                label = "mainContent",
-                modifier = Modifier.weight(1f),
-            ) { route ->
-                when (route) {
-                    AppTab.QUEUE.name -> QueueScreen(
-                        ui = ui,
-                        nowPlaying = nowPlaying,
-                        vm = vm,
-                        isTablet = isTablet,
-                        onAddSongs = { pickSongsLauncher.launch(arrayOf("audio/*", "application/zip", "application/octet-stream")) },
-                        onAddFolder = { pickMusicFolderLauncher.launch(null) },
-                        onExportZip = { exportZipLauncher.launch("A8_Custom_OST_Pack.zip") },
-                        onPickCustomOutroForQueue = { uid ->
-                            pendingQueueOutroUid = uid
-                            pendingLibraryOutroTrack = null
-                            pickCustomOutroLauncher.launch(arrayOf("audio/*", "application/octet-stream"))
-                        },
-                    )
-                    AppTab.LIBRARY.name -> LibraryScreen(
-                        ui = ui,
-                        nowPlaying = nowPlaying,
-                        vm = vm,
-                        isTablet = isTablet,
-                        onChooseGameFolder = { pickGameFolderLauncher.launch(null) },
-                        onPickCustomOutroForLibrary = { track ->
-                            pendingQueueOutroUid = null
-                            pendingLibraryOutroTrack = track
-                            pickCustomOutroLauncher.launch(arrayOf("audio/*", "application/octet-stream"))
-                        },
-                    )
-                    AppTab.TOOLS.name -> ToolsScreen(
-                        ui = ui,
-                        vm = vm,
-                        isTablet = isTablet,
-                        onChooseGameFolder = { pickGameFolderLauncher.launch(null) },
-                    )
-                    AppTab.SETTINGS.name -> SettingsScreen(
-                        ui = ui,
-                        vm = vm,
-                        isTablet = isTablet,
-                        hasAllFilesAccess = hasAllFilesAccess,
-                        onRequestAllFilesAccess = requestAllFilesPermission,
-                        onChooseGameFolder = { pickGameFolderLauncher.launch(null) },
-                    )
-                    "about" -> AboutScreen(
-                        ui = ui,
-                        vm = vm,
-                        isTablet = isTablet,
-                        onOpenUrl = openExternalUrl,
+            // Bottom floating overlay: Frosted Now Playing Bar + Resized Draggable Liquid Glass Pill Nav Bar
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.navigationBars)
+                    .padding(
+                        start = if (isTablet) 24.dp else 20.dp,
+                        end = if (isTablet) 24.dp else 20.dp,
+                        top = 6.dp,
+                        bottom = 12.dp,
+                    ),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                val showNowPlaying = (ui.tab == AppTab.QUEUE || ui.tab == AppTab.LIBRARY) && (nowPlaying.isLocked || nowPlaying.isPreparing)
+                AnimatedVisibility(
+                    visible = showNowPlaying,
+                    enter = if (reduceMotion) EnterTransition.None
+                    else slideInVertically(spring(0.76f, 420f)) { it / 2 } + fadeIn(tween(180)) + scaleIn(tween(200), initialScale = 0.95f),
+                    exit = if (reduceMotion) ExitTransition.None
+                    else slideOutVertically(tween(150)) { it / 2 } + fadeOut(tween(130)),
+                ) {
+                    NowPlayingBar(
+                        state = nowPlaying,
+                        onTogglePlayPause = { vm.player.toggleCurrentPlayPause() },
+                        onSeek = { vm.player.seekToFraction(it) },
+                        onToggleLoop = { vm.updatePrefs { it.copy(loopPlayback = !it.loopPlayback) } },
+                        modifier = Modifier.widthIn(max = 640.dp),
                     )
                 }
-            }
-        }
 
-        // Bottom overlay: Locked Now Playing bar + Floating Glass Pill Navigation Bar
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.navigationBars)
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            if (ui.tab == AppTab.QUEUE || ui.tab == AppTab.LIBRARY) {
-                NowPlayingBar(
-                    state = nowPlaying,
-                    onTogglePlayPause = { vm.player.toggleCurrentPlayPause() },
-                    onSeek = { vm.player.seekToFraction(it) },
-                    onToggleLoop = { vm.updatePrefs { it.copy(loopPlayback = !it.loopPlayback) } },
-                    modifier = Modifier.widthIn(max = 640.dp),
+                FloatingPillNavBar(
+                    selectedTab = ui.tab,
+                    onSelect = { vm.selectTab(it) },
+                    isTablet = isTablet,
                 )
             }
-
-            FloatingPillNavBar(
-                selectedTab = ui.tab,
-                onSelect = { vm.selectTab(it) },
-                isTablet = isTablet,
-            )
         }
     }
 
