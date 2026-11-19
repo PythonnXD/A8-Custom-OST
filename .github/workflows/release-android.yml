@@ -42,11 +42,11 @@ jobs:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           KS_PATH="$RUNNER_TEMP/a8ost-release.jks"
           if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
-            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$KS_PATH"
+            printf '%s' "$ANDROID_KEYSTORE_BASE64" | tr -d '\r\n ' | base64 -d > "$KS_PATH"
+            keytool -list -keystore "$KS_PATH" -storepass:env ANDROID_KEYSTORE_PASSWORD -alias "${ANDROID_KEY_ALIAS:-a8ost}" >/dev/null
             echo "ANDROID_KEYSTORE_PATH=$KS_PATH" >> $GITHUB_ENV
           else
             keytool -genkeypair -v -keystore "$KS_PATH" -storetype PKCS12 \
@@ -65,6 +65,10 @@ jobs:
 
       - name: Build signed release APK
         working-directory: android
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD || 'a8ostpatcher' }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS || 'a8ost' }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD || secrets.ANDROID_KEYSTORE_PASSWORD || 'a8ostpatcher' }}
         run: gradle assembleRelease --stacktrace
 
       - name: Verify APK signature and native Musepack libraries
