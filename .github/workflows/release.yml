@@ -35,6 +35,7 @@ jobs:
         shell: pwsh
         run: |
           pyinstaller --noconfirm --onefile --windowed --name A8_Custom_OST_Patcher `
+            --icon "app/ui/assets/app_icon.ico" `
             --paths . `
             --add-data "app/ui;app/ui" `
             --hidden-import webview `

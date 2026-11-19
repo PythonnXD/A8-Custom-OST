@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.4.1
+
+### Fixed
+- Fixed the app freezing or crashing when closing while the unsaved playlist confirmation prompt is displayed.
+- Kept track outro status visible when the Outro editor is turned off, with direct controls to attach, replace, or remove a custom outro audio file.
+
+### Added
+- Added a Delete button with confirmation in Backups so old snapshots can be removed directly inside the app.
+- Added a dedicated Settings view containing Audio quality, Keep stock soundtrack, Auto backup, and Outro editor with clear descriptions for each option.
+- Added the custom application icon across the desktop window and standalone executable.
+
 ## v1.4.0
 
 ### Fixed

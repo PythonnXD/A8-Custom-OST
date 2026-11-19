@@ -10,9 +10,9 @@ The UI converts audio offline with the bundled `tools/ffmpeg.exe` and `tools/mpc
 - Remembers your Import Queue across app restarts and warns before closing or clearing an unsaved playlist.
 - Import dropped or browsed audio files, folders (with optional `Rock/`, `Electro/`, `Dubstep/`, `Menu/`, and `Outro/` subfolders), or `.zip` mod packs containing `pack_manifest.json`.
 - Assign artists and stations in batches, edit Song Title, Artist, and Station inline across the Import Queue and In-Game Library (`soundpack` and `*.texts`), and flag conflicts with existing game tracks.
-- Trim Outro tracks on a 120-bin PCM waveform at `0.01s` resolution with independent Fade In and Fade Out On/Off toggles, Loop playback, and a toggle to hide the Outro editor when not needed.
+- Trim Outro tracks on a 120-bin PCM waveform at `0.01s` resolution with independent Fade In and Fade Out On/Off toggles and Loop playback, or disable the Outro editor in Settings while keeping track outro status visible for custom outro file attachment.
 - View background `Peak dBFS` and `RMS dBFS` loudness badges on tracks.
-- Toggle Auto backup snapshots on or off, trigger manual backups on demand, restore timestamped snapshots, switch MOD Profiles, or clean issues in Health Check.
+- Configure Audio quality, Keep stock soundtrack, Auto backup, and Outro editor in Settings, trigger manual backups on demand, restore or delete timestamped snapshots, switch MOD Profiles, or clean issues in Health Check.
 - Export checked Queue or Library tracks as a `.zip` archive or portable folder with `pack_manifest.json`.
 - Unlock ACL and read-only flags on `WindowsApps` and the verified Asphalt 8 package folder silently, or run "Make writable copy" when Microsoft Store blocks direct edits.
 - Use keyboard shortcuts (`?` opens the shortcut list), switch between Dark and Light themes, and install updates from GitHub Releases in standalone builds.
@@ -35,5 +35,5 @@ python app/desktop_app.py
 ## Building the standalone `.exe`
 
 ```powershell
-pyinstaller --noconfirm --onefile --windowed --name A8_Custom_OST_Patcher --paths . --add-data "app/ui;app/ui" --hidden-import webview --hidden-import clr --hidden-import pythonnet --hidden-import engine.detector --hidden-import engine.audio_converter --hidden-import engine.soundpack_manager --hidden-import engine.texts_manager --hidden-import engine.library_manager --hidden-import engine.patcher app/desktop_app.py
+pyinstaller --noconfirm --onefile --windowed --name A8_Custom_OST_Patcher --icon "app/ui/assets/app_icon.ico" --paths . --add-data "app/ui;app/ui" --hidden-import webview --hidden-import clr --hidden-import pythonnet --hidden-import engine.detector --hidden-import engine.audio_converter --hidden-import engine.soundpack_manager --hidden-import engine.texts_manager --hidden-import engine.library_manager --hidden-import engine.patcher app/desktop_app.py
 ```

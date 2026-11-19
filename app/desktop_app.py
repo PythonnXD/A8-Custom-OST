@@ -20,7 +20,7 @@ from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse
 from typing import Any, Dict, List, Optional
 
-APP_VERSION = '1.4.0'
+APP_VERSION = '1.4.1'
 DEFAULT_UPDATE_MANIFEST_URL = 'https://api.github.com/repos/PythonnXD/A8-Custom-OST/releases/latest'
 _LEGACY_UPDATE_URLS = {
     '',
@@ -84,6 +84,7 @@ from engine.library_manager import (
     remove_installed_tracks,
     list_backups,
     restore_backup,
+    delete_backup,
     prepare_audio_preview,
     prepare_outro_segment_preview,
     save_track_outro,
@@ -476,6 +477,7 @@ def load_prefs() -> Dict[str, Any]:
         'theme': 'dark',
         'auto_backup': True,
         'outro_editor_enabled': True,
+        'keep_original': True,
         'loop_playback': False,
     }
     if os.path.isfile(path):
@@ -804,6 +806,7 @@ class PatcherDesktopAPI:
         self._installing = False
         self._has_unsaved_playlist = False
         self._allow_close = False
+        self._close_prompt_pending = False
 
     def _attach_window(self, window: Any) -> None:
         self._window = window
@@ -852,6 +855,7 @@ class PatcherDesktopAPI:
         quality_key, _ = resolve_quality_preset(prefs.get('quality_preset'))
         auto_backup = bool(prefs.get('auto_backup', True))
         outro_editor_enabled = bool(prefs.get('outro_editor_enabled', True))
+        keep_original = bool(prefs.get('keep_original', True))
         loop_playback = bool(prefs.get('loop_playback', False))
 
         saved_q = load_queue_state()
@@ -888,6 +892,7 @@ class PatcherDesktopAPI:
             'quality_preset': quality_key,
             'auto_backup': auto_backup,
             'outro_editor_enabled': outro_editor_enabled,
+            'keep_original': keep_original,
             'loop_playback': loop_playback,
             'saved_queue': saved_q,
             'quality_presets': [
@@ -925,6 +930,11 @@ class PatcherDesktopAPI:
         save_prefs({'outro_editor_enabled': val})
         return {'ok': True, 'outro_editor_enabled': val}
 
+    def set_keep_original(self, enabled: bool) -> Dict[str, Any]:
+        val = bool(enabled)
+        save_prefs({'keep_original': val})
+        return {'ok': True, 'keep_original': val}
+
     def set_loop_playback(self, enabled: bool) -> Dict[str, Any]:
         val = bool(enabled)
         save_prefs({'loop_playback': val})
@@ -959,13 +969,15 @@ class PatcherDesktopAPI:
 
     def force_close_window(self) -> Dict[str, Any]:
         self._allow_close = True
+        self._has_unsaved_playlist = False
+        self._close_prompt_pending = False
         if self._window is not None:
             def _do_destroy() -> None:
                 try:
                     self._window.destroy()
                 except Exception:
                     pass
-            threading.Timer(0.04, _do_destroy).start()
+            threading.Timer(0.05, _do_destroy).start()
         return {'ok': True}
 
     def set_window_theme(self, theme: str) -> Dict[str, Any]:
@@ -1341,6 +1353,14 @@ class PatcherDesktopAPI:
             if err:
                 return {'ok': False, 'error': err}
             res = restore_backup(game_dir, backup_dir)
+            res['ok'] = True
+            return res
+        except Exception as e:
+            return {'ok': False, 'error': str(e)}
+
+    def delete_backup(self, game_dir: Optional[str], backup_dir: str) -> Dict[str, Any]:
+        try:
+            res = delete_backup(game_dir, backup_dir)
             res['ok'] = True
             return res
         except Exception as e:
@@ -1800,10 +1820,21 @@ def main(argv: Optional[List[str]] = None) -> int:
     def on_closing() -> Any:
         if verify_window or api._allow_close or not api._has_unsaved_playlist:
             return True
-        try:
-            window.evaluate_js("window.__onConfirmUnsavedClose && window.__onConfirmUnsavedClose()")
-        except Exception:
-            return True
+        if not api._close_prompt_pending:
+            api._close_prompt_pending = True
+            def _prompt_unsaved() -> None:
+                try:
+                    time.sleep(0.03)
+                    window.evaluate_js("window.__onConfirmUnsavedClose && window.__onConfirmUnsavedClose()")
+                except Exception:
+                    api._allow_close = True
+                    try:
+                        window.destroy()
+                    except Exception:
+                        pass
+                finally:
+                    api._close_prompt_pending = False
+            threading.Thread(target=_prompt_unsaved, daemon=True).start()
         return False
 
     try:
@@ -1831,8 +1862,14 @@ def main(argv: Optional[List[str]] = None) -> int:
                 api._allow_close = True
                 window.destroy()
 
+    icon_path = os.path.join(UI_DIR, 'assets', 'app_icon.ico')
     try:
-        webview.start(on_started, gui='edgechromium', debug=('--debug' in args))
+        webview.start(
+            on_started,
+            gui='edgechromium',
+            debug=('--debug' in args),
+            icon=icon_path if os.path.isfile(icon_path) else None,
+        )
     finally:
         server.stop()
     return 0

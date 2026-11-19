@@ -3,6 +3,7 @@ import os
 import re
 import glob
 import json
+import stat
 import shutil
 import hashlib
 import subprocess
@@ -479,6 +480,45 @@ def restore_backup(game_dir: str, backup_dir: str) -> Dict[str, Any]:
         'restored_soundpack': restored_soundpack,
         'restored_texts': restored_texts,
         'backup_dir': backup_dir,
+    }
+
+
+def _rmtree_onerror(func, path: str, _exc_info) -> None:
+    try:
+        os.chmod(path, stat.S_IWRITE | stat.S_IREAD)
+        func(path)
+    except Exception:
+        pass
+
+
+def delete_backup(game_dir: Optional[str], backup_dir: str) -> Dict[str, Any]:
+    """Deletes a single patcher backup directory after verifying it resides inside a known backup root."""
+    if not backup_dir or not os.path.isdir(backup_dir):
+        raise FileNotFoundError(f"Backup directory does not exist: {backup_dir}")
+
+    abs_target = os.path.abspath(backup_dir)
+    real_target = os.path.normcase(os.path.realpath(abs_target))
+    entry_name = os.path.basename(abs_target)
+    if not entry_name.startswith('music_mod_backup_'):
+        raise ValueError(f"Refusing to delete non-backup directory: {entry_name}")
+
+    allowed_roots = {
+        os.path.normcase(os.path.realpath(r))
+        for r in _backup_roots_for_game(game_dir)
+        if r and os.path.isdir(r)
+    }
+    parent_real = os.path.normcase(os.path.dirname(real_target))
+    if parent_real not in allowed_roots:
+        raise ValueError("Refusing to delete directory outside the patcher backups folder.")
+
+    shutil.rmtree(abs_target, onerror=_rmtree_onerror)
+    if os.path.exists(abs_target):
+        raise PermissionError(f"Could not completely delete backup folder: {abs_target}")
+
+    return {
+        'deleted': abs_target,
+        'id': entry_name,
+        'backups_count': len(list_backups(game_dir)),
     }
 
 

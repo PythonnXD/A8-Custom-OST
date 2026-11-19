@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Asphalt 8 Custom OST Patcher</title>
+  <link rel="icon" type="image/png" href="assets/app_icon.png" />
   <style>
     :root, :root[data-theme="dark"] {
       color-scheme: dark;
@@ -25,7 +26,7 @@
       --accent-on: #110b02;
       --accent-soft: #211708;
       --positive: #39b96d;
-      --negative: #e05252;
+      --negative: #eb6060;
       --scrim: rgba(0, 0, 0, 0.78);
 
       --font: "Segoe UI", system-ui, -apple-system, sans-serif;
@@ -419,8 +420,7 @@
       gap: 12px;
       padding: 12px 16px;
       border-radius: var(--radius-card);
-      border: 1px solid var(--border);
-      border-left: 3px solid var(--positive);
+      border: 1px solid var(--positive);
       background: var(--surface);
       font-size: 13px;
       color: var(--text);
@@ -437,7 +437,7 @@
     }
 
     .banner.error {
-      border-left-color: var(--negative);
+      border-color: var(--negative);
     }
 
     /* Title Row */
@@ -994,8 +994,72 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
-    body.outro-editor-disabled .col-outro {
-      display: none;
+    .settings-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      max-width: 820px;
+    }
+
+    .settings-group {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      overflow: hidden;
+    }
+
+    .settings-group-head {
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--rule);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    .setting-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--rule);
+    }
+
+    .setting-row:last-child {
+      border-bottom: 0;
+    }
+
+    .setting-copy {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+      max-width: 58ch;
+    }
+
+    .setting-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text);
+      line-height: 20px;
+    }
+
+    .setting-desc {
+      font-size: 12.5px;
+      color: var(--muted);
+      line-height: 19px;
+    }
+
+    .setting-control {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+      padding-top: 2px;
+    }
+
+    #outro-scrim.simple-mode .outro-editor-only {
+      display: none !important;
     }
 
     tbody tr:last-child {
@@ -1997,6 +2061,10 @@
           <span>Backups</span>
           <span id="backups-count" class="nav-count">0</span>
         </button>
+        <button id="nav-settings" class="nav-item" type="button">
+          <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" /></svg>
+          <span>Settings</span>
+        </button>
       </nav>
 
       <div class="source-rack">
@@ -2033,7 +2101,7 @@
           <button id="btn-updates" class="nav-item" type="button" title="Check or install app updates">
             <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="m7 10 5 5 5-5" /><path d="M12 15V3" /></svg>
             <span>Updates</span>
-            <span id="app-version-pill" class="nav-count">v1.4.0</span>
+            <span id="app-version-pill" class="nav-count">v1.4.1</span>
           </button>
           <button id="btn-shortcuts" class="btn compact" type="button" title="Keyboard shortcuts (?)">?</button>
         </div>
@@ -2041,7 +2109,6 @@
           <svg id="theme-icon" class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" /></svg>
           <span id="theme-label">Light mode</span>
         </button>
-        <div id="tools-readout" class="tool-readout">Offline encoder ready</div>
       </div>
     </aside>
 
@@ -2070,28 +2137,7 @@
             <p id="page-sub" class="title-sub">Queue tracks, pick their radio stations, and adjust optional outro clips before installing</p>
           </div>
           <div class="title-actions">
-            <div class="dock-controls">
-              <label class="switch-label" for="switch-auto-backup" title="Automatically save a backup snapshot before modifying game files">
-                <button id="switch-auto-backup" class="switch-btn" type="button" role="switch" aria-checked="true"></button>
-                <span>Auto backup</span>
-              </label>
-              <button id="btn-manual-backup" class="btn" type="button" title="Save a manual snapshot of your game soundpack and titles now">Backup</button>
-              <label class="switch-label" for="switch-outro-editor" title="Show or hide outro controls in the track list">
-                <button id="switch-outro-editor" class="switch-btn" type="button" role="switch" aria-checked="true"></button>
-                <span>Outro editor</span>
-              </label>
-            </div>
             <div id="dock-import-controls" class="dock-controls">
-              <select id="quality-select" class="input quality-select" aria-label="Audio export quality" title="Musepack encoding preset and sample rate">
-                <option value="high">High (44.1 kHz · ~240 kbps)</option>
-                <option value="ultra">Ultra (44.1 kHz · ~270 kbps)</option>
-                <option value="standard">Standard (32 kHz · ~210 kbps)</option>
-                <option value="compact">Compact (32 kHz · ~130 kbps)</option>
-              </select>
-              <label class="switch-label" for="switch-keep-stock">
-                <button id="switch-keep-stock" class="switch-btn" type="button" role="switch" aria-checked="true"></button>
-                <span>Keep stock</span>
-              </label>
               <div class="segmented" role="group" aria-label="When a song ID already exists">
                 <button id="btn-conflict-overwrite" class="segmented-btn active" type="button">Overwrite</button>
                 <button id="btn-conflict-skip" class="segmented-btn" type="button">Skip</button>
@@ -2117,7 +2163,7 @@
         </section>
 
         <!-- Signature Asphalt 8 Radio Monitor -->
-        <section class="radio-deck" aria-label="Soundtrack preview player">
+        <section id="radio-deck" class="radio-deck" aria-label="Soundtrack preview player">
           <div class="deck-track">
             <button id="btn-hud-play" class="deck-play-btn" type="button" aria-label="Play or pause preview">
               <svg id="hud-play-icon" class="icon" viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4" fill="currentColor" stroke="none" /></svg>
@@ -2150,7 +2196,7 @@
           </div>
         </section>
 
-        <section class="workspace-panel" aria-label="Track list editor">
+        <section id="workspace-panel" class="workspace-panel" aria-label="Track list editor">
           <div class="scope-bar">
             <div id="cat-tabs" class="cat-tabs" role="tablist" aria-label="Filter by station"></div>
             <div class="scope-tools">
@@ -2205,6 +2251,70 @@
             </div>
           </div>
         </section>
+
+        <section id="view-settings" class="settings-panel hidden" aria-label="Patcher settings">
+          <div class="settings-group">
+            <div class="settings-group-head">Audio &amp; Soundtrack</div>
+            <div class="setting-row">
+              <div class="setting-copy">
+                <label class="setting-title" for="quality-select">Audio quality</label>
+                <p class="setting-desc">
+                  Choose the Musepack SV8 bitrate preset and sample rate used when encoding songs and outros. Original volume levels and exact millisecond track lengths are preserved without automatic dynamic compression. Valid untrimmed .mpc files are copied directly.
+                </p>
+              </div>
+              <div class="setting-control">
+                <select id="quality-select" class="input quality-select" aria-label="Audio export quality">
+                  <option value="high">High (44.1 kHz · ~240 kbps)</option>
+                  <option value="ultra">Ultra (44.1 kHz · ~270 kbps)</option>
+                  <option value="standard">Standard (32 kHz · ~210 kbps)</option>
+                  <option value="compact">Compact (32 kHz · ~130 kbps)</option>
+                </select>
+              </div>
+            </div>
+            <div class="setting-row">
+              <div class="setting-copy">
+                <label class="setting-title" for="switch-keep-stock">Keep stock soundtrack</label>
+                <p class="setting-desc">
+                  Keep Asphalt 8's built-in soundtrack alongside your custom songs. Turn this off to replace the stock radio rotation so only your custom tracks play in races and menus.
+                </p>
+              </div>
+              <div class="setting-control">
+                <button id="switch-keep-stock" class="switch-btn" type="button" role="switch" aria-checked="true" aria-label="Keep stock soundtrack"></button>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <div class="settings-group-head">Backups &amp; Safety</div>
+            <div class="setting-row">
+              <div class="setting-copy">
+                <label class="setting-title" for="switch-auto-backup">Auto backup</label>
+                <p class="setting-desc">
+                  Automatically save a timestamped snapshot of your soundpack and language title files before installing, editing, removing, or repairing tracks. Use Backup now anytime to create a manual snapshot before making changes.
+                </p>
+              </div>
+              <div class="setting-control">
+                <button id="btn-manual-backup" class="btn" type="button">Backup now</button>
+                <button id="switch-auto-backup" class="switch-btn" type="button" role="switch" aria-checked="true" aria-label="Auto backup"></button>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <div class="settings-group-head">Outro Controls</div>
+            <div class="setting-row">
+              <div class="setting-copy">
+                <label class="setting-title" for="switch-outro-editor">Outro editor</label>
+                <p class="setting-desc">
+                  Show the full waveform editor with start and end trim sliders and fade controls when setting up a track outro. When turned off, tracks still display their outro status and let you attach, replace, or remove a custom outro audio file directly without trimming.
+                </p>
+              </div>
+              <div class="setting-control">
+                <button id="switch-outro-editor" class="switch-btn" type="button" role="switch" aria-checked="true" aria-label="Outro editor"></button>
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
     </div>
   </div>
@@ -2226,7 +2336,7 @@
       </div>
       <div class="sheet-body">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-          <div class="segmented" role="group" aria-label="Outro audio source">
+          <div class="segmented outro-editor-only" role="group" aria-label="Outro audio source">
             <button id="btn-outro-mode-trim" class="segmented-btn active" type="button">Trim main track</button>
             <button id="btn-outro-mode-file" class="segmented-btn" type="button">Custom audio file</button>
           </div>
@@ -2234,11 +2344,11 @@
         </div>
 
         <div id="outro-src-readout" class="sub-filename" style="font-size:12px;color:var(--muted);"></div>
-        <div id="outro-ogg-hint" class="banner visible hidden" style="padding:8px 12px;border-left-color:var(--accent);font-size:12px;">
+        <div id="outro-ogg-hint" class="banner visible hidden" style="padding:8px 12px;border-color:var(--accent);font-size:12px;">
           <span>Note: .mp3 or .wav is recommended over .ogg for outros to avoid container padding differences; full-stream decoding and exact length checks are still active.</span>
         </div>
 
-        <div class="outro-timeline-card">
+        <div class="outro-timeline-card outro-editor-only">
           <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);" class="num">
             <span id="outro-range-readout">Selected: 0:00.000 - 0:20.000</span>
             <span id="outro-total-readout">Total: 0:00.000</span>
@@ -2264,7 +2374,7 @@
           </div>
         </div>
 
-        <div class="fade-grid">
+        <div class="fade-grid outro-editor-only">
           <div class="fade-card">
             <div class="fade-head">
               <label class="fade-title" for="outro-fade-in">Fade in (seconds)</label>
@@ -2450,7 +2560,7 @@
       <div class="sheet-head">
         <div>
           <span id="update-sheet-title" class="sheet-title">App Updates</span>
-          <div id="update-current-sub" style="font-size:12px;color:var(--muted);margin-top:2px;">Installed v1.4.0</div>
+          <div id="update-current-sub" style="font-size:12px;color:var(--muted);margin-top:2px;">Installed v1.4.1</div>
         </div>
         <button id="btn-close-update" class="btn compact ghost" type="button">Close</button>
       </div>
@@ -2463,7 +2573,7 @@
               <div id="update-remote-meta" class="upd-status-meta"></div>
             </div>
           </div>
-          <span id="upd-version-pill" class="upd-ver-pill">v1.4.0</span>
+          <span id="upd-version-pill" class="upd-ver-pill">v1.4.1</span>
         </div>
 
         <div id="update-error-box" class="banner error hidden"><span id="update-error-text"></span></div>
@@ -2471,7 +2581,7 @@
         <div class="upd-changelog-section">
           <div class="upd-changelog-bar">
             <span id="upd-changelog-heading" class="upd-changelog-label">Changelog</span>
-            <span id="upd-changelog-ver" class="upd-changelog-ver">v1.4.0</span>
+            <span id="upd-changelog-ver" class="upd-changelog-ver">v1.4.1</span>
           </div>
           <div id="update-changelog-list" class="upd-changelog-card"></div>
         </div>
@@ -2532,7 +2642,7 @@
       const state = {
         view: 'import',
         theme: 'dark',
-        appVersion: '1.4.0',
+        appVersion: '1.4.1',
         isFrozen: false,
         gameDir: '',
         gameValid: false,
@@ -2701,7 +2811,6 @@
         $('switch-keep-stock').setAttribute('aria-checked', String(!!state.keepOriginal));
         $('btn-conflict-overwrite').classList.toggle('active', state.onConflict !== 'skip');
         $('btn-conflict-skip').classList.toggle('active', state.onConflict === 'skip');
-        document.body.classList.toggle('outro-editor-disabled', !state.outroEditorEnabled);
         $('btn-manual-backup').disabled = !state.gameValid;
         if ($('btn-modal-create-backup')) $('btn-modal-create-backup').disabled = !state.gameValid;
       }
@@ -2983,7 +3092,20 @@
       }
 
       function updateTitleAndActions() {
+        const isSettings = state.view === 'settings';
         const isImport = state.view === 'import';
+        $('radio-deck').classList.toggle('hidden', isSettings);
+        $('workspace-panel').classList.toggle('hidden', isSettings);
+        $('view-settings').classList.toggle('hidden', !isSettings);
+
+        if (isSettings) {
+          $('page-title').textContent = 'Settings';
+          $('page-sub').textContent = 'Configure audio encoding quality, soundtrack behavior, backups, and outro controls';
+          $('dock-import-controls').classList.add('hidden');
+          $('dock-library-controls').classList.add('hidden');
+          return;
+        }
+
         const curList = getCurrentList();
         const checkedInView = curList.filter((t) => t.selected).length;
         $('page-title').textContent = isImport ? 'Import Queue' : 'In-Game Library';
@@ -3039,8 +3161,9 @@
       function renderWorkspace() {
         updateSourceUI();
         syncPreferenceControlsUI();
-        renderCategoryTabs();
         updateTitleAndActions();
+        if (state.view === 'settings') return;
+        renderCategoryTabs();
 
         const tbody = $('track-tbody');
         const empty = $('empty-state');
@@ -3235,7 +3358,7 @@
             editOutroBtn.type = 'button';
             const missingOutro = state.view === 'library' && !track.outro_exists;
             editOutroBtn.className = 'outro-tag-btn ' + (missingOutro ? 'missing' : 'active');
-            editOutroBtn.title = 'Edit outro song';
+            editOutroBtn.title = state.outroEditorEnabled ? 'Edit outro song' : 'View, replace, or remove custom outro file';
             editOutroBtn.innerHTML = `<span class="outro-dot"></span><span>${formatOutroBadgeText(track)}</span>`;
             editOutroBtn.addEventListener('click', () => openOutroEditor(track));
             outroCell.appendChild(editOutroBtn);
@@ -3243,10 +3366,16 @@
             const setOutroBtn = document.createElement('button');
             setOutroBtn.type = 'button';
             setOutroBtn.className = 'outro-tag-btn';
-            setOutroBtn.title = 'Assign or trim an outro song';
-            setOutroBtn.textContent = '+ Set outro';
+            setOutroBtn.title = state.outroEditorEnabled ? 'Assign or trim an outro song' : 'Attach a custom outro audio file';
+            setOutroBtn.textContent = state.outroEditorEnabled ? '+ Set outro' : '+ Add outro';
             setOutroBtn.disabled = state.view === 'library' && !track.main_exists && !state.gameValid;
-            setOutroBtn.addEventListener('click', () => openOutroEditor(track));
+            setOutroBtn.addEventListener('click', () => {
+              if (state.outroEditorEnabled) {
+                openOutroEditor(track);
+              } else {
+                attachCustomOutroOnly(track);
+              }
+            });
             outroCell.appendChild(setOutroBtn);
           }
           tdOutro.appendChild(outroCell);
@@ -3431,6 +3560,8 @@
         $('nav-import').setAttribute('aria-current', view === 'import' ? 'page' : 'false');
         $('nav-library').classList.toggle('active', view === 'library');
         $('nav-library').setAttribute('aria-current', view === 'library' ? 'page' : 'false');
+        $('nav-settings').classList.toggle('active', view === 'settings');
+        $('nav-settings').setAttribute('aria-current', view === 'settings' ? 'page' : 'false');
         closeMobileDrawer();
       }
 
@@ -3602,10 +3733,70 @@
         return dur;
       }
 
+      async function attachCustomOutroOnly(track) {
+        if (!track || !hasBridge()) return;
+        const res = await callApi('browse_single_audio_file');
+        if (!res || !res.ok || !res.file_path) return;
+        const isOgg = String(res.file_path).toLowerCase().endsWith('.ogg');
+
+        if (state.view === 'import') {
+          const baseKey = (track.base_id || '').replace(/^m_/, '');
+          track.has_outro = true;
+          track.outro_id = `m_outro_${baseKey}`;
+          track.outro_file = `${track.outro_id}.mpc`;
+          track.outro_src_path = res.file_path;
+          track.outro_src_name = res.file_name || res.file_path.split(/[\\/]/).pop();
+          track.outro_mode = 'file';
+          track.outro_start = null;
+          track.outro_end = null;
+          track.outro_fade_in_enabled = false;
+          track.outro_fade_out_enabled = false;
+          track.outro_fade_in = 0.0;
+          track.outro_fade_out = 0.0;
+          persistQueueState(true);
+          renderWorkspace();
+          showBanner(
+            isOgg
+              ? `Attached custom outro ${track.outro_src_name}. Note: .mp3 or .wav is recommended over .ogg for outros.`
+              : `Attached custom outro ${track.outro_src_name} to "${track.title || 'Untitled'}".`,
+            false
+          );
+          return;
+        }
+
+        if (!state.gameValid) {
+          showBanner('Select a valid Asphalt 8 folder first.', true);
+          return;
+        }
+        showBanner(`Saving custom outro for "${track.title || 'Untitled'}"...`, false);
+        const saveRes = await callApi('save_library_track_outro', {
+          game_dir: state.gameDir,
+          base_id: track.base_id,
+          src_path: res.file_path,
+          start_sec: null,
+          end_sec: null,
+          fade_in: 0.0,
+          fade_out: 0.0,
+          quality_preset: state.qualityPreset,
+        });
+        if (!saveRes || !saveRes.ok) {
+          showBanner((saveRes && saveRes.error) || 'Failed to save custom outro to game.', true);
+          return;
+        }
+        const bakTxt = saveRes.backup_dir ? ` Backup saved to ${saveRes.backup_dir}.` : '';
+        showBanner(`Saved custom outro ${saveRes.outro_file} to game.${bakTxt}`, false);
+        await refreshBackupsCount();
+        await loadLibrary();
+      }
+
       async function openOutroEditor(track) {
-        if (!track || !state.outroEditorEnabled) return;
+        if (!track) return;
+        const simpleMode = !state.outroEditorEnabled;
         $('outro-error-box').classList.add('hidden');
+        $('outro-scrim').classList.toggle('simple-mode', simpleMode);
+        $('outro-sheet-title').textContent = simpleMode ? 'Custom Outro' : 'Outro Editor';
         outroModalState.track = track;
+        outroModalState.simpleMode = simpleMode;
         outroModalState.busy = false;
         $('outro-sheet-sub').textContent = `"${track.title || 'Untitled'}" - ${track.artist || 'Custom Artist'}`;
 
@@ -3618,23 +3809,45 @@
           && (state.view === 'import' || track.outro_exists)
         );
 
-        outroModalState.mode = isExistingFileOutro ? 'file' : 'trim';
-        outroModalState.srcPath = isExistingFileOutro ? existingOutroPath : mainPath;
-        outroModalState.srcName = outroModalState.srcPath
-          ? outroModalState.srcPath.split(/[\\/]/).pop()
-          : (track.src_name || track.main_file || 'Track audio');
+        outroModalState.mode = simpleMode ? 'file' : (isExistingFileOutro ? 'file' : 'trim');
+        if (simpleMode) {
+          outroModalState.srcPath = isExistingFileOutro ? existingOutroPath : (track.has_outro ? existingOutroPath : '');
+          outroModalState.srcName = outroModalState.srcPath
+            ? outroModalState.srcPath.split(/[\\/]/).pop()
+            : 'No custom outro file chosen';
+        } else {
+          outroModalState.srcPath = isExistingFileOutro ? existingOutroPath : mainPath;
+          outroModalState.srcName = outroModalState.srcPath
+            ? outroModalState.srcPath.split(/[\\/]/).pop()
+            : (track.src_name || track.main_file || 'Track audio');
+        }
 
         $('btn-outro-mode-trim').classList.toggle('active', outroModalState.mode === 'trim');
         $('btn-outro-mode-file').classList.toggle('active', outroModalState.mode === 'file');
-        $('btn-outro-pick-file').classList.toggle('hidden', outroModalState.mode !== 'file');
-        $('outro-src-readout').textContent = outroModalState.srcPath || 'Demo track audio';
+        $('btn-outro-pick-file').classList.toggle('hidden', !simpleMode && outroModalState.mode !== 'file');
+        $('btn-outro-pick-file').textContent = simpleMode
+          ? (track.has_outro ? 'Replace custom outro file' : 'Choose custom outro file')
+          : 'Choose file';
+        $('outro-src-readout').textContent = outroModalState.srcPath
+          || (simpleMode ? 'Choose a custom audio file (.mp3, .wav, .mpc) to use as the outro' : 'Demo track audio');
         updateOutroOggHint(outroModalState.srcPath);
         $('btn-outro-remove').classList.toggle('hidden', !track.has_outro);
         $('btn-outro-save').textContent = state.view === 'library' ? 'Save outro to game' : 'Apply outro';
         $('btn-outro-save').disabled = false;
 
         $('outro-scrim').classList.add('open');
-        const dur = await loadOutroSourceDuration(outroModalState.srcPath);
+        const dur = outroModalState.srcPath ? await loadOutroSourceDuration(outroModalState.srcPath) : 0;
+        if (simpleMode) {
+          outroModalState.totalDur = dur;
+          outroModalState.startSec = 0;
+          outroModalState.endSec = dur;
+          outroModalState.fadeInEnabled = false;
+          outroModalState.fadeOutEnabled = false;
+          outroModalState.fadeIn = 0.0;
+          outroModalState.fadeOut = 0.0;
+          $('outro-clip-meta').textContent = dur > 0 ? `Length: ${formatExactClock(dur)}` : 'No file selected';
+          return;
+        }
 
         if (track.outro_start != null && track.outro_end != null) {
           outroModalState.startSec = Number(track.outro_start);
@@ -3770,6 +3983,11 @@
         }
       });
 
+      $('nav-settings').addEventListener('click', () => {
+        switchNav('settings');
+        renderWorkspace();
+      });
+
       document.querySelectorAll('.hud-station').forEach((el) => {
         el.addEventListener('click', () => {
           const station = el.dataset.station;
@@ -3870,7 +4088,7 @@
             await openBackupsModal();
           }
         } finally {
-          if ($('btn-manual-backup')) $('btn-manual-backup').textContent = 'Backup';
+          if ($('btn-manual-backup')) $('btn-manual-backup').textContent = 'Backup now';
           syncPreferenceControlsUI();
         }
       }
@@ -3912,9 +4130,7 @@
       $('switch-outro-editor').addEventListener('click', () => {
         state.outroEditorEnabled = !state.outroEditorEnabled;
         syncPreferenceControlsUI();
-        if (!state.outroEditorEnabled && $('outro-scrim').classList.contains('open')) {
-          closeOutroEditor();
-        }
+        if (state.view !== 'settings') renderWorkspace();
         if (hasBridge()) callApi('set_outro_editor_enabled', state.outroEditorEnabled);
       });
 
@@ -3986,7 +4202,12 @@
           outroModalState.startSec = 0;
           outroModalState.endSec = outroModalState.totalDur;
           $('outro-src-readout').textContent = outroModalState.srcPath;
-          syncOutroTimelineUI();
+          updateOutroOggHint(outroModalState.srcPath);
+          if (outroModalState.simpleMode) {
+            $('outro-clip-meta').textContent = outroModalState.totalDur > 0 ? `Length: ${formatExactClock(outroModalState.totalDur)}` : 'Custom audio selected';
+          } else {
+            syncOutroTimelineUI();
+          }
         }
       });
 
@@ -4137,16 +4358,22 @@
       $('btn-outro-preview').addEventListener('click', async () => {
         if (!outroModalState.track) return;
         $('outro-error-box').classList.add('hidden');
+        if (!outroModalState.srcPath) {
+          $('outro-error-text').textContent = 'Choose a custom outro audio file first.';
+          $('outro-error-box').classList.remove('hidden');
+          return;
+        }
         if (!hasBridge()) return;
+        const simpleMode = !!outroModalState.simpleMode;
         const btn = $('btn-outro-preview');
         btn.disabled = true;
-        btn.textContent = 'Rendering clip...';
+        btn.textContent = simpleMode ? 'Loading...' : 'Rendering clip...';
         const res = await callApi('preview_outro_segment', {
           src_path: outroModalState.srcPath,
-          start_sec: outroModalState.startSec,
-          end_sec: outroModalState.endSec,
-          fade_in: getEffectiveFadeIn(),
-          fade_out: getEffectiveFadeOut(),
+          start_sec: simpleMode ? null : outroModalState.startSec,
+          end_sec: simpleMode ? null : outroModalState.endSec,
+          fade_in: simpleMode ? 0.0 : getEffectiveFadeIn(),
+          fade_out: simpleMode ? 0.0 : getEffectiveFadeOut(),
         });
         btn.disabled = false;
         btn.textContent = 'Preview clip';
@@ -4168,26 +4395,35 @@
         if (!track || outroModalState.busy) return;
         $('outro-error-box').classList.add('hidden');
 
+        const simpleMode = !!outroModalState.simpleMode;
+        if (simpleMode && !outroModalState.srcPath) {
+          $('outro-error-text').textContent = 'Choose a custom outro audio file first.';
+          $('outro-error-box').classList.remove('hidden');
+          return;
+        }
+
         if (state.view === 'import') {
           const baseKey = (track.base_id || '').replace(/^m_/, '');
           const dur = outroModalState.totalDur || 180;
-          const effFadeIn = getEffectiveFadeIn();
-          const effFadeOut = getEffectiveFadeOut();
-          const isFullFile = outroModalState.mode === 'file'
+          const effFadeIn = simpleMode ? 0.0 : getEffectiveFadeIn();
+          const effFadeOut = simpleMode ? 0.0 : getEffectiveFadeOut();
+          const isFullFile = simpleMode || (
+            outroModalState.mode === 'file'
             && outroModalState.startSec <= 0.02
             && Math.abs(outroModalState.endSec - dur) < 0.05
             && effFadeIn <= 0.01
-            && effFadeOut <= 0.01;
+            && effFadeOut <= 0.01
+          );
           track.has_outro = true;
           track.outro_id = `m_outro_${baseKey}`;
           track.outro_file = `${track.outro_id}.mpc`;
           track.outro_src_path = outroModalState.srcPath;
           track.outro_src_name = outroModalState.srcName;
-          track.outro_mode = outroModalState.mode;
+          track.outro_mode = simpleMode ? 'file' : outroModalState.mode;
           track.outro_start = isFullFile ? null : outroModalState.startSec;
           track.outro_end = isFullFile ? null : outroModalState.endSec;
-          track.outro_fade_in_enabled = !!outroModalState.fadeInEnabled && effFadeIn > 0;
-          track.outro_fade_out_enabled = !!outroModalState.fadeOutEnabled && effFadeOut > 0;
+          track.outro_fade_in_enabled = !simpleMode && !!outroModalState.fadeInEnabled && effFadeIn > 0;
+          track.outro_fade_out_enabled = !simpleMode && !!outroModalState.fadeOutEnabled && effFadeOut > 0;
           track.outro_fade_in = effFadeIn;
           track.outro_fade_out = effFadeOut;
           closeOutroEditor();
@@ -4208,10 +4444,10 @@
           game_dir: state.gameDir,
           base_id: track.base_id,
           src_path: outroModalState.srcPath,
-          start_sec: outroModalState.startSec,
-          end_sec: outroModalState.endSec,
-          fade_in: getEffectiveFadeIn(),
-          fade_out: getEffectiveFadeOut(),
+          start_sec: simpleMode ? null : outroModalState.startSec,
+          end_sec: simpleMode ? null : outroModalState.endSec,
+          fade_in: simpleMode ? 0.0 : getEffectiveFadeIn(),
+          fade_out: simpleMode ? 0.0 : getEffectiveFadeOut(),
           quality_preset: state.qualityPreset,
         });
         outroModalState.busy = false;
@@ -4331,6 +4567,7 @@
         state.keepOriginal = !state.keepOriginal;
         $('switch-keep-stock').setAttribute('aria-checked', String(state.keepOriginal));
         persistQueueState();
+        if (hasBridge()) callApi('set_keep_original', state.keepOriginal);
       });
 
       $('btn-conflict-overwrite').addEventListener('click', () => {
@@ -4531,7 +4768,42 @@
             if (state.view === 'library') await loadLibrary();
             else renderWorkspace();
           });
-          right.append(openBtn, restoreBtn);
+          const delBtn = document.createElement('button');
+          delBtn.type = 'button';
+          delBtn.className = 'btn compact danger-outline';
+          delBtn.textContent = 'Delete';
+          let delConfirmTimer = null;
+          delBtn.addEventListener('click', async () => {
+            if (delBtn.dataset.armed !== '1') {
+              delBtn.dataset.armed = '1';
+              delBtn.textContent = 'Confirm';
+              if (delConfirmTimer) clearTimeout(delConfirmTimer);
+              delConfirmTimer = setTimeout(() => {
+                delBtn.dataset.armed = '0';
+                delBtn.textContent = 'Delete';
+              }, 4000);
+              return;
+            }
+            if (delConfirmTimer) clearTimeout(delConfirmTimer);
+            delBtn.disabled = true;
+            restoreBtn.disabled = true;
+            delBtn.textContent = 'Deleting...';
+            const r = await callApi('delete_backup', state.gameDir, b.path);
+            if (!r || !r.ok) {
+              showBanner((r && r.error) || 'Could not delete backup.', true);
+              delBtn.disabled = false;
+              restoreBtn.disabled = false;
+              delBtn.dataset.armed = '0';
+              delBtn.textContent = 'Delete';
+              return;
+            }
+            if (typeof r.backups_count === 'number') {
+              $('backups-count').textContent = r.backups_count;
+            }
+            showBanner(`Deleted backup ${b.id}.`, false);
+            await openBackupsModal();
+          });
+          right.append(openBtn, restoreBtn, delBtn);
           row.append(left, right);
           listEl.appendChild(row);
         }
@@ -4810,6 +5082,23 @@
 
       /* ---------- In-App Self-Updater ---------- */
       const LOCAL_RELEASE_CHANGELOG = {
+        '1.4.1': [
+          {
+            title: 'Fixed',
+            items: [
+              'Fixed the app freezing or crashing when closing while the unsaved playlist confirmation dialog is shown.',
+              'Kept the Outro status visible when Outro editor is turned off, with direct support for attaching, replacing, or removing a custom outro audio file.',
+            ],
+          },
+          {
+            title: 'Added',
+            items: [
+              'Added a Delete action in Backups with confirmation so old snapshots can be cleaned up from the app.',
+              'Added a dedicated Settings view organizing Audio quality, Keep stock soundtrack, Auto backup, and Outro editor with clear descriptions.',
+              'Added the new Asphalt 8 Custom OST Patcher application icon across the desktop window and standalone executable.',
+            ],
+          },
+        ],
         '1.4.0': [
           {
             title: 'Fixed',
@@ -5183,12 +5472,16 @@
         }
 
         if (e.key === 'Enter' && !isTextEntry && tag !== 'BUTTON') {
-          if (!state.outroEditorEnabled) return;
+          if (state.view === 'settings') return;
           const list = getFilteredTracks();
           const target = list.find((t) => t.uid === state.focusedUid) || list[0];
           if (target) {
             e.preventDefault();
-            openOutroEditor(target);
+            if (state.outroEditorEnabled || target.has_outro) {
+              openOutroEditor(target);
+            } else {
+              attachCustomOutroOnly(target);
+            }
           }
         }
       });
@@ -5338,8 +5631,9 @@
         $('quality-select').value = state.qualityPreset;
         state.autoBackup = init.auto_backup !== undefined ? !!init.auto_backup : true;
         state.outroEditorEnabled = init.outro_editor_enabled !== undefined ? !!init.outro_editor_enabled : true;
+        state.keepOriginal = init.keep_original !== undefined ? !!init.keep_original : true;
         state.loopPlayback = !!init.loop_playback;
-        state.appVersion = init.app_version || '1.4.0';
+        state.appVersion = init.app_version || '1.4.1';
         state.isFrozen = !!init.is_frozen;
         $('app-version-pill').textContent = `v${state.appVersion}`;
 
@@ -5351,7 +5645,6 @@
           });
           state.musicDir = savedQueue.music_dir || '';
           state.musicSources = Array.isArray(savedQueue.music_sources) ? savedQueue.music_sources.slice() : [];
-          if (savedQueue.keep_original !== undefined) state.keepOriginal = !!savedQueue.keep_original;
           if (savedQueue.on_conflict === 'skip' || savedQueue.on_conflict === 'overwrite') {
             state.onConflict = savedQueue.on_conflict;
           }
@@ -5359,9 +5652,8 @@
         }
 
         applyGameStatus(init);
-        if (init.tools) {
-          const okTools = init.tools.ffmpeg && init.tools.mpcenc;
-          $('tools-readout').textContent = okTools ? 'FFmpeg + mpcenc ready' : 'Encoder missing in tools';
+        if (init.tools && (!init.tools.ffmpeg || !init.tools.mpcenc)) {
+          showBanner('Audio encoder tools (ffmpeg or mpcenc) are missing from the tools folder.', true);
         }
         $('backups-count').textContent = init.backups_count || 0;
         syncLoopControlsUI();
