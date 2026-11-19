@@ -35,8 +35,22 @@ jobs:
 
       - name: Run Android unit tests
         working-directory: android
-        run: gradle testDebugUnitTest --stacktrace
+        run: |
+          set -o pipefail
+          if ! gradle testDebugUnitTest --stacktrace 2>&1 | tee /tmp/gradle_test.log; then
+            grep -E "^(e: |ERROR:|FAILURE:|> |.*Exception|.*AssertionError|.*FAILED)" /tmp/gradle_test.log | tail -n 25 | while IFS= read -r line; do
+              echo "::error::$line"
+            done
+            exit 1
+          fi
 
       - name: Compile Android debug APK
         working-directory: android
-        run: gradle assembleDebug --stacktrace
+        run: |
+          set -o pipefail
+          if ! gradle assembleDebug --stacktrace 2>&1 | tee /tmp/gradle_build.log; then
+            grep -E "^(e: |ERROR:|FAILURE:|> |.*Exception)" /tmp/gradle_build.log | tail -n 25 | while IFS= read -r line; do
+              echo "::error::$line"
+            done
+            exit 1
+          fi

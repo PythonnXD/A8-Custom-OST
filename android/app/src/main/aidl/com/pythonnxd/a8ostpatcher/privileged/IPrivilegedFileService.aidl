@@ -1,7 +1,5 @@
 package com.pythonnxd.a8ostpatcher.privileged;
 
-import android.os.ParcelFileDescriptor;
-
 interface IPrivilegedFileService {
     void destroy() = 16777114;
     boolean exists(String path) = 1;
