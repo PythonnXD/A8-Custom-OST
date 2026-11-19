@@ -1,6 +1,14 @@
 # Asphalt 8: Airborne Custom OST Patcher
 
-Custom soundtrack patcher for Asphalt 8: Airborne on Windows and Android. The Windows desktop app runs on Python and PyWebView (Edge WebView2), and the Android app is built with Jetpack Compose and an in-process native Musepack SV8 library. Windows and Android releases use separate tags (`v*` for Windows, `android-v*` for Android).
+Custom soundtrack patcher for Asphalt 8: Airborne on Windows and Android. The Windows desktop app runs on Python and PyWebView (Edge WebView2), and the Android app is built with Jetpack Compose and an in-process native Musepack SV8 library.
+
+## Downloads
+
+Windows and Android builds publish under separate tags (`v*` for Windows, `android-v*` for Android).
+
+- [All releases](https://github.com/PythonnXD/A8-Custom-OST/releases)
+- [Latest Windows release](https://github.com/PythonnXD/A8-Custom-OST/releases/latest)
+- [Latest Android release (`android-v1.0.1`)](https://github.com/PythonnXD/A8-Custom-OST/releases/tag/android-v1.0.1)
 
 ## Windows app
 
@@ -68,3 +76,30 @@ cd android
 gradle testDebugUnitTest
 gradle assembleDebug
 ```
+
+## Open-source acknowledgements
+
+### Shared
+
+- [Musepack SV8 (`mpcenc`, `libmpcenc`, `libmpcdec`)](https://www.musepack.net/) (BSD / LGPL): Musepack Stream Version 8 audio encoding and decoding.
+
+### Windows app
+
+- [FFmpeg](https://ffmpeg.org/) (LGPL-2.1-or-later): audio decoding, resampling, waveform analysis, and duration checks.
+- [Python](https://www.python.org/) (PSF-2.0): runtime and standard library.
+- [pywebview](https://pywebview.flowrl.com/) (BSD-3-Clause): desktop window host and Python-to-JavaScript bridge.
+- [pythonnet and clr-loader](https://github.com/pythonnet/pythonnet) (MIT): .NET runtime interop used by pywebview on Windows.
+- [Bottle](https://bottlepy.org/) (MIT): embedded local web server used by pywebview.
+- [proxy_tools](https://github.com/jtushman/proxy_tools) (MIT): object proxy helpers used by pywebview.
+- [typing_extensions](https://github.com/python/typing_extensions) (PSF-2.0): Python typing backports used by pywebview.
+- [PyInstaller](https://pyinstaller.org/) (GPL-2.0 + Exception): standalone Windows executable packaging.
+- [Microsoft Edge WebView2](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) (Microsoft License): Windows system browser engine hosting the desktop UI.
+
+### Android app
+
+- [Kotlin and Kotlinx Coroutines](https://kotlinlang.org/) (Apache-2.0): language runtime and asynchronous I/O.
+- [Jetpack Compose and Material 3](https://developer.android.com/compose) (Apache-2.0): phone and tablet UI toolkit and Material You dynamic colors.
+- [Haze](https://github.com/chrisbanes/haze) by Chris Banes (Apache-2.0): GPU backdrop blur for Jetpack Compose.
+- [Shizuku API](https://github.com/RikkaApps/Shizuku-API) by RikkaApps (MIT): UserService IPC for direct `/Android/data/` access without root.
+- [AndroidX Core, Activity, Lifecycle, and DocumentFile](https://developer.android.com/jetpack) (Apache-2.0): edge-to-edge windowing, storage pickers, and lifecycle handling.
+- [Android MediaCodec and MediaExtractor](https://source.android.com/) (Apache-2.0): audio decoding for MP3, OGG, FLAC, M4A, AAC, and WAV.
