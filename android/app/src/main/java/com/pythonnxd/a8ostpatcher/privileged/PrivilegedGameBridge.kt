@@ -137,7 +137,7 @@ object PrivilegedGameBridge {
     }
 
     /**
-     * Pulls only soundpack XML + language .texts files into mirrorDir, plus indexes remote music/*.mpc
+     * Pulls only soundpack XML and language .texts files into mirrorDir, plus indexes remote music .mpc
      * filenames and byte sizes without copying stock music files.
      */
     fun pullMirror(
