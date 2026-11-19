@@ -2,6 +2,13 @@
 
 Windows desktop release notes live here. Android release notes are tracked separately in `CHANGELOG_ANDROID.md`.
 
+## v1.4.3.2
+
+### Fixed
+- Track rows now fade smoothly on every row when focusing, selecting, or switching playback, instead of snapping on later rows or hiding the active playing tint behind the focused row background.
+- Clicking a track's play or outro preview button no longer accidentally moves row focus onto that row.
+- Opening About the app from the bottom of Settings (or switching between views) now resets scroll position to the top of the page.
+
 ## v1.4.3.1
 
 ### Fixed

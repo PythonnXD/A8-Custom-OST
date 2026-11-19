@@ -2707,7 +2707,7 @@
                 </p>
               </div>
               <div class="setting-control" style="padding-top:0;">
-                <span id="settings-version-pill" class="license-tag">v1.4.3.1</span>
+                <span id="settings-version-pill" class="license-tag">v1.4.3.2</span>
                 <button id="btn-open-about" class="btn" type="button">Open</button>
               </div>
             </div>
@@ -2725,7 +2725,7 @@
                 <img class="about-app-icon" src="assets/app_icon.png" alt="Asphalt 8 Custom OST Patcher icon" />
                 <div style="min-width:0;">
                   <div class="about-app-name">Asphalt 8 Custom OST Patcher</div>
-                  <div id="about-version-sub" class="about-app-meta">Installed v1.4.3.1</div>
+                  <div id="about-version-sub" class="about-app-meta">Installed v1.4.3.2</div>
                   <div class="about-app-meta">Add custom songs, outros, and soundpacks to Asphalt 8: Airborne.</div>
                 </div>
               </div>
@@ -2744,7 +2744,7 @@
                     <div id="update-remote-meta" class="upd-status-meta"></div>
                   </div>
                 </div>
-                <span id="upd-version-pill" class="upd-ver-pill">v1.4.3.1</span>
+                <span id="upd-version-pill" class="upd-ver-pill">v1.4.3.2</span>
               </div>
 
               <div class="about-update-actions">
@@ -2757,7 +2757,7 @@
               <div class="upd-changelog-section">
                 <div class="upd-changelog-bar">
                   <span id="upd-changelog-heading" class="upd-changelog-label">Changelog</span>
-                  <span id="upd-changelog-ver" class="upd-changelog-ver">v1.4.3.1</span>
+                  <span id="upd-changelog-ver" class="upd-changelog-ver">v1.4.3.2</span>
                 </div>
                 <div id="update-changelog-list" class="upd-changelog-card"></div>
               </div>
@@ -3172,7 +3172,7 @@
       const state = {
         view: 'import',
         theme: 'dark',
-        appVersion: '1.4.3.1',
+        appVersion: '1.4.3.2',
         isFrozen: false,
         gameDir: '',
         gameValid: false,
@@ -5797,6 +5797,16 @@
 
       /* ---------- About the App & Self-Updater ---------- */
       const LOCAL_RELEASE_CHANGELOG = {
+        '1.4.3.2': [
+          {
+            title: 'Fixed',
+            items: [
+              'Track rows now fade smoothly on every row when focusing, selecting, or switching playback instead of snapping on later rows or hiding the playing highlight.',
+              'Clicking a track play or outro preview button no longer accidentally moves row focus.',
+              'Opening About the app from the bottom of Settings (or switching views) now resets scroll position to the top of the page.',
+            ],
+          },
+        ],
         '1.4.3.1': [
           {
             title: 'Fixed',
@@ -6476,7 +6486,7 @@
         state.warnUnsavedPlaylist = init.warn_unsaved_playlist !== undefined ? !!init.warn_unsaved_playlist : true;
         state.loopPlayback = !!init.loop_playback;
         state.reduceMotion = !!init.reduce_motion;
-        state.appVersion = init.app_version || '1.4.3.1';
+        state.appVersion = init.app_version || '1.4.3.2';
         state.isFrozen = !!init.is_frozen;
         if ($('settings-version-pill')) $('settings-version-pill').textContent = `v${state.appVersion}`;
         if ($('about-version-sub')) {
