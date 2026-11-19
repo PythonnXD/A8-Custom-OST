@@ -1152,6 +1152,26 @@
       white-space: nowrap;
     }
 
+    .license-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .license-link {
+      font-size: 11.5px;
+      color: var(--accent-ink);
+      text-decoration: none;
+      margin-top: 3px;
+      display: inline-block;
+      cursor: pointer;
+    }
+
+    .license-link:hover {
+      text-decoration: underline;
+    }
+
     #outro-scrim.simple-mode .outro-editor-only {
       display: none !important;
     }
@@ -2482,35 +2502,117 @@
             </div>
           </div>
 
-          <div class="settings-group">
-            <div class="settings-group-head">Open-source licenses</div>
-            <div class="license-row">
-              <div>
-                <div class="license-name">Asphalt 8 Custom OST Patcher</div>
-                <div class="license-note">Built by PythonnXD on GitHub (github.com/PythonnXD/A8-Custom-OST)</div>
-              </div>
-              <span class="license-tag">Open source</span>
-            </div>
-            <div class="license-row">
-              <div>
-                <div class="license-name">pywebview</div>
-                <div class="license-note">Desktop Edge WebView2 window bridge for Python</div>
-              </div>
-              <span class="license-tag">BSD-3-Clause</span>
-            </div>
+          <div id="about-licenses-group" class="settings-group">
+            <div class="settings-group-head">Open-source licenses and acknowledgements</div>
             <div class="license-row">
               <div>
                 <div class="license-name">FFmpeg</div>
-                <div class="license-note">Audio decoding, resampling, and duration probing</div>
+                <div class="license-note">Audio decoding, resampling, waveform analysis, and duration checks</div>
+                <a class="license-link" href="https://ffmpeg.org/" data-external-url="https://ffmpeg.org/">ffmpeg.org</a>
               </div>
-              <span class="license-tag">LGPL / GPL</span>
+              <div class="license-actions">
+                <span class="license-tag">LGPL-2.1-or-later</span>
+                <button class="btn compact" type="button" data-external-url="https://ffmpeg.org/">Open</button>
+              </div>
             </div>
             <div class="license-row">
               <div>
                 <div class="license-name">Musepack SV8 (mpcenc)</div>
-                <div class="license-note">Musepack Stream Version 8 audio encoder</div>
+                <div class="license-note">Musepack Stream Version 8 audio encoder for Asphalt 8 music files</div>
+                <a class="license-link" href="https://www.musepack.net/" data-external-url="https://www.musepack.net/">musepack.net</a>
               </div>
-              <span class="license-tag">BSD / LGPL</span>
+              <div class="license-actions">
+                <span class="license-tag">BSD / LGPL</span>
+                <button class="btn compact" type="button" data-external-url="https://www.musepack.net/">Open</button>
+              </div>
+            </div>
+            <div class="license-row">
+              <div>
+                <div class="license-name">Python</div>
+                <div class="license-note">Core application runtime and standard library</div>
+                <a class="license-link" href="https://www.python.org/" data-external-url="https://www.python.org/">python.org</a>
+              </div>
+              <div class="license-actions">
+                <span class="license-tag">PSF-2.0</span>
+                <button class="btn compact" type="button" data-external-url="https://www.python.org/">Open</button>
+              </div>
+            </div>
+            <div class="license-row">
+              <div>
+                <div class="license-name">pywebview</div>
+                <div class="license-note">Desktop window host and Python-to-JavaScript bridge</div>
+                <a class="license-link" href="https://pywebview.flowrl.com/" data-external-url="https://pywebview.flowrl.com/">pywebview.flowrl.com</a>
+              </div>
+              <div class="license-actions">
+                <span class="license-tag">BSD-3-Clause</span>
+                <button class="btn compact" type="button" data-external-url="https://pywebview.flowrl.com/">Open</button>
+              </div>
+            </div>
+            <div class="license-row">
+              <div>
+                <div class="license-name">pythonnet &amp; clr-loader</div>
+                <div class="license-note">.NET runtime interop used by pywebview on Windows</div>
+                <a class="license-link" href="https://github.com/pythonnet/pythonnet" data-external-url="https://github.com/pythonnet/pythonnet">github.com/pythonnet/pythonnet</a>
+              </div>
+              <div class="license-actions">
+                <span class="license-tag">MIT</span>
+                <button class="btn compact" type="button" data-external-url="https://github.com/pythonnet/pythonnet">Open</button>
+              </div>
+            </div>
+            <div class="license-row">
+              <div>
+                <div class="license-name">Bottle</div>
+                <div class="license-note">Embedded local web server used by pywebview</div>
+                <a class="license-link" href="https://bottlepy.org/" data-external-url="https://bottlepy.org/">bottlepy.org</a>
+              </div>
+              <div class="license-actions">
+                <span class="license-tag">MIT</span>
+                <button class="btn compact" type="button" data-external-url="https://bottlepy.org/">Open</button>
+              </div>
+            </div>
+            <div class="license-row">
+              <div>
+                <div class="license-name">proxy_tools</div>
+                <div class="license-note">Object proxy helpers used by pywebview</div>
+                <a class="license-link" href="https://github.com/jtushman/proxy_tools" data-external-url="https://github.com/jtushman/proxy_tools">github.com/jtushman/proxy_tools</a>
+              </div>
+              <div class="license-actions">
+                <span class="license-tag">MIT</span>
+                <button class="btn compact" type="button" data-external-url="https://github.com/jtushman/proxy_tools">Open</button>
+              </div>
+            </div>
+            <div class="license-row">
+              <div>
+                <div class="license-name">typing_extensions</div>
+                <div class="license-note">Python typing backports used by pywebview</div>
+                <a class="license-link" href="https://github.com/python/typing_extensions" data-external-url="https://github.com/python/typing_extensions">github.com/python/typing_extensions</a>
+              </div>
+              <div class="license-actions">
+                <span class="license-tag">PSF-2.0</span>
+                <button class="btn compact" type="button" data-external-url="https://github.com/python/typing_extensions">Open</button>
+              </div>
+            </div>
+            <div class="license-row">
+              <div>
+                <div class="license-name">PyInstaller</div>
+                <div class="license-note">Standalone Windows executable packaging</div>
+                <a class="license-link" href="https://pyinstaller.org/" data-external-url="https://pyinstaller.org/">pyinstaller.org</a>
+              </div>
+              <div class="license-actions">
+                <span class="license-tag">GPL-2.0 + Exception</span>
+                <button class="btn compact" type="button" data-external-url="https://pyinstaller.org/">Open</button>
+              </div>
+            </div>
+            <div class="license-row">
+              <div>
+                <div class="license-name">Microsoft Edge WebView2</div>
+                <div class="license-note">Windows system browser engine powering the app interface</div>
+                <a class="license-link" href="https://developer.microsoft.com/en-us/microsoft-edge/webview2/" data-external-url="https://developer.microsoft.com/en-us/microsoft-edge/webview2/">developer.microsoft.com/microsoft-edge/webview2</a>
+              </div>
+              <div class="license-actions">
+                <span class="license-tag">Microsoft License</span>
+                <button class="btn compact" type="button" data-external-url="https://developer.microsoft.com/en-us/microsoft-edge/webview2/">Open</button>
+              </div>
             </div>
           </div>
         </section>
@@ -2784,7 +2886,6 @@
           <span id="update-popup-title" class="sheet-title">Update available</span>
           <div id="update-popup-sub" style="font-size:12px;color:var(--muted);margin-top:2px;">A newer release is ready to install</div>
         </div>
-        <button id="btn-close-update-popup" class="btn compact ghost" type="button">Close</button>
       </div>
       <div class="sheet-body">
         <div class="upd-hero">
@@ -2811,7 +2912,6 @@
         </div>
       </div>
       <div class="sheet-footer">
-        <button id="btn-popup-open-about" class="btn ghost" type="button" style="margin-right:auto;">About the app</button>
         <button id="btn-popup-update-later" class="btn" type="button">Later</button>
         <button id="btn-popup-install-update" class="btn primary" type="button">Download and install</button>
       </div>
@@ -5666,26 +5766,31 @@
         runUpdateCheck();
       }
 
+      function openExternalUrl(url) {
+        if (!url) return;
+        if (hasBridge()) callApi('open_external_url', url);
+        else window.open(url, '_blank', 'noopener');
+      }
+
       $('btn-open-about').addEventListener('click', openAboutPage);
       $('btn-about-back').addEventListener('click', () => {
         switchNav('settings');
         renderWorkspace();
       });
       $('btn-open-github').addEventListener('click', () => {
-        const repoUrl = 'https://github.com/PythonnXD/A8-Custom-OST';
-        if (hasBridge()) callApi('open_external_url', repoUrl);
-        else window.open(repoUrl, '_blank', 'noopener');
+        openExternalUrl('https://github.com/PythonnXD/A8-Custom-OST');
+      });
+      $('about-licenses-group').addEventListener('click', (e) => {
+        const trigger = e.target.closest('[data-external-url]');
+        if (!trigger) return;
+        e.preventDefault();
+        openExternalUrl(trigger.getAttribute('data-external-url'));
       });
       $('btn-check-updates').addEventListener('click', runUpdateCheck);
       $('btn-install-remote-update').addEventListener('click', () => {
         installRemoteUpdate($('btn-install-remote-update'), $('update-error-box'), $('update-error-text'));
       });
-      $('btn-close-update-popup').addEventListener('click', () => $('update-popup-scrim').classList.remove('open'));
       $('btn-popup-update-later').addEventListener('click', () => $('update-popup-scrim').classList.remove('open'));
-      $('btn-popup-open-about').addEventListener('click', () => {
-        $('update-popup-scrim').classList.remove('open');
-        openAboutPage();
-      });
       $('btn-popup-install-update').addEventListener('click', () => {
         installRemoteUpdate($('btn-popup-install-update'), $('update-popup-error-box'), $('update-popup-error-text'));
       });
