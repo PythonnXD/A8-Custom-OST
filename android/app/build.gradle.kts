@@ -9,7 +9,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.pythonnxd.a8ostpatcher"
+        applicationId = "com.paithon.a8ostpatcher"
         minSdk = 26
         targetSdk = 35
         versionCode = 10001
