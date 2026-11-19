@@ -2350,6 +2350,26 @@
       }
     }
 
+    :root[data-reduce-motion="true"],
+    :root[data-reduce-motion="true"] *,
+    :root[data-reduce-motion="true"] *::before,
+    :root[data-reduce-motion="true"] *::after {
+      animation: none !important;
+      transition: none !important;
+      scroll-behavior: auto !important;
+    }
+
+    :root[data-reduce-motion="true"] .deck-eq.playing span {
+      transform: scaleY(0.7) !important;
+    }
+
+    :root[data-reduce-motion="true"] .scrim .sheet,
+    :root[data-reduce-motion="true"] .scrim.open .sheet,
+    :root[data-reduce-motion="true"] .btn:active,
+    :root[data-reduce-motion="true"] .nav-item:active {
+      transform: none !important;
+    }
+
     @media (prefers-reduced-transparency: reduce) {
       .scrim {
         backdrop-filter: none;
@@ -2656,6 +2676,17 @@
 
           <div class="settings-group">
             <div class="settings-group-head">App</div>
+            <div class="setting-row">
+              <div class="setting-copy">
+                <label class="setting-title" for="switch-reduce-motion">Reduce motion</label>
+                <p class="setting-desc">
+                  Disable UI animations, transitions, and moving indicators across the app.
+                </p>
+              </div>
+              <div class="setting-control">
+                <button id="switch-reduce-motion" class="switch-btn" type="button" role="switch" aria-checked="false" aria-label="Reduce motion"></button>
+              </div>
+            </div>
             <div class="setting-row" style="align-items:center;">
               <div class="setting-copy">
                 <div class="setting-title">About the app</div>
@@ -2664,7 +2695,7 @@
                 </p>
               </div>
               <div class="setting-control" style="padding-top:0;">
-                <span id="settings-version-pill" class="license-tag">v1.4.3</span>
+                <span id="settings-version-pill" class="license-tag">v1.4.3.1</span>
                 <button id="btn-open-about" class="btn" type="button">Open</button>
               </div>
             </div>
@@ -2682,7 +2713,7 @@
                 <img class="about-app-icon" src="assets/app_icon.png" alt="Asphalt 8 Custom OST Patcher icon" />
                 <div style="min-width:0;">
                   <div class="about-app-name">Asphalt 8 Custom OST Patcher</div>
-                  <div id="about-version-sub" class="about-app-meta">Installed v1.4.3</div>
+                  <div id="about-version-sub" class="about-app-meta">Installed v1.4.3.1</div>
                   <div class="about-app-meta">Add custom songs, outros, and soundpacks to Asphalt 8: Airborne.</div>
                 </div>
               </div>
@@ -2701,7 +2732,7 @@
                     <div id="update-remote-meta" class="upd-status-meta"></div>
                   </div>
                 </div>
-                <span id="upd-version-pill" class="upd-ver-pill">v1.4.3</span>
+                <span id="upd-version-pill" class="upd-ver-pill">v1.4.3.1</span>
               </div>
 
               <div class="about-update-actions">
@@ -2714,7 +2745,7 @@
               <div class="upd-changelog-section">
                 <div class="upd-changelog-bar">
                   <span id="upd-changelog-heading" class="upd-changelog-label">Changelog</span>
-                  <span id="upd-changelog-ver" class="upd-changelog-ver">v1.4.3</span>
+                  <span id="upd-changelog-ver" class="upd-changelog-ver">v1.4.3.1</span>
                 </div>
                 <div id="update-changelog-list" class="upd-changelog-card"></div>
               </div>
@@ -3129,7 +3160,7 @@
       const state = {
         view: 'import',
         theme: 'dark',
-        appVersion: '1.4.3',
+        appVersion: '1.4.3.1',
         isFrozen: false,
         gameDir: '',
         gameValid: false,
@@ -3152,6 +3183,7 @@
         outroEditorEnabled: true,
         warnUnsavedPlaylist: true,
         loopPlayback: false,
+        reduceMotion: false,
         playlistDirty: false,
         unsavedContext: null,
         focusedUid: null,
@@ -3300,6 +3332,10 @@
         if ($('switch-warn-unsaved')) {
           $('switch-warn-unsaved').setAttribute('aria-checked', String(!!state.warnUnsavedPlaylist));
         }
+        if ($('switch-reduce-motion')) {
+          $('switch-reduce-motion').setAttribute('aria-checked', String(!!state.reduceMotion));
+        }
+        document.documentElement.setAttribute('data-reduce-motion', state.reduceMotion ? 'true' : 'false');
         $('btn-conflict-overwrite').classList.toggle('active', state.onConflict !== 'skip');
         $('btn-conflict-skip').classList.toggle('active', state.onConflict === 'skip');
         $('btn-manual-backup').disabled = !state.gameValid;
@@ -3361,7 +3397,7 @@
       function applyTheme(theme, persist) {
         const nextTheme = theme === 'light' ? 'light' : 'dark';
         const changed = document.documentElement.getAttribute('data-theme') !== nextTheme;
-        if (changed && persist) {
+        if (changed && persist && !state.reduceMotion) {
           document.documentElement.classList.add('theme-fading');
           if (themeFadeTimer) clearTimeout(themeFadeTimer);
           themeFadeTimer = setTimeout(() => {
@@ -3610,6 +3646,7 @@
       function playViewAnimation(el, animClass) {
         if (!el || !animClass) return;
         el.classList.remove('view-fade-in', 'view-push-in', 'view-pop-in');
+        if (state.reduceMotion) return;
         void el.offsetWidth;
         el.classList.add(animClass);
       }
@@ -3618,8 +3655,28 @@
         requestAnimationFrame(syncAllMotionIndicators);
       });
 
+      function findTrackByUid(uid) {
+        if (!uid) return null;
+        return state.importTracks.find((t) => t.uid === uid)
+          || state.libraryTracks.find((t) => t.uid === uid)
+          || null;
+      }
+
+      function getLockedPlayingTrack() {
+        if (!state.playingUid) return null;
+        const playingTrack = findTrackByUid(state.playingUid);
+        if (!playingTrack) return null;
+        const hasLoadedPlayback = state.isPlaying
+          || (!!audioEl.src && !audioEl.ended);
+        return hasLoadedPlayback ? playingTrack : null;
+      }
+
       function updateHudPreview(track) {
-        const active = track || getCurrentList().find((t) => t.uid === state.focusedUid) || getCurrentList()[0];
+        const lockedTrack = getLockedPlayingTrack();
+        const active = lockedTrack
+          || track
+          || getCurrentList().find((t) => t.uid === state.focusedUid)
+          || getCurrentList()[0];
         const stPill = $('hud-station-pill');
         if (!active) {
           $('hud-song-text').textContent = 'Choose a track to preview';
@@ -3627,7 +3684,9 @@
           if (stPill) stPill.textContent = 'ROCK';
           return;
         }
-        state.focusedUid = active.uid;
+        if (!lockedTrack && !state.focusedUid) {
+          state.focusedUid = active.uid;
+        }
         $('hud-song-text').textContent = `"${active.title || 'Untitled'}" - ${active.artist || 'Custom Artist'}`;
         $('hud-mode-text').textContent = state.playingUid === active.uid && state.playingMode === 'outro'
           ? 'OUTRO CLIP'
@@ -3812,7 +3871,7 @@
         filtered.forEach((track, idx) => {
           const tr = document.createElement('tr');
           tr.dataset.uid = track.uid;
-          if (idx < 14) {
+          if (!state.reduceMotion && idx < 14) {
             tr.style.setProperty('--row-delay', `${idx * 18}ms`);
             tr.classList.add('row-enter');
           }
@@ -4022,7 +4081,6 @@
       }
 
       async function togglePlayTrack(track, mode) {
-        updateHudPreview(track);
         const trackFiEnabled = track.outro_fade_in_enabled != null
           ? !!track.outro_fade_in_enabled
           : ((track.outro_fade_in || 0) > 0);
@@ -4137,6 +4195,7 @@
       });
       audioEl.addEventListener('ended', () => {
         state.isPlaying = false;
+        state.playingUid = null;
         $('hud-scrub-fill').style.width = '0%';
         $('hud-time').textContent = `0:00 / ${formatClock(audioEl.duration || 0)}`;
         updatePlayIcons();
@@ -4709,9 +4768,20 @@
       }
 
       function clearQueueConfirmed() {
+        const playingRemoved = state.playingUid && state.importTracks.some((t) => t.uid === state.playingUid);
         state.importTracks = [];
         state.musicDir = '';
         state.musicSources = [];
+        if (playingRemoved) {
+          audioEl.pause();
+          audioEl.removeAttribute('src');
+          audioEl.load();
+          state.isPlaying = false;
+          state.playingUid = null;
+          $('hud-scrub-fill').style.width = '0%';
+          $('hud-time').textContent = '0:00 / 0:00';
+          updatePlayIcons();
+        }
         persistQueueState(false);
         flushQueueState();
         renderWorkspace();
@@ -4764,6 +4834,14 @@
         if (state.view !== 'settings' && state.view !== 'about') renderWorkspace();
         if (hasBridge()) callApi('set_outro_editor_enabled', state.outroEditorEnabled);
       });
+
+      if ($('switch-reduce-motion')) {
+        $('switch-reduce-motion').addEventListener('click', () => {
+          state.reduceMotion = !state.reduceMotion;
+          syncPreferenceControlsUI();
+          if (hasBridge()) callApi('set_reduce_motion', state.reduceMotion);
+        });
+      }
 
       $('btn-manual-backup').addEventListener('click', runManualBackup);
       $('btn-hud-loop').addEventListener('click', toggleLoopPlayback);
@@ -5195,7 +5273,9 @@
       });
 
       $('btn-hud-play').addEventListener('click', () => {
-        const target = getCurrentList().find((t) => t.uid === (state.playingUid || state.focusedUid)) || getCurrentList()[0];
+        const target = findTrackByUid(state.playingUid)
+          || getCurrentList().find((t) => t.uid === state.focusedUid)
+          || getCurrentList()[0];
         if (target) togglePlayTrack(target, state.playingMode || 'main');
       });
 
@@ -5686,6 +5766,20 @@
 
       /* ---------- About the App & Self-Updater ---------- */
       const LOCAL_RELEASE_CHANGELOG = {
+        '1.4.3.1': [
+          {
+            title: 'Fixed',
+            items: [
+              'Locked the Now Playing Radio Deck metadata to the currently playing song so selecting or editing another row no longer switches Now Playing.',
+            ],
+          },
+          {
+            title: 'Added',
+            items: [
+              'Added a Reduce motion toggle in Settings under App to disable UI animations, transitions, and moving indicators across the app.',
+            ],
+          },
+        ],
         '1.4.3': [
           {
             title: 'Changed',
@@ -6350,7 +6444,8 @@
         state.keepOriginal = init.keep_original !== undefined ? !!init.keep_original : true;
         state.warnUnsavedPlaylist = init.warn_unsaved_playlist !== undefined ? !!init.warn_unsaved_playlist : true;
         state.loopPlayback = !!init.loop_playback;
-        state.appVersion = init.app_version || '1.4.3';
+        state.reduceMotion = !!init.reduce_motion;
+        state.appVersion = init.app_version || '1.4.3.1';
         state.isFrozen = !!init.is_frozen;
         if ($('settings-version-pill')) $('settings-version-pill').textContent = `v${state.appVersion}`;
         if ($('about-version-sub')) {

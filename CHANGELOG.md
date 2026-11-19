@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.4.3.1
+
+### Fixed
+- Locked the Now Playing Radio Deck metadata (song title, artist, station badge, and mode) to the currently playing track so selecting or editing another row no longer switches Now Playing away from the active song.
+
+### Added
+- Added a Reduce motion toggle in Settings under App to disable UI animations, transitions, and moving indicators across the app.
+
 ## v1.4.3
 
 ### Changed

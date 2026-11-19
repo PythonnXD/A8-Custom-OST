@@ -21,7 +21,7 @@ from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse
 from typing import Any, Dict, List, Optional
 
-APP_VERSION = '1.4.3'
+APP_VERSION = '1.4.3.1'
 DEFAULT_UPDATE_MANIFEST_URL = 'https://api.github.com/repos/PythonnXD/A8-Custom-OST/releases/latest'
 _LEGACY_UPDATE_URLS = {
     '',
@@ -481,6 +481,7 @@ def load_prefs() -> Dict[str, Any]:
         'keep_original': True,
         'warn_unsaved_playlist': True,
         'loop_playback': False,
+        'reduce_motion': False,
     }
     if os.path.isfile(path):
         try:
@@ -861,6 +862,7 @@ class PatcherDesktopAPI:
         keep_original = bool(prefs.get('keep_original', True))
         warn_unsaved_playlist = bool(prefs.get('warn_unsaved_playlist', True))
         loop_playback = bool(prefs.get('loop_playback', False))
+        reduce_motion = bool(prefs.get('reduce_motion', False))
         self._warn_unsaved_playlist = warn_unsaved_playlist
 
         saved_q = load_queue_state()
@@ -900,6 +902,7 @@ class PatcherDesktopAPI:
             'keep_original': keep_original,
             'warn_unsaved_playlist': warn_unsaved_playlist,
             'loop_playback': loop_playback,
+            'reduce_motion': reduce_motion,
             'saved_queue': saved_q,
             'quality_presets': [
                 {
@@ -951,6 +954,11 @@ class PatcherDesktopAPI:
         val = bool(enabled)
         save_prefs({'loop_playback': val})
         return {'ok': True, 'loop_playback': val}
+
+    def set_reduce_motion(self, enabled: bool) -> Dict[str, Any]:
+        val = bool(enabled)
+        save_prefs({'reduce_motion': val})
+        return {'ok': True, 'reduce_motion': val}
 
     def create_manual_backup(self, game_dir: str) -> Dict[str, Any]:
         if not game_dir or not is_valid_game_dir(game_dir):
