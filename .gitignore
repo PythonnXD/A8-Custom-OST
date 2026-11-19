@@ -13,3 +13,11 @@ dist/
 *.log
 .taste-skill/
 backups/
+
+# Android Gradle build outputs & local config
+android/.gradle/
+android/build/
+android/app/build/
+android/app/.cxx/
+android/local.properties
+android/*.apk

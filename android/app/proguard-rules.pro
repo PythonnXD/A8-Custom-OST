@@ -1,0 +1,1 @@
+-keep class com.pythonnxd.a8ostpatcher.engine.NativeMpcCodec { *; }
