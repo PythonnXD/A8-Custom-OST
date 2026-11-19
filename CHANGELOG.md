@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.4.3
+
+### Changed
+- Redesigned the desktop interface with layered dark and light surfaces, rounded pill controls, an ambient active Radio Deck border, and full fluid motion across navigation tabs, segmented switches, modals, theme switching, and the equalizer.
+- Removed redundant buttons across the app: the four duplicate station buttons in the Radio Deck (replaced with a single live station badge), toolbar `Select all` and `Clear`, sidebar `Rescan`, duplicate modal header `Close` buttons where footer `Cancel`/`Done` already exist, manual `Refresh` in Backups and Profiles, and duplicate `Open` buttons beside clickable license links.
+- Moved batch artist and station controls into a contextual selection bar that only appears when one or more songs are checked.
+
+### Fixed
+- Removed the unused `#` index column and widened the `Artist` and `Station` columns so names and station dropdown labels (`Electro`, `Dubstep`, etc.) display cleanly without clipping.
+
 ## v1.4.2
 
 ### Added

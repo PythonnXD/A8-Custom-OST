@@ -21,7 +21,7 @@ from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse
 from typing import Any, Dict, List, Optional
 
-APP_VERSION = '1.4.2'
+APP_VERSION = '1.4.3'
 DEFAULT_UPDATE_MANIFEST_URL = 'https://api.github.com/repos/PythonnXD/A8-Custom-OST/releases/latest'
 _LEGACY_UPDATE_URLS = {
     '',

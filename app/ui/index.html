@@ -8,52 +8,60 @@
   <style>
     :root, :root[data-theme="dark"] {
       color-scheme: dark;
-      --ground: #000000;
-      --sidebar: #090909;
-      --surface: #111111;
-      --raised: #1c1c1c;
-      --active: #242424;
-      --border: #232323;
-      --rule: #191919;
-      --control: #3a3a3a;
-      --text: #ffffff;
-      --muted: #b4b4b4;
-      --faint: #949494;
+      --ground: #090a0e;
+      --sidebar: #0d0f14;
+      --surface: #13161d;
+      --raised: #1b1f29;
+      --active: #232836;
+      --border: rgba(255, 255, 255, 0.085);
+      --rule: rgba(255, 255, 255, 0.055);
+      --control: rgba(255, 255, 255, 0.14);
+      --catch-light: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      --elev-shadow: 0 20px 52px rgba(0, 0, 0, 0.62);
+      --text: #f5f7fa;
+      --muted: #a1a8b5;
+      --faint: #7d8594;
       --primary: #ffffff;
-      --primary-ink: #000000;
+      --primary-ink: #090a0e;
       --accent: #e58f12;
       --accent-ink: #ffaa2b;
       --accent-on: #110b02;
-      --accent-soft: #211708;
-      --positive: #39b96d;
+      --accent-soft: rgba(229, 143, 18, 0.14);
+      --positive: #39c170;
       --negative: #eb6060;
-      --scrim: rgba(0, 0, 0, 0.78);
+      --scrim: rgba(4, 6, 10, 0.68);
 
-      --font: "Segoe UI", system-ui, -apple-system, sans-serif;
-      --sidebar-width: 248px;
+      --font: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+      --sidebar-width: 252px;
       --pad: 24px;
       --gap: 16px;
-      --radius-card: 8px;
-      --radius-control: 6px;
+      --radius-card: 12px;
+      --radius-control: 8px;
       --control-height: 32px;
       --row-height: 52px;
-      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+      --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+      --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+      --ease-spring: cubic-bezier(0.34, 1.32, 0.64, 1);
+      --ease: var(--ease-out);
     }
 
     :root[data-theme="light"] {
       color-scheme: light;
-      --ground: #f6f6f7;
-      --sidebar: #efeff1;
+      --ground: #f5f6f9;
+      --sidebar: #eeeff3;
       --surface: #ffffff;
-      --raised: #ededf0;
-      --active: #e4e4e8;
-      --border: #dfdfe4;
-      --rule: #ececf0;
-      --control: #c5c5ce;
-      --text: #111113;
-      --muted: #52525b;
-      --faint: #67676f;
-      --primary: #141416;
+      --raised: #eceef3;
+      --active: #e2e5ec;
+      --border: rgba(17, 19, 25, 0.09);
+      --rule: rgba(17, 19, 25, 0.06);
+      --control: rgba(17, 19, 25, 0.16);
+      --catch-light: 0 1px 2px rgba(17, 19, 25, 0.04);
+      --elev-shadow: 0 22px 54px rgba(17, 19, 25, 0.18);
+      --text: #111318;
+      --muted: #525866;
+      --faint: #676f7e;
+      --primary: #14161c;
       --primary-ink: #ffffff;
       --accent: #b85800;
       --accent-ink: #9c4700;
@@ -61,7 +69,7 @@
       --accent-soft: #fdf1e4;
       --positive: #1d7a47;
       --negative: #c2292f;
-      --scrim: rgba(17, 17, 19, 0.56);
+      --scrim: rgba(17, 19, 25, 0.44);
     }
 
     *, *::before, *::after {
@@ -98,11 +106,24 @@
     html {
       -webkit-text-size-adjust: 100%;
       text-size-adjust: 100%;
+      -webkit-tap-highlight-color: transparent;
+      overscroll-behavior: none;
+    }
+
+    html.theme-fading,
+    html.theme-fading body,
+    html.theme-fading .sidebar,
+    html.theme-fading .workspace-panel,
+    html.theme-fading .radio-deck,
+    html.theme-fading .source-block,
+    html.theme-fading .settings-group,
+    html.theme-fading .sheet {
+      transition: background-color 220ms ease, color 220ms ease, border-color 220ms ease !important;
     }
 
     body {
       margin: 0;
-      min-height: 100vh;
+      min-height: 100dvh;
       background: var(--ground);
       color: var(--text);
       font-family: var(--font);
@@ -110,6 +131,22 @@
       line-height: 20px;
       -webkit-font-smoothing: antialiased;
       overflow-x: hidden;
+      overscroll-behavior: none;
+    }
+
+    button, [role="button"], .nav-item, .cat-tab, .segmented-btn {
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .main-col {
+      min-width: 0;
+      background: radial-gradient(ellipse 72% 32% at 48% -8%, rgba(229, 143, 18, 0.075), transparent 72%);
+    }
+
+    :root[data-theme="light"] .main-col {
+      background: radial-gradient(ellipse 72% 30% at 48% -8%, rgba(184, 88, 0, 0.05), transparent 70%);
     }
 
     h1, h2, h3, p {
@@ -201,9 +238,29 @@
     }
 
     .nav-section {
+      position: relative;
       display: flex;
       flex-direction: column;
       gap: 4px;
+    }
+
+    .nav-indicator {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 34px;
+      border-radius: var(--radius-control);
+      background: var(--active);
+      pointer-events: none;
+      opacity: 0;
+      z-index: 0;
+      will-change: transform;
+      transition: transform 230ms var(--ease-out), opacity 160ms ease;
+    }
+
+    .nav-indicator.visible {
+      opacity: 1;
     }
 
     .sidebar-label {
@@ -215,6 +272,8 @@
     }
 
     .nav-item {
+      position: relative;
+      z-index: 1;
       display: flex;
       align-items: center;
       gap: 10px;
@@ -229,22 +288,28 @@
       font-weight: 400;
       text-align: left;
       cursor: pointer;
-      transition: background-color 140ms ease, color 140ms ease, transform 90ms var(--ease);
+      transition: background-color 150ms ease, color 150ms ease, transform 110ms var(--ease-out);
     }
 
-    .nav-item:hover {
-      background: var(--raised);
-      color: var(--text);
+    @media (hover: hover) and (pointer: fine) {
+      .nav-item:hover:not(.active) {
+        background: var(--raised);
+        color: var(--text);
+      }
     }
 
     .nav-item:active {
-      transform: scale(0.985);
+      transform: scale(0.975);
     }
 
     .nav-item.active {
-      background: var(--active);
+      background: transparent;
       color: var(--text);
       font-weight: 500;
+    }
+
+    .nav-section:not(.has-indicator) .nav-item.active {
+      background: var(--active);
     }
 
     .nav-item .nav-count {
@@ -458,9 +523,10 @@
 
     .title-group h1 {
       font-size: 24px;
-      line-height: 28px;
+      line-height: 29px;
       font-weight: 600;
-      letter-spacing: -0.015em;
+      letter-spacing: -0.025em;
+      font-optical-sizing: auto;
     }
 
     .title-sub {
@@ -526,6 +592,26 @@
       background: var(--primary);
       color: var(--primary-ink);
       border-color: var(--primary);
+      border-radius: 999px;
+      padding: 0 16px;
+      font-weight: 600;
+    }
+
+    .btn.icon-close {
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      border-radius: 999px;
+      border-color: transparent;
+      background: transparent;
+      color: var(--muted);
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .btn.icon-close:hover {
+        background: var(--raised);
+        color: var(--text);
+      }
     }
 
     .btn.primary:hover:not(:disabled) {
@@ -592,7 +678,12 @@
       height: 14px;
       border-radius: 50%;
       background: var(--muted);
-      transition: transform 160ms var(--ease), background-color 160ms var(--ease);
+      will-change: transform;
+      transition: transform 220ms var(--ease-spring), background-color 180ms ease;
+    }
+
+    .switch-btn:active::after {
+      transform: scale(0.9);
     }
 
     .switch-btn[aria-checked="true"] {
@@ -605,31 +696,65 @@
       background: var(--ground);
     }
 
+    .switch-btn[aria-checked="true"]:active::after {
+      transform: translateX(14px) scale(0.9);
+    }
+
     .segmented {
+      position: relative;
       display: inline-flex;
-      padding: 2px;
-      border-radius: var(--radius-control);
+      padding: 3px;
+      border-radius: 999px;
       border: 1px solid var(--border);
       background: var(--raised);
       gap: 2px;
     }
 
+    .seg-thumb {
+      position: absolute;
+      top: 3px;
+      bottom: 3px;
+      left: 0;
+      border-radius: 999px;
+      background: var(--surface);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.24);
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0;
+      will-change: transform, width;
+      transition: transform 210ms var(--ease-out), width 210ms var(--ease-out), opacity 140ms ease;
+    }
+
+    .seg-thumb.visible {
+      opacity: 1;
+    }
+
     .segmented-btn {
+      position: relative;
+      z-index: 1;
       height: 26px;
-      padding: 0 10px;
+      padding: 0 12px;
       border: 0;
-      border-radius: 4px;
+      border-radius: 999px;
       background: transparent;
       color: var(--muted);
-      font-size: 13px;
+      font-size: 12.5px;
       font-weight: 500;
       cursor: pointer;
-      transition: background-color 140ms ease, color 140ms ease;
+      transition: color 160ms ease, transform 110ms var(--ease-out);
+    }
+
+    .segmented-btn:active {
+      transform: scale(0.96);
     }
 
     .segmented-btn.active {
-      background: var(--surface);
+      background: transparent;
       color: var(--text);
+    }
+
+    .segmented:not(.has-thumb) .segmented-btn.active {
+      background: var(--surface);
     }
 
     .input {
@@ -662,13 +787,19 @@
     /* ---------- Signature Component: Asphalt 8 Radio Deck ---------- */
     .radio-deck {
       display: grid;
-      grid-template-columns: minmax(220px, 1.4fr) minmax(180px, 1fr) auto;
+      grid-template-columns: minmax(260px, 1.3fr) minmax(240px, 1fr);
       align-items: center;
-      gap: 16px;
-      padding: 12px 16px;
+      gap: 20px;
+      padding: 13px 18px;
       border-radius: var(--radius-card);
       border: 1px solid var(--border);
       background: var(--surface);
+      box-shadow: var(--catch-light);
+      transition: border-color 200ms ease;
+    }
+
+    .radio-deck.is-playing {
+      border-color: rgba(229, 143, 18, 0.45);
     }
 
     .deck-track {
@@ -717,30 +848,32 @@
     }
 
     .deck-eq span {
-      width: 2px;
-      border-radius: 1px;
+      width: 2.5px;
+      border-radius: 2px;
       background: var(--accent);
-      height: 4px;
-      transform-origin: bottom;
+      height: 11px;
+      transform: scaleY(0.28);
+      transform-origin: bottom center;
+      will-change: transform;
     }
 
     .deck-eq.playing span {
-      animation: eqDance 720ms var(--ease) infinite alternate;
+      animation: eqDance 680ms var(--ease-in-out) infinite alternate;
     }
 
     .deck-eq.playing span:nth-child(2) {
       animation-delay: -240ms;
-      animation-duration: 580ms;
+      animation-duration: 540ms;
     }
 
     .deck-eq.playing span:nth-child(3) {
-      animation-delay: -480ms;
-      animation-duration: 640ms;
+      animation-delay: -460ms;
+      animation-duration: 620ms;
     }
 
     @keyframes eqDance {
-      0% { height: 3px; }
-      100% { height: 11px; }
+      0% { transform: scaleY(0.24); }
+      100% { transform: scaleY(1); }
     }
 
     .deck-info {
@@ -792,6 +925,13 @@
       background: var(--control);
       overflow: hidden;
       position: relative;
+      transition: transform 160ms var(--ease-out);
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .deck-scrub-wrap:hover .deck-scrub-track {
+        transform: scaleY(1.45);
+      }
     }
 
     .deck-scrub-fill {
@@ -808,42 +948,18 @@
       white-space: nowrap;
     }
 
-    .deck-stations {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(66px, auto));
-      gap: 4px;
-      border: 1px solid var(--border);
-      background: var(--ground);
-      padding: 3px;
-      border-radius: var(--radius-control);
-    }
-
-    .hud-station {
-      height: 26px;
-      padding: 0 10px;
-      border: 0;
-      border-radius: 4px;
-      background: transparent;
-      color: var(--faint);
-      font-size: 12px;
+    .hud-station-pill {
+      display: inline-flex;
+      align-items: center;
+      height: 20px;
+      padding: 0 8px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent-ink);
+      font-size: 10.5px;
       font-weight: 600;
-      letter-spacing: 0.03em;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: background-color 140ms ease, color 140ms ease, transform 90ms var(--ease);
-    }
-
-    .hud-station:hover {
-      color: var(--text);
-    }
-
-    .hud-station:active {
-      transform: scale(0.96);
-    }
-
-    .hud-station.active {
-      background: var(--accent);
-      color: var(--accent-on);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
     }
 
     /* ---------- Workspace Table Surface ---------- */
@@ -853,7 +969,75 @@
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius-card);
+      box-shadow: var(--catch-light);
       overflow: hidden;
+    }
+
+    .batch-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 9px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--raised);
+      animation: viewFade 160ms var(--ease-out) both;
+    }
+
+    .batch-bar-left {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .batch-count-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 9px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent-ink);
+      font-size: 12px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .batch-bar-actions {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .view-fade-in {
+      animation: viewFade 180ms var(--ease-out) both;
+    }
+
+    .view-push-in {
+      animation: viewPush 220ms var(--ease-out) both;
+    }
+
+    .view-pop-in {
+      animation: viewPop 200ms var(--ease-out) both;
+    }
+
+    @keyframes viewFade {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes viewPush {
+      from { opacity: 0; transform: translateX(18px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes viewPop {
+      from { opacity: 0; transform: translateX(-18px); }
+      to { opacity: 1; transform: translateX(0); }
     }
 
     .scope-bar {
@@ -867,10 +1051,28 @@
     }
 
     .cat-tabs {
+      position: relative;
       display: flex;
       align-items: center;
       gap: 16px;
       overflow-x: auto;
+    }
+
+    .cat-tab-indicator {
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      height: 2px;
+      background: var(--text);
+      border-radius: 2px;
+      pointer-events: none;
+      opacity: 0;
+      will-change: transform, width;
+      transition: transform 210ms var(--ease-out), width 210ms var(--ease-out), opacity 140ms ease;
+    }
+
+    .cat-tab-indicator.visible {
+      opacity: 1;
     }
 
     .cat-tab {
@@ -887,11 +1089,17 @@
       font-weight: 400;
       white-space: nowrap;
       cursor: pointer;
-      transition: color 140ms ease;
+      transition: color 150ms ease, transform 110ms var(--ease-out);
     }
 
-    .cat-tab:hover {
-      color: var(--text);
+    @media (hover: hover) and (pointer: fine) {
+      .cat-tab:hover {
+        color: var(--text);
+      }
+    }
+
+    .cat-tab:active {
+      transform: scale(0.97);
     }
 
     .cat-tab.active {
@@ -899,7 +1107,7 @@
       font-weight: 500;
     }
 
-    .cat-tab.active::after {
+    .cat-tabs:not(.has-indicator) .cat-tab.active::after {
       content: "";
       position: absolute;
       left: 0;
@@ -1005,6 +1213,7 @@
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius-card);
+      box-shadow: var(--catch-light);
       overflow: hidden;
     }
 
@@ -1189,18 +1398,17 @@
     }
 
     tbody td {
-      padding: 8px 12px;
+      padding: 10px 12px;
       vertical-align: middle;
     }
 
-    .col-chk { width: 40px; text-align: center; }
-    .col-num { width: 44px; text-align: right; color: var(--faint); font-size: 13px; font-variant-numeric: tabular-nums; }
-    .col-play { width: 52px; text-align: center; }
-    .col-title { width: 32%; }
-    .col-artist { width: 19%; }
-    .col-cat { width: 96px; }
-    .col-outro { width: 158px; }
-    .col-status { width: 96px; text-align: right; }
+    .col-chk { width: 38px; text-align: center; }
+    .col-play { width: 46px; text-align: center; }
+    .col-title { width: auto; }
+    .col-artist { width: 20%; }
+    .col-cat { width: 118px; }
+    .col-outro { width: 156px; }
+    .col-status { width: 88px; text-align: right; }
 
     th.num, td.num {
       text-align: right;
@@ -1614,13 +1822,15 @@
       max-height: 84vh;
       display: flex;
       flex-direction: column;
-      border-radius: var(--radius-card);
+      border-radius: 16px;
       border: 1px solid var(--control);
       background: var(--surface);
+      box-shadow: var(--elev-shadow), var(--catch-light);
       overflow: hidden;
       opacity: 0;
-      transform: translateY(10px) scale(0.985);
-      transition: transform 220ms var(--ease), opacity 180ms var(--ease);
+      transform: translateY(10px) scale(0.95);
+      will-change: transform, opacity;
+      transition: transform 240ms var(--ease-out), opacity 190ms var(--ease-out);
     }
 
     .scrim.open .sheet {
@@ -2125,9 +2335,18 @@
     }
 
     @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after {
-        transition-duration: 0.01ms !important;
+      .view-fade-in, .view-push-in, .view-pop-in, tbody tr.row-enter, .banner.visible {
+        animation: viewFade 140ms ease both !important;
+      }
+      .deck-eq.playing span {
         animation: none !important;
+        transform: scaleY(0.7) !important;
+      }
+      .sheet, .nav-indicator, .cat-tab-indicator, .seg-thumb, .switch-btn::after {
+        transition: opacity 140ms ease, background-color 140ms ease, color 140ms ease !important;
+      }
+      .scrim .sheet, .scrim.open .sheet {
+        transform: none !important;
       }
     }
 
@@ -2150,6 +2369,7 @@
 
       <nav class="nav-section" aria-label="Primary views">
         <div class="sidebar-label">Views</div>
+        <div id="nav-indicator" class="nav-indicator" aria-hidden="true"></div>
         <button id="nav-import" class="nav-item active" type="button" aria-current="page">
           <svg class="icon" viewBox="0 0 24 24"><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 20h14" /></svg>
           <span>Import Queue</span>
@@ -2204,7 +2424,6 @@
           <div class="source-actions">
             <button id="btn-add-files" class="btn compact" type="button">+ Songs</button>
             <button id="btn-browse-music" class="btn compact" type="button">+ Folder</button>
-            <button id="btn-rescan-music" class="btn compact hidden" type="button">Rescan</button>
             <button id="btn-clear-music" class="btn compact ghost hidden" type="button">Clear</button>
           </div>
         </div>
@@ -2282,6 +2501,7 @@
                 <span>NOW PLAYING</span>
                 <span id="hud-eq" class="deck-eq" aria-hidden="true"><span></span><span></span><span></span></span>
                 <span id="hud-mode-text">Idle</span>
+                <span id="hud-station-pill" class="hud-station-pill">ROCK</span>
               </div>
               <div id="hud-song-text" class="deck-song">Choose a track to preview</div>
             </div>
@@ -2296,13 +2516,6 @@
             <span id="hud-time" class="deck-time">0:00 / 0:00</span>
             <button id="btn-hud-loop" class="btn compact" type="button" aria-pressed="false" title="Repeat the active song or outro clip">Loop</button>
           </div>
-
-          <div class="deck-stations" aria-label="Asphalt 8 in-game station">
-            <button class="hud-station" data-station="Dubstep" type="button">BASS</button>
-            <button class="hud-station active" data-station="Rock" type="button">ROCK</button>
-            <button class="hud-station" data-station="Electro" type="button">ELECTRO</button>
-            <button class="hud-station" data-station="Menu" type="button">MENU</button>
-          </div>
         </section>
 
         <section id="workspace-panel" class="workspace-panel" aria-label="Track list editor">
@@ -2313,9 +2526,19 @@
                 <svg class="icon search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
                 <input id="search-input" class="input search-input" type="search" placeholder="Search tracks (Ctrl+F)" aria-label="Search tracks" />
               </div>
+              <button id="btn-export-pack" class="btn" type="button" title="Export checked tracks as .zip or portable folder">Export Pack</button>
+            </div>
+          </div>
+
+          <div id="batch-selection-bar" class="batch-bar hidden" aria-label="Batch edit selected tracks">
+            <div class="batch-bar-left">
+              <span id="batch-selected-count" class="batch-count-pill">0 selected</span>
+              <span>Batch edit</span>
+            </div>
+            <div class="batch-bar-actions">
               <div id="batch-artist-group" class="batch-group">
-                <input id="batch-artist-input" class="input batch-input" type="text" placeholder="Set batch artist" aria-label="Batch artist name" />
-                <button id="btn-apply-artist" class="btn" type="button">Apply</button>
+                <input id="batch-artist-input" class="input batch-input" type="text" placeholder="Set artist" aria-label="Batch artist name" />
+                <button id="btn-apply-artist" class="btn compact" type="button">Apply</button>
               </div>
               <div id="batch-station-group" class="batch-group">
                 <select id="batch-station-select" class="input" style="width:auto;" aria-label="Batch station category">
@@ -2324,11 +2547,8 @@
                   <option value="Dubstep">Dubstep</option>
                   <option value="Menu">Menu</option>
                 </select>
-                <button id="btn-apply-station" class="btn" type="button">Set station</button>
+                <button id="btn-apply-station" class="btn compact" type="button">Set station</button>
               </div>
-              <button id="btn-select-all" class="btn" type="button">Select all</button>
-              <button id="btn-select-none" class="btn ghost" type="button">Clear</button>
-              <button id="btn-export-pack" class="btn" type="button" title="Export checked tracks as .zip or portable folder">Export Pack</button>
             </div>
           </div>
 
@@ -2337,7 +2557,6 @@
               <thead>
                 <tr>
                   <th class="col-chk"><input id="chk-header-all" type="checkbox" aria-label="Toggle all visible tracks" /></th>
-                  <th class="col-num num">#</th>
                   <th class="col-play">Play</th>
                   <th class="col-title">Song title</th>
                   <th class="col-artist">Artist</th>
@@ -2445,7 +2664,7 @@
                 </p>
               </div>
               <div class="setting-control" style="padding-top:0;">
-                <span id="settings-version-pill" class="license-tag">v1.4.2</span>
+                <span id="settings-version-pill" class="license-tag">v1.4.3</span>
                 <button id="btn-open-about" class="btn" type="button">Open</button>
               </div>
             </div>
@@ -2463,7 +2682,7 @@
                 <img class="about-app-icon" src="assets/app_icon.png" alt="Asphalt 8 Custom OST Patcher icon" />
                 <div style="min-width:0;">
                   <div class="about-app-name">Asphalt 8 Custom OST Patcher</div>
-                  <div id="about-version-sub" class="about-app-meta">Installed v1.4.2</div>
+                  <div id="about-version-sub" class="about-app-meta">Installed v1.4.3</div>
                   <div class="about-app-meta">Add custom songs, outros, and soundpacks to Asphalt 8: Airborne.</div>
                 </div>
               </div>
@@ -2482,7 +2701,7 @@
                     <div id="update-remote-meta" class="upd-status-meta"></div>
                   </div>
                 </div>
-                <span id="upd-version-pill" class="upd-ver-pill">v1.4.2</span>
+                <span id="upd-version-pill" class="upd-ver-pill">v1.4.3</span>
               </div>
 
               <div class="about-update-actions">
@@ -2495,7 +2714,7 @@
               <div class="upd-changelog-section">
                 <div class="upd-changelog-bar">
                   <span id="upd-changelog-heading" class="upd-changelog-label">Changelog</span>
-                  <span id="upd-changelog-ver" class="upd-changelog-ver">v1.4.2</span>
+                  <span id="upd-changelog-ver" class="upd-changelog-ver">v1.4.3</span>
                 </div>
                 <div id="update-changelog-list" class="upd-changelog-card"></div>
               </div>
@@ -2508,111 +2727,81 @@
               <div>
                 <div class="license-name">FFmpeg</div>
                 <div class="license-note">Audio decoding, resampling, waveform analysis, and duration checks</div>
-                <a class="license-link" href="https://ffmpeg.org/" data-external-url="https://ffmpeg.org/">ffmpeg.org</a>
+                <a class="license-link" href="https://ffmpeg.org/" data-external-url="https://ffmpeg.org/">ffmpeg.org ↗</a>
               </div>
-              <div class="license-actions">
-                <span class="license-tag">LGPL-2.1-or-later</span>
-                <button class="btn compact" type="button" data-external-url="https://ffmpeg.org/">Open</button>
-              </div>
+              <span class="license-tag">LGPL-2.1-or-later</span>
             </div>
             <div class="license-row">
               <div>
                 <div class="license-name">Musepack SV8 (mpcenc)</div>
                 <div class="license-note">Musepack Stream Version 8 audio encoder for Asphalt 8 music files</div>
-                <a class="license-link" href="https://www.musepack.net/" data-external-url="https://www.musepack.net/">musepack.net</a>
+                <a class="license-link" href="https://www.musepack.net/" data-external-url="https://www.musepack.net/">musepack.net ↗</a>
               </div>
-              <div class="license-actions">
-                <span class="license-tag">BSD / LGPL</span>
-                <button class="btn compact" type="button" data-external-url="https://www.musepack.net/">Open</button>
-              </div>
+              <span class="license-tag">BSD / LGPL</span>
             </div>
             <div class="license-row">
               <div>
                 <div class="license-name">Python</div>
                 <div class="license-note">Core application runtime and standard library</div>
-                <a class="license-link" href="https://www.python.org/" data-external-url="https://www.python.org/">python.org</a>
+                <a class="license-link" href="https://www.python.org/" data-external-url="https://www.python.org/">python.org ↗</a>
               </div>
-              <div class="license-actions">
-                <span class="license-tag">PSF-2.0</span>
-                <button class="btn compact" type="button" data-external-url="https://www.python.org/">Open</button>
-              </div>
+              <span class="license-tag">PSF-2.0</span>
             </div>
             <div class="license-row">
               <div>
                 <div class="license-name">pywebview</div>
                 <div class="license-note">Desktop window host and Python-to-JavaScript bridge</div>
-                <a class="license-link" href="https://pywebview.flowrl.com/" data-external-url="https://pywebview.flowrl.com/">pywebview.flowrl.com</a>
+                <a class="license-link" href="https://pywebview.flowrl.com/" data-external-url="https://pywebview.flowrl.com/">pywebview.flowrl.com ↗</a>
               </div>
-              <div class="license-actions">
-                <span class="license-tag">BSD-3-Clause</span>
-                <button class="btn compact" type="button" data-external-url="https://pywebview.flowrl.com/">Open</button>
-              </div>
+              <span class="license-tag">BSD-3-Clause</span>
             </div>
             <div class="license-row">
               <div>
                 <div class="license-name">pythonnet &amp; clr-loader</div>
                 <div class="license-note">.NET runtime interop used by pywebview on Windows</div>
-                <a class="license-link" href="https://github.com/pythonnet/pythonnet" data-external-url="https://github.com/pythonnet/pythonnet">github.com/pythonnet/pythonnet</a>
+                <a class="license-link" href="https://github.com/pythonnet/pythonnet" data-external-url="https://github.com/pythonnet/pythonnet">github.com/pythonnet/pythonnet ↗</a>
               </div>
-              <div class="license-actions">
-                <span class="license-tag">MIT</span>
-                <button class="btn compact" type="button" data-external-url="https://github.com/pythonnet/pythonnet">Open</button>
-              </div>
+              <span class="license-tag">MIT</span>
             </div>
             <div class="license-row">
               <div>
                 <div class="license-name">Bottle</div>
                 <div class="license-note">Embedded local web server used by pywebview</div>
-                <a class="license-link" href="https://bottlepy.org/" data-external-url="https://bottlepy.org/">bottlepy.org</a>
+                <a class="license-link" href="https://bottlepy.org/" data-external-url="https://bottlepy.org/">bottlepy.org ↗</a>
               </div>
-              <div class="license-actions">
-                <span class="license-tag">MIT</span>
-                <button class="btn compact" type="button" data-external-url="https://bottlepy.org/">Open</button>
-              </div>
+              <span class="license-tag">MIT</span>
             </div>
             <div class="license-row">
               <div>
                 <div class="license-name">proxy_tools</div>
                 <div class="license-note">Object proxy helpers used by pywebview</div>
-                <a class="license-link" href="https://github.com/jtushman/proxy_tools" data-external-url="https://github.com/jtushman/proxy_tools">github.com/jtushman/proxy_tools</a>
+                <a class="license-link" href="https://github.com/jtushman/proxy_tools" data-external-url="https://github.com/jtushman/proxy_tools">github.com/jtushman/proxy_tools ↗</a>
               </div>
-              <div class="license-actions">
-                <span class="license-tag">MIT</span>
-                <button class="btn compact" type="button" data-external-url="https://github.com/jtushman/proxy_tools">Open</button>
-              </div>
+              <span class="license-tag">MIT</span>
             </div>
             <div class="license-row">
               <div>
                 <div class="license-name">typing_extensions</div>
                 <div class="license-note">Python typing backports used by pywebview</div>
-                <a class="license-link" href="https://github.com/python/typing_extensions" data-external-url="https://github.com/python/typing_extensions">github.com/python/typing_extensions</a>
+                <a class="license-link" href="https://github.com/python/typing_extensions" data-external-url="https://github.com/python/typing_extensions">github.com/python/typing_extensions ↗</a>
               </div>
-              <div class="license-actions">
-                <span class="license-tag">PSF-2.0</span>
-                <button class="btn compact" type="button" data-external-url="https://github.com/python/typing_extensions">Open</button>
-              </div>
+              <span class="license-tag">PSF-2.0</span>
             </div>
             <div class="license-row">
               <div>
                 <div class="license-name">PyInstaller</div>
                 <div class="license-note">Standalone Windows executable packaging</div>
-                <a class="license-link" href="https://pyinstaller.org/" data-external-url="https://pyinstaller.org/">pyinstaller.org</a>
+                <a class="license-link" href="https://pyinstaller.org/" data-external-url="https://pyinstaller.org/">pyinstaller.org ↗</a>
               </div>
-              <div class="license-actions">
-                <span class="license-tag">GPL-2.0 + Exception</span>
-                <button class="btn compact" type="button" data-external-url="https://pyinstaller.org/">Open</button>
-              </div>
+              <span class="license-tag">GPL-2.0 + Exception</span>
             </div>
             <div class="license-row">
               <div>
                 <div class="license-name">Microsoft Edge WebView2</div>
                 <div class="license-note">Windows system browser engine powering the app interface</div>
-                <a class="license-link" href="https://developer.microsoft.com/en-us/microsoft-edge/webview2/" data-external-url="https://developer.microsoft.com/en-us/microsoft-edge/webview2/">developer.microsoft.com/microsoft-edge/webview2</a>
+                <a class="license-link" href="https://developer.microsoft.com/en-us/microsoft-edge/webview2/" data-external-url="https://developer.microsoft.com/en-us/microsoft-edge/webview2/">developer.microsoft.com/microsoft-edge/webview2 ↗</a>
               </div>
-              <div class="license-actions">
-                <span class="license-tag">Microsoft License</span>
-                <button class="btn compact" type="button" data-external-url="https://developer.microsoft.com/en-us/microsoft-edge/webview2/">Open</button>
-              </div>
+              <span class="license-tag">Microsoft License</span>
             </div>
           </div>
         </section>
@@ -2633,7 +2822,6 @@
           <div id="outro-sheet-title" class="sheet-title">Outro Editor</div>
           <div id="outro-sheet-sub" style="font-size:12px;color:var(--muted);margin-top:2px;"></div>
         </div>
-        <button id="btn-close-outro" class="btn compact ghost" type="button">Close</button>
       </div>
       <div class="sheet-body">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
@@ -2722,7 +2910,6 @@
     <div class="sheet">
       <div class="sheet-head">
         <span id="install-sheet-title" class="sheet-title">Installing soundtracks</span>
-        <button id="btn-close-install" class="btn compact ghost hidden" type="button">Close</button>
       </div>
       <div class="sheet-body">
         <div id="install-progress-block" style="display:flex;flex-direction:column;gap:8px;">
@@ -2758,12 +2945,11 @@
     <div class="sheet">
       <div class="sheet-head">
         <span id="backups-sheet-title" class="sheet-title">Game Backups</span>
-        <button id="btn-close-backups" class="btn compact ghost" type="button">Close</button>
+        <button id="btn-close-backups" class="btn icon-close" type="button" aria-label="Close">✕</button>
       </div>
       <div id="backups-list" class="sheet-body" style="gap:0;"></div>
       <div class="sheet-footer">
         <button id="btn-modal-create-backup" class="btn primary" type="button">Create backup</button>
-        <button id="btn-refresh-backups" class="btn" type="button">Refresh</button>
       </div>
     </div>
   </div>
@@ -2775,7 +2961,7 @@
           <span id="health-sheet-title" class="sheet-title">Health Check</span>
           <div id="health-sheet-sub" style="font-size:12px;color:var(--muted);margin-top:2px;">Scans your soundpack playlists, music files, and song titles for problems</div>
         </div>
-        <button id="btn-close-health" class="btn compact ghost" type="button">Close</button>
+        <button id="btn-close-health" class="btn icon-close" type="button" aria-label="Close">✕</button>
       </div>
       <div class="sheet-body">
         <div class="stat-grid">
@@ -2807,7 +2993,7 @@
           <span id="profiles-sheet-title" class="sheet-title">MOD Profiles</span>
           <div style="font-size:12px;color:var(--muted);margin-top:2px;">Save your current soundtrack setup and switch loadouts anytime</div>
         </div>
-        <button id="btn-close-profiles" class="btn compact ghost" type="button">Close</button>
+        <button id="btn-close-profiles" class="btn icon-close" type="button" aria-label="Close">✕</button>
       </div>
       <div class="sheet-body">
         <div style="display:flex;gap:8px;align-items:center;">
@@ -2816,9 +3002,6 @@
         </div>
         <div id="profiles-error-box" class="banner error hidden"><span id="profiles-error-text"></span></div>
         <div id="profiles-list" style="display:flex;flex-direction:column;"></div>
-      </div>
-      <div class="sheet-footer">
-        <button id="btn-refresh-profiles" class="btn" type="button">Refresh</button>
       </div>
     </div>
   </div>
@@ -2830,7 +3013,6 @@
           <span id="export-sheet-title" class="sheet-title">Export / Share Mod Pack</span>
           <div id="export-sheet-sub" style="font-size:12px;color:var(--muted);margin-top:2px;">0 tracks selected</div>
         </div>
-        <button id="btn-close-export" class="btn compact ghost" type="button">Close</button>
       </div>
       <div class="sheet-body">
         <label class="field-stack" for="export-pack-name">
@@ -2860,7 +3042,6 @@
     <div class="sheet">
       <div class="sheet-head">
         <span id="unsaved-sheet-title" class="sheet-title">Save your playlist?</span>
-        <button id="btn-close-unsaved" class="btn compact ghost" type="button">Close</button>
       </div>
       <div class="sheet-body">
         <div id="unsaved-desc" style="font-size:13px;color:var(--muted);line-height:20px;">
@@ -2922,7 +3103,7 @@
     <div class="sheet">
       <div class="sheet-head">
         <span id="shortcuts-sheet-title" class="sheet-title">Keyboard Shortcuts</span>
-        <button id="btn-close-shortcuts" class="btn compact ghost" type="button">Close</button>
+        <button id="btn-close-shortcuts" class="btn icon-close" type="button" aria-label="Close">✕</button>
       </div>
       <div class="sheet-body" style="gap:0;">
         <div class="shortcut-row"><span>Play / pause active track</span><span class="kbd-key">Space</span></div>
@@ -2948,7 +3129,7 @@
       const state = {
         view: 'import',
         theme: 'dark',
-        appVersion: '1.4.2',
+        appVersion: '1.4.3',
         isFrozen: false,
         gameDir: '',
         gameValid: false,
@@ -3123,6 +3304,7 @@
         $('btn-conflict-skip').classList.toggle('active', state.onConflict === 'skip');
         $('btn-manual-backup').disabled = !state.gameValid;
         if ($('btn-modal-create-backup')) $('btn-modal-create-backup').disabled = !state.gameValid;
+        requestAnimationFrame(syncAllSegmentedThumbs);
       }
 
       function hasBridge() {
@@ -3174,8 +3356,20 @@
       const PLAY_ICON_SVG = '<svg class="icon" style="width:12px;height:12px" viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4" fill="currentColor" stroke="none"/></svg>';
       const PAUSE_ICON_SVG = '<svg class="icon" style="width:12px;height:12px" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" fill="currentColor" stroke="none"/><rect x="14" y="4" width="4" height="16" fill="currentColor" stroke="none"/></svg>';
 
+      let themeFadeTimer = null;
+
       function applyTheme(theme, persist) {
-        state.theme = theme === 'light' ? 'light' : 'dark';
+        const nextTheme = theme === 'light' ? 'light' : 'dark';
+        const changed = document.documentElement.getAttribute('data-theme') !== nextTheme;
+        if (changed && persist) {
+          document.documentElement.classList.add('theme-fading');
+          if (themeFadeTimer) clearTimeout(themeFadeTimer);
+          themeFadeTimer = setTimeout(() => {
+            document.documentElement.classList.remove('theme-fading');
+            themeFadeTimer = null;
+          }, 260);
+        }
+        state.theme = nextTheme;
         document.documentElement.setAttribute('data-theme', state.theme);
         $('theme-label').textContent = state.theme === 'dark' ? 'Light mode' : 'Dark mode';
         const svgMarkup = state.theme === 'dark'
@@ -3314,7 +3508,6 @@
 
         const mChip = $('music-status-chip');
         const mPath = $('music-dir-path');
-        const rescanBtn = $('btn-rescan-music');
         const clearBtn = $('btn-clear-music');
         const srcList = state.musicSources || [];
         if (state.importTracks.length > 0 || srcList.length > 0) {
@@ -3322,13 +3515,11 @@
           mPath.textContent = srcList.length > 1 ? `${primaryLabel} (+${srcList.length - 1} more)` : primaryLabel;
           mPath.title = srcList.join('\n') || primaryLabel;
           setStateBadge(mChip, state.importTracks.length > 0 ? 'ok' : '', `${state.importTracks.length} tracks`);
-          rescanBtn.classList.toggle('hidden', srcList.length === 0 && !state.musicDir);
           clearBtn.classList.toggle('hidden', state.importTracks.length === 0 && srcList.length === 0);
         } else {
           mPath.textContent = 'Drop audio files or folders from anywhere';
           mPath.title = '';
           setStateBadge(mChip, '', 'Waiting');
-          rescanBtn.classList.add('hidden');
           clearBtn.classList.add('hidden');
         }
 
@@ -3353,14 +3544,87 @@
         });
       }
 
+      function syncNavIndicator() {
+        const nav = document.querySelector('.nav-section');
+        const ind = $('nav-indicator');
+        if (!nav || !ind) return;
+        const activeBtn = nav.querySelector('.nav-item.active');
+        if (!activeBtn || activeBtn.offsetHeight <= 0) {
+          ind.classList.remove('visible');
+          nav.classList.remove('has-indicator');
+          return;
+        }
+        nav.classList.add('has-indicator');
+        ind.style.height = `${activeBtn.offsetHeight}px`;
+        ind.style.transform = `translateY(${activeBtn.offsetTop}px)`;
+        ind.classList.add('visible');
+      }
+
+      function syncCatTabIndicator() {
+        const tabsEl = $('cat-tabs');
+        const ind = $('cat-tab-indicator');
+        if (!tabsEl || !ind) return;
+        const activeBtn = tabsEl.querySelector('.cat-tab.active');
+        if (!activeBtn || activeBtn.offsetWidth <= 0) {
+          ind.classList.remove('visible');
+          tabsEl.classList.remove('has-indicator');
+          return;
+        }
+        tabsEl.classList.add('has-indicator');
+        ind.style.width = `${activeBtn.offsetWidth}px`;
+        ind.style.transform = `translateX(${activeBtn.offsetLeft}px)`;
+        ind.classList.add('visible');
+      }
+
+      function syncSegmentedThumb(group) {
+        if (!group) return;
+        let thumb = group.querySelector('.seg-thumb');
+        if (!thumb) {
+          thumb = document.createElement('div');
+          thumb.className = 'seg-thumb';
+          thumb.setAttribute('aria-hidden', 'true');
+          group.insertBefore(thumb, group.firstChild);
+        }
+        const activeBtn = group.querySelector('.segmented-btn.active');
+        if (!activeBtn || activeBtn.offsetWidth <= 0) {
+          thumb.classList.remove('visible');
+          group.classList.remove('has-thumb');
+          return;
+        }
+        group.classList.add('has-thumb');
+        thumb.style.width = `${activeBtn.offsetWidth}px`;
+        thumb.style.transform = `translateX(${activeBtn.offsetLeft}px)`;
+        thumb.classList.add('visible');
+      }
+
+      function syncAllSegmentedThumbs() {
+        document.querySelectorAll('.segmented').forEach(syncSegmentedThumb);
+      }
+
+      function syncAllMotionIndicators() {
+        syncNavIndicator();
+        syncCatTabIndicator();
+        syncAllSegmentedThumbs();
+      }
+
+      function playViewAnimation(el, animClass) {
+        if (!el || !animClass) return;
+        el.classList.remove('view-fade-in', 'view-push-in', 'view-pop-in');
+        void el.offsetWidth;
+        el.classList.add(animClass);
+      }
+
+      window.addEventListener('resize', () => {
+        requestAnimationFrame(syncAllMotionIndicators);
+      });
+
       function updateHudPreview(track) {
         const active = track || getCurrentList().find((t) => t.uid === state.focusedUid) || getCurrentList()[0];
+        const stPill = $('hud-station-pill');
         if (!active) {
-          $('hud-song-text').textContent = '"Select a Track" - Custom Artist';
+          $('hud-song-text').textContent = 'Choose a track to preview';
           $('hud-mode-text').textContent = 'Idle';
-          document.querySelectorAll('.hud-station').forEach((el) => {
-            el.classList.toggle('active', el.dataset.station === 'Rock');
-          });
+          if (stPill) stPill.textContent = 'ROCK';
           return;
         }
         state.focusedUid = active.uid;
@@ -3368,9 +3632,10 @@
         $('hud-mode-text').textContent = state.playingUid === active.uid && state.playingMode === 'outro'
           ? 'OUTRO CLIP'
           : (active.has_outro ? 'Main + outro' : 'Main mix');
-        document.querySelectorAll('.hud-station').forEach((el) => {
-          el.classList.toggle('active', el.dataset.station === active.category);
-        });
+        if (stPill) {
+          const cat = active.category || 'Rock';
+          stPill.textContent = cat === 'Dubstep' ? 'BASS' : cat.toUpperCase();
+        }
       }
 
       function renderCategoryTabs() {
@@ -3380,18 +3645,38 @@
           if (counts[t.category] !== undefined) counts[t.category] += 1;
         }
         const tabsEl = $('cat-tabs');
-        tabsEl.innerHTML = '';
-        for (const cat of ['All', ...CATEGORIES]) {
-          const btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = 'cat-tab' + (state.categoryFilter === cat ? ' active' : '');
-          btn.innerHTML = `<span>${cat}</span><span class="cat-count">${counts[cat]}</span>`;
-          btn.addEventListener('click', () => {
-            state.categoryFilter = cat;
-            renderWorkspace();
-          });
-          tabsEl.appendChild(btn);
+        let ind = $('cat-tab-indicator');
+        if (!ind) {
+          ind = document.createElement('div');
+          ind.id = 'cat-tab-indicator';
+          ind.className = 'cat-tab-indicator';
+          ind.setAttribute('aria-hidden', 'true');
         }
+        const existingBtns = Array.from(tabsEl.querySelectorAll('.cat-tab'));
+        const cats = ['All', ...CATEGORIES];
+        if (existingBtns.length === cats.length) {
+          cats.forEach((cat, idx) => {
+            const btn = existingBtns[idx];
+            btn.classList.toggle('active', state.categoryFilter === cat);
+            const cnt = btn.querySelector('.cat-count');
+            if (cnt) cnt.textContent = String(counts[cat]);
+          });
+        } else {
+          tabsEl.innerHTML = '';
+          for (const cat of cats) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'cat-tab' + (state.categoryFilter === cat ? ' active' : '');
+            btn.innerHTML = `<span>${cat}</span><span class="cat-count">${counts[cat]}</span>`;
+            btn.addEventListener('click', () => {
+              state.categoryFilter = cat;
+              renderWorkspace();
+            });
+            tabsEl.appendChild(btn);
+          }
+          tabsEl.appendChild(ind);
+        }
+        requestAnimationFrame(syncCatTabIndicator);
       }
 
       function setFocusedTrack(uid) {
@@ -3431,9 +3716,11 @@
         $('page-title').textContent = isImport ? 'Import Queue' : 'In-Game Library';
         $('dock-import-controls').classList.toggle('hidden', !isImport);
         $('dock-library-controls').classList.toggle('hidden', isImport);
-        const showBatch = isImport || state.libraryTracks.length > 0;
-        $('batch-artist-group').classList.toggle('hidden', !showBatch);
-        $('batch-station-group').classList.toggle('hidden', !showBatch);
+        const showBatch = checkedInView > 0 && (isImport || state.libraryTracks.length > 0);
+        if ($('batch-selection-bar')) {
+          $('batch-selection-bar').classList.toggle('hidden', !showBatch);
+          $('batch-selected-count').textContent = `${checkedInView} selected`;
+        }
         $('btn-export-pack').disabled = checkedInView === 0;
 
         if (isImport) {
@@ -3552,10 +3839,6 @@
             headerChk.indeterminate = curChecked > 0 && curChecked < curFiltered.length;
           });
           tdChk.appendChild(chk);
-
-          const tdNum = document.createElement('td');
-          tdNum.className = 'col-num num';
-          tdNum.textContent = String(idx + 1);
 
           const tdPlay = document.createElement('td');
           tdPlay.className = 'col-play';
@@ -3725,7 +4008,7 @@
           }
           tdStatus.appendChild(statusWrap);
 
-          tr.append(tdChk, tdNum, tdPlay, tdTitle, tdArtist, tdCat, tdOutro, tdStatus);
+          tr.append(tdChk, tdPlay, tdTitle, tdArtist, tdCat, tdOutro, tdStatus);
           tr.addEventListener('click', (e) => {
             if (!['INPUT', 'SELECT', 'BUTTON'].includes(e.target.tagName)) {
               setFocusedTrack(track.uid);
@@ -3817,6 +4100,7 @@
         $('hud-play-icon').innerHTML = icon;
         $('btn-hud-play').classList.toggle('active', state.isPlaying);
         if ($('hud-eq')) $('hud-eq').classList.toggle('playing', state.isPlaying);
+        if ($('radio-deck')) $('radio-deck').classList.toggle('is-playing', state.isPlaying);
         const rows = $('track-tbody').children;
         const filtered = getFilteredTracks();
         for (let i = 0; i < rows.length; i++) {
@@ -3874,6 +4158,7 @@
       }
 
       function switchNav(view) {
+        const prevView = state.view;
         state.view = view;
         state.categoryFilter = 'All';
         const isSettingsArea = view === 'settings' || view === 'about';
@@ -3884,6 +4169,22 @@
         $('nav-settings').classList.toggle('active', isSettingsArea);
         $('nav-settings').setAttribute('aria-current', isSettingsArea ? 'page' : 'false');
         closeMobileDrawer();
+        requestAnimationFrame(() => {
+          syncNavIndicator();
+          syncAllSegmentedThumbs();
+          if (prevView === view) return;
+          if (prevView === 'settings' && view === 'about') {
+            playViewAnimation($('view-about'), 'view-push-in');
+          } else if (prevView === 'about' && view === 'settings') {
+            playViewAnimation($('view-settings'), 'view-pop-in');
+          } else if (view === 'settings') {
+            playViewAnimation($('view-settings'), 'view-fade-in');
+          } else if (view === 'about') {
+            playViewAnimation($('view-about'), 'view-fade-in');
+          } else {
+            playViewAnimation($('workspace-panel'), 'view-fade-in');
+          }
+        });
       }
 
       function applyScanResult(res, append) {
@@ -4157,6 +4458,7 @@
         $('btn-outro-save').disabled = false;
 
         $('outro-scrim').classList.add('open');
+        requestAnimationFrame(syncAllSegmentedThumbs);
         const dur = outroModalState.srcPath ? await loadOutroSourceDuration(outroModalState.srcPath) : 0;
         if (simpleMode) {
           outroModalState.totalDur = dur;
@@ -4213,6 +4515,7 @@
         $('btn-outro-mode-file').classList.toggle('active', mode === 'file');
         $('btn-outro-pick-file').classList.toggle('hidden', mode !== 'file');
         $('outro-error-box').classList.add('hidden');
+        requestAnimationFrame(syncAllSegmentedThumbs);
 
         if (mode === 'trim') {
           outroModalState.srcPath = track.src_path || track.main_path || '';
@@ -4307,15 +4610,6 @@
       $('nav-settings').addEventListener('click', () => {
         switchNav('settings');
         renderWorkspace();
-      });
-
-      document.querySelectorAll('.hud-station').forEach((el) => {
-        el.addEventListener('click', () => {
-          const station = el.dataset.station;
-          if (!station) return;
-          state.categoryFilter = state.categoryFilter === station ? 'All' : station;
-          renderWorkspace();
-        });
       });
 
       $('btn-browse-game').addEventListener('click', async () => {
@@ -4475,7 +4769,6 @@
       $('btn-hud-loop').addEventListener('click', toggleLoopPlayback);
       if ($('btn-outro-loop')) $('btn-outro-loop').addEventListener('click', toggleLoopPlayback);
 
-      $('btn-close-unsaved').addEventListener('click', () => $('unsaved-scrim').classList.remove('open'));
       $('btn-unsaved-cancel').addEventListener('click', () => $('unsaved-scrim').classList.remove('open'));
       $('btn-unsaved-discard').addEventListener('click', async () => {
         const ctx = state.unsavedContext;
@@ -4512,20 +4805,7 @@
         }
         clearQueueConfirmed();
       });
-      $('btn-rescan-music').addEventListener('click', async () => {
-        const srcs = state.musicSources && state.musicSources.length
-          ? state.musicSources
-          : (state.musicDir ? [state.musicDir] : []);
-        if (!srcs.length) return;
-        const res = await callApi('add_music_paths', srcs, state.gameDir);
-        if (res && res.ok) {
-          applyScanResult(res, false);
-          await refreshConflicts();
-          renderWorkspace();
-        }
-      });
 
-      $('btn-close-outro').addEventListener('click', closeOutroEditor);
       $('btn-outro-cancel').addEventListener('click', closeOutroEditor);
       $('btn-outro-mode-trim').addEventListener('click', () => switchOutroMode('trim'));
       $('btn-outro-mode-file').addEventListener('click', () => switchOutroMode('file'));
@@ -4843,16 +5123,6 @@
         renderWorkspace();
       });
 
-      $('btn-select-all').addEventListener('click', () => {
-        for (const t of getFilteredTracks()) t.selected = true;
-        if (state.view === 'import') persistQueueState();
-        renderWorkspace();
-      });
-      $('btn-select-none').addEventListener('click', () => {
-        for (const t of getFilteredTracks()) t.selected = false;
-        if (state.view === 'import') persistQueueState();
-        renderWorkspace();
-      });
       $('chk-header-all').addEventListener('change', (e) => {
         for (const t of getFilteredTracks()) t.selected = e.target.checked;
         if (state.view === 'import') persistQueueState();
@@ -4936,7 +5206,6 @@
         $('install-result-block').classList.add('hidden');
         $('install-error-block').classList.add('hidden');
         $('install-sheet-footer').classList.add('hidden');
-        $('btn-close-install').classList.add('hidden');
         $('install-sheet-title').textContent = 'Installing soundtracks';
         $('install-stage-text').textContent = 'Starting installation';
         $('install-count-text').textContent = `0 / ${selected.length}`;
@@ -4977,7 +5246,6 @@
       };
 
       window.__onInstallComplete = async (data) => {
-        $('btn-close-install').classList.remove('hidden');
         $('install-sheet-footer').classList.remove('hidden');
         if (!data.ok) {
           $('install-sheet-title').textContent = 'Installation failed';
@@ -5007,7 +5275,6 @@
       };
 
       const closeInstallSheet = () => $('install-scrim').classList.remove('open');
-      $('btn-close-install').addEventListener('click', closeInstallSheet);
       $('btn-done-install').addEventListener('click', closeInstallSheet);
       $('btn-open-backup').addEventListener('click', () => {
         if (state.lastBackupDir) callApi('open_folder', state.lastBackupDir);
@@ -5149,7 +5416,6 @@
       }
 
       $('btn-backups').addEventListener('click', openBackupsModal);
-      $('btn-refresh-backups').addEventListener('click', openBackupsModal);
       $('btn-modal-create-backup').addEventListener('click', runManualBackup);
       $('btn-close-backups').addEventListener('click', () => $('backups-scrim').classList.remove('open'));
 
@@ -5340,7 +5606,6 @@
       }
 
       $('nav-profiles').addEventListener('click', openProfilesModal);
-      $('btn-refresh-profiles').addEventListener('click', loadProfilesModalList);
       $('btn-close-profiles').addEventListener('click', () => $('profiles-scrim').classList.remove('open'));
       $('btn-save-profile').addEventListener('click', async () => {
         $('profiles-error-box').classList.add('hidden');
@@ -5371,6 +5636,7 @@
         state.exportFormat = fmt === 'folder' ? 'folder' : 'zip';
         $('btn-export-fmt-zip').classList.toggle('active', state.exportFormat === 'zip');
         $('btn-export-fmt-folder').classList.toggle('active', state.exportFormat === 'folder');
+        requestAnimationFrame(syncAllSegmentedThumbs);
       }
 
       function openExportModal() {
@@ -5389,7 +5655,6 @@
       $('btn-export-pack').addEventListener('click', openExportModal);
       $('btn-export-fmt-zip').addEventListener('click', () => setExportFormat('zip'));
       $('btn-export-fmt-folder').addEventListener('click', () => setExportFormat('folder'));
-      $('btn-close-export').addEventListener('click', () => $('export-scrim').classList.remove('open'));
       $('btn-export-cancel').addEventListener('click', () => $('export-scrim').classList.remove('open'));
       $('btn-export-confirm').addEventListener('click', async () => {
         $('export-error-box').classList.add('hidden');
@@ -5421,6 +5686,22 @@
 
       /* ---------- About the App & Self-Updater ---------- */
       const LOCAL_RELEASE_CHANGELOG = {
+        '1.4.3': [
+          {
+            title: 'Changed',
+            items: [
+              'Redesigned the desktop interface with layered dark and light surfaces, rounded pill controls, an ambient active Radio Deck border, and full fluid motion across navigation tabs, segmented switches, modals, theme switching, and the equalizer.',
+              'Removed redundant buttons across the app: the four duplicate Radio Deck station buttons, toolbar Select all and Clear, sidebar Rescan, duplicate modal header Close buttons, manual Refresh in Backups and Profiles, and duplicate Open buttons beside clickable license links.',
+              'Moved batch artist and station controls into a contextual selection bar that only appears when one or more songs are checked.',
+            ],
+          },
+          {
+            title: 'Fixed',
+            items: [
+              'Removed the unused # index column and widened Artist and Station columns so names and station dropdowns display cleanly without clipping.',
+            ],
+          },
+        ],
         '1.4.2': [
           {
             title: 'Added',
@@ -5805,7 +6086,7 @@
           const el = $(id);
           if (el && el.classList.contains('open')) return el;
         }
-        if ($('install-scrim').classList.contains('open') && !$('btn-close-install').classList.contains('hidden')) {
+        if ($('install-scrim').classList.contains('open') && !$('install-sheet-footer').classList.contains('hidden')) {
           return $('install-scrim');
         }
         return null;
@@ -6007,6 +6288,7 @@
           if (state.libraryTracks[1]) state.dirtyLibraryIds.add('m_pulse_drive');
           if (params.get('view') === 'library') switchNav('library');
           renderWorkspace();
+          requestAnimationFrame(syncAllMotionIndicators);
           if (params.get('outro') === '1') {
             openOutroEditor(getCurrentList()[0]);
           } else if (params.get('modal') === 'health') {
@@ -6068,7 +6350,7 @@
         state.keepOriginal = init.keep_original !== undefined ? !!init.keep_original : true;
         state.warnUnsavedPlaylist = init.warn_unsaved_playlist !== undefined ? !!init.warn_unsaved_playlist : true;
         state.loopPlayback = !!init.loop_playback;
-        state.appVersion = init.app_version || '1.4.2';
+        state.appVersion = init.app_version || '1.4.3';
         state.isFrozen = !!init.is_frozen;
         if ($('settings-version-pill')) $('settings-version-pill').textContent = `v${state.appVersion}`;
         if ($('about-version-sub')) {
@@ -6098,6 +6380,7 @@
         syncLoopControlsUI();
         syncPreferenceControlsUI();
         renderWorkspace();
+        requestAnimationFrame(syncAllMotionIndicators);
         if (state.importTracks.length > 0) {
           await refreshConflicts();
           triggerBackgroundAudioAnalysis(state.importTracks);
