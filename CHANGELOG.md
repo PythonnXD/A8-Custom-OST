@@ -1,22 +1,24 @@
 # Changelog
 
+Windows desktop release notes live here. Android release notes are tracked separately in `CHANGELOG_ANDROID.md`.
+
 ## v1.4.3.1
 
 ### Fixed
-- Locked the Now Playing Radio Deck metadata (song title, artist, station badge, and mode) to the currently playing track so selecting or editing another row no longer switches Now Playing away from the active song.
+- Locked the Now Playing Radio Deck metadata (song title, artist, station badge, and mode) to the active track so selecting or editing another row no longer switches Now Playing away from the song currently playing.
 
 ### Added
-- Added a Reduce motion toggle in Settings under App to disable UI animations, transitions, and moving indicators across the app.
+- Added a Reduce motion toggle in Settings under App to turn off UI animations, transitions, and moving indicators across the app.
 
 ## v1.4.3
 
 ### Changed
-- Redesigned the desktop interface with layered dark and light surfaces, rounded pill controls, an ambient active Radio Deck border, and full fluid motion across navigation tabs, segmented switches, modals, theme switching, and the equalizer.
-- Removed redundant buttons across the app: the four duplicate station buttons in the Radio Deck (replaced with a single live station badge), toolbar `Select all` and `Clear`, sidebar `Rescan`, duplicate modal header `Close` buttons where footer `Cancel`/`Done` already exist, manual `Refresh` in Backups and Profiles, and duplicate `Open` buttons beside clickable license links.
-- Moved batch artist and station controls into a contextual selection bar that only appears when one or more songs are checked.
+- Refreshed the desktop UI with layered dark and light panels, rounded pill controls, an active Radio Deck border, and smoother transitions across navigation tabs, segmented switches, modals, theme switches, and the equalizer.
+- Removed duplicate buttons across the app: the four extra station buttons in the Radio Deck (replaced by one live station badge), toolbar `Select all` and `Clear`, sidebar `Rescan`, extra modal header `Close` buttons where footer `Cancel` or `Done` buttons already sit, manual `Refresh` in Backups and Profiles, and extra `Open` buttons next to clickable license links.
+- Moved batch artist and station tools into a contextual selection bar that only shows up when one or more songs are checked.
 
 ### Fixed
-- Removed the unused `#` index column and widened the `Artist` and `Station` columns so names and station dropdown labels (`Electro`, `Dubstep`, etc.) display cleanly without clipping.
+- Removed the unused `#` index column and widened the `Artist` and `Station` columns so names and station labels (`Electro`, `Dubstep`, and others) fit without clipping.
 
 ## v1.4.2
 
@@ -72,7 +74,7 @@
 
 ### Changed
 - Raised the default Musepack export quality from `32 kHz` (`--radio`) to `44.1 kHz` (`--insane`) with 64-tap resampling and Shibata dither, and raised audio preview WAVs to `44.1 kHz`.
-- Updated `patch_soundpack`, `audit_soundpack_health`, and `is_valid_mpc8` to support station events across old and new Asphalt 8 builds (`ev_radio_electronic`, `ev_radio_bass`, `ev_UPD25_menu_music`, `ev_radio_full_soundtrack`) and `32000`–`48000 Hz` SV8 streams.
+- Updated `patch_soundpack`, `audit_soundpack_health`, and `is_valid_mpc8` to support station events across old and new Asphalt 8 builds (`ev_radio_electronic`, `ev_radio_bass`, `ev_UPD25_menu_music`, `ev_radio_full_soundtrack`) and `32000` to `48000 Hz` SV8 streams.
 
 ## v1.3.0
 
