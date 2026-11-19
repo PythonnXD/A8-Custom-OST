@@ -92,7 +92,9 @@ jobs:
             }
             gh release upload $tag "dist/A8_Custom_OST_Patcher.zip" --clobber
             if ($notesFile) {
-              gh release edit $tag --notes-file $notesFile
+              gh release edit $tag --title "Asphalt 8 Custom OST Patcher $tag" --notes-file $notesFile --draft=false --latest
+            } else {
+              gh release edit $tag --title "Asphalt 8 Custom OST Patcher $tag" --draft=false --latest
             }
           } else {
             if ($notesFile) {
