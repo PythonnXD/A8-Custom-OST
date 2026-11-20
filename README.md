@@ -8,7 +8,7 @@ Windows and Android builds publish under separate tags (`v*` for Windows, `andro
 
 - [All releases](https://github.com/PythonnXD/A8-Custom-OST/releases)
 - [Latest Windows release](https://github.com/PythonnXD/A8-Custom-OST/releases/latest)
-- [Latest Android release (`android-v1.0.1`)](https://github.com/PythonnXD/A8-Custom-OST/releases/tag/android-v1.0.1)
+- [Latest Android release (`android-v1.0.2`)](https://github.com/PythonnXD/A8-Custom-OST/releases/tag/android-v1.0.2)
 
 ## Windows app
 

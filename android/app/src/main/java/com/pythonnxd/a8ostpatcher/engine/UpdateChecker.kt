@@ -13,6 +13,26 @@ object UpdateChecker {
     const val ANDROID_TAG_PREFIX = "android-v"
 
     val LOCAL_CHANGELOG: Map<String, List<ReleaseNoteSection>> = linkedMapOf(
+        "1.0.2" to listOf(
+            ReleaseNoteSection(
+                title = "Fixed",
+                items = listOf(
+                    "Fixed choppy/distorted audio on the 2nd+ imported song or outro by keeping the native Musepack SV8 filterbank table immutable and resetting encoder state cleanly between tracks.",
+                    "Fixed swipe-left Outro and Remove buttons bleeding through translucent track cards when not swiped.",
+                    "Fixed Outro Editor preview button feedback and cancellation errors, added a live waveform playhead and decoded PCM caching, and rendered bottom sheets with live GPU frosted blur.",
+                    "Status banners now auto-dismiss cleanly and support 1:1 swipe up or sideways to dismiss.",
+                ),
+            ),
+            ReleaseNoteSection(
+                title = "Changed",
+                items = listOf(
+                    "Newly added songs start unselected; hold any song to enter selection mode and reveal checkboxes.",
+                    "Replaced the tall batch-edit panel with a compact selection bar and a three-dots menu (Set artist, Set category, Remove).",
+                    "Made the floating Now Playing bar slimmer with a Settings switch to enable or disable it.",
+                    "Added soft edge fades on horizontally scrolling button, category, and preset rows.",
+                ),
+            ),
+        ),
         "1.0.1" to listOf(
             ReleaseNoteSection(
                 title = "Direct /Android/data/ Access & UI Polish",

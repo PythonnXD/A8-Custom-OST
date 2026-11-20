@@ -2,6 +2,26 @@
 
 Android builds use `android-v*` release tags separate from the Windows desktop releases in `CHANGELOG.md`.
 
+## android-v1.0.2
+
+### Fixed
+- Fixed choppy and distorted audio when importing multiple tracks or a track with an outro in one session. The native Musepack SV8 encoder's analysis filterbank table (`Ci_opt`) was being mutated in place on every encode instead of staying immutable, which scrambled audio starting on the second encode; also cleared delay-line buffers and psychoacoustic loudness state between tracks and added float PCM decoder handling.
+- Fixed swipe-left `Outro` and `Remove` action buttons bleeding through translucent track cards when the row wasn't swiped. Action trays now render only while swiping and clip cleanly to the exposed right edge.
+- Fixed the Outro Editor's Preview button failing silently or throwing `StandaloneCoroutine was cancelled` on repeat taps. The button now shows a live loading spinner, switches to `Stop` while playing, moves a playhead across the selected waveform, clamps trim handles when track duration finishes loading, and caches decoded PCM for instant repeat previews.
+- Fixed Outro Editor and track edit bottom sheets appearing opaque without blur by hosting them inside the main window's live GPU Haze backdrop layer.
+- Fixed status banners staying pinned on screen forever; notifications now close automatically after a short delay (pausing while held).
+
+### Added
+- Added swipe-to-dismiss gestures on status banners (swipe up or sideways with velocity-aware spring snap-back).
+- Added a `Now Playing bar` switch in Settings under App so you can turn the floating mini-player on or off.
+- Added hold-to-select across Import Queue and In-Game Library: checkboxes stay hidden until you long-press a track, and tapping Back exits selection mode.
+
+### Changed
+- Newly added songs no longer start auto-selected; tapping `Install` when nothing is selected installs all queued songs, while selecting songs installs only the selection.
+- Replaced the tall batch-edit panel with a compact single-row selection bar and a three-dots options menu (`Set artist`, `Set category`, and `Remove`).
+- Redesigned the floating Now Playing bar to be slimmer (~54dp tall) with a flush bottom scrub bar.
+- Added soft scroll-aware edge fades on horizontally scrolling action pills, category filters, and outro presets so off-screen buttons don't clip sharply.
+
 ## android-v1.0.1
 
 ### Added
