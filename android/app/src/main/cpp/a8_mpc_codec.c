@@ -42,6 +42,7 @@ static pthread_mutex_t g_mpc_lock = PTHREAD_MUTEX_INITIALIZER;
 typedef float SCFTriple[3];
 extern void Init_Psychoakustik(PsyModel *m);
 extern void Init_Psychoakustiktabellen(PsyModel *m);
+extern void Reset_Psychoakustik_Thresholds(void);
 extern void SetQualityParams(PsyModel *m, float qual);
 extern SMRTyp Psychoakustisches_Modell(PsyModel *m, const int MaxBand, const PCMDataTyp *data, int *TransientL, int *TransientR);
 extern void TransientenCalc(int *Transient, const int *TransientL, const int *TransientR);
@@ -477,6 +478,7 @@ int a8_mpc_encode_wav(const char *wav_path, const char *mpc_path, float quality)
     SetQualityParams(&m, quality);
     mpc_encoder_init(&e, wav.total_frames, 6, 1);
     Init_Psychoakustiktabellen(&m);
+    Reset_Psychoakustik_Thresholds();
 
     e.outputFile = out_fp;
     e.MS_Channelmode = m.MS_Channelmode;

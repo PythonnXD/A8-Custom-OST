@@ -33,6 +33,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -40,6 +41,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -454,6 +456,8 @@ fun AnimatedCategoryFilterRow(
     ) {
         Box(
             modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScrollEdgeFade(scrollState, edgeWidth = 26.dp)
                 .horizontalScroll(scrollState)
                 .padding(4.dp),
         ) {
@@ -726,12 +730,15 @@ fun SlidingSegmentedControl(
 
 /**
  * 1:1 horizontal finger-tracking swipe card revealing frosted Outro and Remove quick actions on left swipe.
+ * Action tray is strictly hidden at rest and clipped to the exposed trailing strip so it never bleeds through
+ * the translucent LiquidGlassCard foreground.
  */
 @Composable
 fun SwipeableTrackCard(
     onOutroClick: () -> Unit,
     onRemoveClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     val colors = LocalAppColors.current
@@ -742,88 +749,117 @@ fun SwipeableTrackCard(
     val revealPx = with(density) { 166.dp.toPx() }
     val offsetX = remember { Animatable(0f) }
 
+    LaunchedEffect(enabled) {
+        if (!enabled && offsetX.value != 0f) {
+            offsetX.animateTo(0f, if (reduceMotion) snap() else spring(dampingRatio = 0.80f, stiffness = 460f))
+        }
+    }
+
+    val revealProgress = (-offsetX.value / revealPx).coerceIn(0f, 1f)
+
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
     ) {
-        // Revealed frosted action tray underneath
-        Row(
-            modifier = Modifier
-                .matchParentSize()
-                .background(colors.danger.copy(alpha = 0.14f))
-                .border(1.dp, colors.danger.copy(alpha = 0.34f), RoundedCornerShape(18.dp))
-                .padding(horizontal = 10.dp),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            val outroInteraction = remember { MutableInteractionSource() }
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = colors.accentSoft,
-                border = BorderStroke(1.dp, colors.accent.copy(alpha = 0.55f)),
+        // Only compose & draw revealed action tray while actually swiped left, clipped strictly to the exposed right strip
+        if (offsetX.value < -0.5f) {
+            Row(
                 modifier = Modifier
-                    .defaultMinSize(minHeight = 40.dp)
-                    .interactivePressScale(outroInteraction, 0.94f)
-                    .clickable(interactionSource = outroInteraction, indication = null) {
-                        scope.launch { offsetX.snapTo(0f) }
-                        onOutroClick()
-                    },
+                    .matchParentSize()
+                    .drawWithContent {
+                        val exposedLeft = (size.width + offsetX.value).coerceIn(0f, size.width)
+                        clipRect(left = exposedLeft) {
+                            this@drawWithContent.drawContent()
+                        }
+                    }
+                    .graphicsLayer { alpha = revealProgress }
+                    .background(colors.danger.copy(alpha = 0.14f))
+                    .border(1.dp, colors.danger.copy(alpha = 0.34f), RoundedCornerShape(18.dp))
+                    .padding(horizontal = 10.dp),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(Modifier.padding(horizontal = 14.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
-                    Text("Outro", color = colors.accentInk, fontSize = 13.5.sp, fontWeight = FontWeight.SemiBold)
+                val outroInteraction = remember { MutableInteractionSource() }
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = colors.accentSoft,
+                    border = BorderStroke(1.dp, colors.accent.copy(alpha = 0.55f)),
+                    modifier = Modifier
+                        .defaultMinSize(minHeight = 40.dp)
+                        .interactivePressScale(outroInteraction, 0.94f)
+                        .clickable(interactionSource = outroInteraction, indication = null) {
+                            scope.launch { offsetX.snapTo(0f) }
+                            onOutroClick()
+                        },
+                ) {
+                    Box(Modifier.padding(horizontal = 14.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
+                        Text("Outro", color = colors.accentInk, fontSize = 13.5.sp, fontWeight = FontWeight.SemiBold)
+                    }
                 }
-            }
-            Spacer(Modifier.width(8.dp))
-            val removeInteraction = remember { MutableInteractionSource() }
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = colors.danger.copy(alpha = 0.24f),
-                border = BorderStroke(1.dp, colors.danger.copy(alpha = 0.52f)),
-                modifier = Modifier
-                    .defaultMinSize(minHeight = 40.dp)
-                    .interactivePressScale(removeInteraction, 0.94f)
-                    .clickable(interactionSource = removeInteraction, indication = null) {
-                        scope.launch { offsetX.snapTo(0f) }
-                        onRemoveClick()
-                    },
-            ) {
-                Box(Modifier.padding(horizontal = 14.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
-                    Text("Remove", color = colors.danger, fontSize = 13.5.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.width(8.dp))
+                val removeInteraction = remember { MutableInteractionSource() }
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = colors.danger.copy(alpha = 0.24f),
+                    border = BorderStroke(1.dp, colors.danger.copy(alpha = 0.52f)),
+                    modifier = Modifier
+                        .defaultMinSize(minHeight = 40.dp)
+                        .interactivePressScale(removeInteraction, 0.94f)
+                        .clickable(interactionSource = removeInteraction, indication = null) {
+                            scope.launch { offsetX.snapTo(0f) }
+                            onRemoveClick()
+                        },
+                ) {
+                    Box(Modifier.padding(horizontal = 14.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
+                        Text("Remove", color = colors.danger, fontSize = 13.5.sp, fontWeight = FontWeight.SemiBold)
+                    }
                 }
             }
         }
 
-        // Foreground track card tracking finger 1:1
+        // Foreground track card tracking finger 1:1 with velocity-aware spring release
         Box(
             modifier = Modifier
                 .offset { IntOffset(offsetX.value.roundToInt(), 0) }
-                .pointerInput(revealPx, reduceMotion) {
+                .pointerInput(revealPx, reduceMotion, enabled) {
+                    if (!enabled) return@pointerInput
+                    val vt = VelocityTracker()
                     detectHorizontalDragGestures(
+                        onDragStart = { vt.resetTracking() },
                         onDragEnd = {
+                            val vx = vt.calculateVelocity().x
                             scope.launch {
-                                val target = if (offsetX.value < -revealPx * 0.42f) -revealPx else 0f
+                                val target = when {
+                                    vx < -650f -> -revealPx
+                                    vx > 650f -> 0f
+                                    offsetX.value < -revealPx * 0.42f -> -revealPx
+                                    else -> 0f
+                                }
                                 if (target != 0f) view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                                 if (reduceMotion) offsetX.snapTo(target)
-                                else offsetX.animateTo(target, spring(dampingRatio = 0.80f, stiffness = 420f))
+                                else offsetX.animateTo(
+                                    targetValue = target,
+                                    initialVelocity = vx,
+                                    animationSpec = spring(dampingRatio = 0.78f, stiffness = 430f),
+                                )
                             }
                         },
                         onDragCancel = {
                             scope.launch {
                                 if (reduceMotion) offsetX.snapTo(0f)
-                                else offsetX.animateTo(0f, spring(dampingRatio = 0.80f, stiffness = 420f))
+                                else offsetX.animateTo(0f, spring(dampingRatio = 0.80f, stiffness = 430f))
                             }
                         },
-                        onHorizontalDrag = { _, dragAmount ->
-                            scope.launch {
-                                val raw = offsetX.value + dragAmount
-                                val next = when {
-                                    raw > 0f -> raw * 0.18f
-                                    raw < -revealPx -> -revealPx + (raw + revealPx) * 0.22f
-                                    else -> raw
-                                }
-                                offsetX.snapTo(next)
+                        onHorizontalDrag = { change, dragAmount ->
+                            val raw = offsetX.value + dragAmount
+                            val next = when {
+                                raw > 0f -> raw * 0.16f
+                                raw < -revealPx -> -revealPx + (raw + revealPx) * 0.20f
+                                else -> raw
                             }
+                            vt.addPosition(change.uptimeMillis, Offset(next, 0f))
+                            scope.launch { offsetX.snapTo(next) }
                         },
                     )
                 }
@@ -950,8 +986,157 @@ fun LiveEqualizerBars(
 }
 
 /**
- * Frosted Apple Liquid Glass Now Playing mini-player strictly locked to the active playing/paused song.
- * Uses real-time GPU backdrop blur over scrolled content + tap/scrub seek + spring micro-interactions.
+ * Swipe-to-dismiss Frosted Liquid Glass Status Banner:
+ * - 1:1 direct finger tracking upward (reversing its top-drop entrance) or sideways left/right
+ * - Rubber-band resistance when pulled downward past origin
+ * - Linked opacity fade during drag
+ * - Dismisses on distance OR velocity with haptic feedback; velocity-seeded spring snap-back on cancel
+ * - Pauses auto-dismiss countdown while the finger is down
+ */
+@Composable
+fun SwipeableStatusBanner(
+    bannerId: Long,
+    text: String,
+    isError: Boolean,
+    onDismiss: () -> Unit,
+    onDragActiveChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = LocalAppColors.current
+    val reduceMotion = LocalReduceMotion.current
+    val view = LocalView.current
+    val scope = rememberCoroutineScope()
+    val accent = if (isError) colors.danger else colors.ok
+
+    val offsetX = remember(bannerId) { Animatable(0f) }
+    val offsetY = remember(bannerId) { Animatable(0f) }
+    var cardW by remember { mutableIntStateOf(1) }
+    var cardH by remember { mutableIntStateOf(1) }
+
+    val curOnDismiss by rememberUpdatedState(onDismiss)
+    val curOnDragChange by rememberUpdatedState(onDragActiveChange)
+    val curReduce by rememberUpdatedState(reduceMotion)
+
+    val dragProgress = max(
+        (abs(offsetX.value) / max(1f, cardW * 0.55f)),
+        ((-offsetY.value) / max(1f, cardH * 1.15f)),
+    ).coerceIn(0f, 1f)
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .widthIn(max = 560.dp)
+            .onSizeChanged {
+                cardW = max(1, it.width)
+                cardH = max(1, it.height)
+            }
+            .pointerInput(bannerId, cardW, cardH) {
+                val slop = viewConfiguration.touchSlop * 0.45f
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    val startX = down.position.x
+                    val startY = down.position.y
+                    val vt = VelocityTracker()
+                    vt.addPosition(down.uptimeMillis, down.position)
+                    var axis = 0 // 0 = undecided, 1 = vertical (up), 2 = horizontal (left/right)
+                    curOnDragChange(true)
+
+                    while (true) {
+                        val ev = awaitPointerEvent()
+                        val ch = ev.changes.firstOrNull { it.id == down.id } ?: break
+                        if (!ch.pressed) break
+                        vt.addPosition(ch.uptimeMillis, ch.position)
+                        val dx = ch.position.x - startX
+                        val dy = ch.position.y - startY
+                        if (axis == 0 && (abs(dx) > slop || abs(dy) > slop)) {
+                            axis = if (abs(dy) >= abs(dx)) 1 else 2
+                        }
+                        if (axis == 1) {
+                            ch.consume()
+                            val nextY = if (dy > 0f) rubberBand(dy, cardH.toFloat(), 0.25f) else dy
+                            scope.launch { offsetY.snapTo(nextY) }
+                        } else if (axis == 2) {
+                            ch.consume()
+                            scope.launch { offsetX.snapTo(dx) }
+                        }
+                    }
+
+                    curOnDragChange(false)
+                    if (axis != 0) {
+                        val vel = vt.calculateVelocity()
+                        val dismissUp = axis == 1 && (offsetY.value < -cardH * 0.35f || vel.y < -580f)
+                        val dismissSide = axis == 2 && (abs(offsetX.value) > cardW * 0.34f || abs(vel.x) > 720f)
+                        if (dismissUp || dismissSide) {
+                            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                            scope.launch {
+                                if (!curReduce) {
+                                    if (dismissUp) {
+                                        offsetY.animateTo(-cardH * 1.4f, initialVelocity = vel.y, animationSpec = tween(140))
+                                    } else {
+                                        val dir = if (offsetX.value >= 0f) 1f else -1f
+                                        offsetX.animateTo(dir * cardW * 1.15f, initialVelocity = vel.x, animationSpec = tween(150))
+                                    }
+                                }
+                                curOnDismiss()
+                            }
+                        } else {
+                            scope.launch {
+                                if (curReduce) {
+                                    offsetX.snapTo(0f)
+                                    offsetY.snapTo(0f)
+                                } else {
+                                    launch {
+                                        offsetX.animateTo(0f, initialVelocity = vel.x, animationSpec = spring(dampingRatio = 0.72f, stiffness = 480f))
+                                    }
+                                    launch {
+                                        offsetY.animateTo(0f, initialVelocity = vel.y, animationSpec = spring(dampingRatio = 0.72f, stiffness = 480f))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .graphicsLayer {
+                translationX = offsetX.value
+                translationY = offsetY.value
+                alpha = (1f - dragProgress * 0.65f).coerceIn(0.2f, 1f)
+            }
+            .liquidGlassChrome(
+                shape = RoundedCornerShape(18.dp),
+                blurRadius = 24.dp,
+                shadowElevation = 14.dp,
+                borderAccent = accent,
+                tintOverride = accent.copy(alpha = if (colors.isLight) 0.16f else 0.22f),
+            )
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 15.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                text = text,
+                color = accent,
+                fontSize = 13.5.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f),
+            )
+            Icon(
+                Icons.Rounded.Close,
+                contentDescription = "Dismiss",
+                tint = colors.muted,
+                modifier = Modifier
+                    .size(22.dp)
+                    .clickable { onDismiss() },
+            )
+        }
+    }
+}
+
+/**
+ * Sleek, thin Frosted Apple Liquid Glass Now Playing mini-player strictly locked to the active playing/paused song.
+ * Compact ~54dp single-row layout with a hairline scrubbable seek progress strip along the bottom edge.
  */
 @Composable
 fun NowPlayingBar(
@@ -967,27 +1152,32 @@ fun NowPlayingBar(
     val frac = if (state.durationMs > 0) (state.positionMs.toFloat() / state.durationMs.toFloat()).coerceIn(0f, 1f) else 0f
     val playInteraction = remember { MutableInteractionSource() }
     val loopInteraction = remember { MutableInteractionSource() }
+    var barWidthPx by remember { mutableFloatStateOf(1f) }
 
     Box(
         modifier = modifier
             .fillMaxWidth()
+            .onSizeChanged { barWidthPx = max(1f, it.width.toFloat()) }
             .liquidGlassChrome(
-                shape = RoundedCornerShape(22.dp),
+                shape = RoundedCornerShape(18.dp),
                 blurRadius = 26.dp,
                 noiseFactor = 0.07f,
-                shadowElevation = 14.dp,
+                shadowElevation = 12.dp,
                 borderAccent = if (state.isPlaying) colors.accent else null,
             )
     ) {
-        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp)) {
+        Column(modifier = Modifier.fillMaxWidth()) {
             Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 10.dp, end = 10.dp, top = 7.dp, bottom = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(11.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Box(
                     modifier = Modifier
-                        .size(42.dp)
-                        .interactivePressScale(playInteraction, 0.92f)
+                        .size(34.dp)
+                        .interactivePressScale(playInteraction, 0.90f)
                         .clip(CircleShape)
                         .background(if (state.isPlaying) colors.accent else colors.glassCardRaised)
                         .border(1.dp, if (state.isPlaying) colors.accent else colors.glassSpecularTop, CircleShape)
@@ -996,7 +1186,7 @@ fun NowPlayingBar(
                 ) {
                     if (state.isPreparing) {
                         CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
+                            modifier = Modifier.size(15.dp),
                             strokeWidth = 2.dp,
                             color = colors.accentInk,
                         )
@@ -1014,20 +1204,21 @@ fun NowPlayingBar(
                                 imageVector = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                                 contentDescription = if (playing) "Pause" else "Play",
                                 tint = if (playing) Color(0xFF0B0C0F) else colors.text,
-                                modifier = Modifier.size(22.dp),
+                                modifier = Modifier.size(19.dp),
                             )
                         }
                     }
                 }
 
-                LiveEqualizerBars(isPlaying = state.isPlaying)
+                LiveEqualizerBars(isPlaying = state.isPlaying, modifier = Modifier.height(13.dp))
 
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(0.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                         Text(
                             text = state.title.ifBlank { "Untitled" },
                             color = colors.text,
-                            fontSize = 14.5.sp,
+                            fontSize = 13.5.sp,
+                            lineHeight = 16.sp,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -1038,28 +1229,31 @@ fun NowPlayingBar(
                             color = colors.accentSoft,
                         ) {
                             Text(
-                                text = state.category.badgeText,
+                                text = if (state.isOutro) "OUTRO" else state.category.badgeText,
                                 color = colors.accentInk,
-                                fontSize = 11.sp,
+                                fontSize = 9.5.sp,
+                                lineHeight = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
                             )
                         }
                     }
                     Text(
-                        text = "${state.artist} · ${if (state.isOutro) "OUTRO CLIP" else "Main"}",
+                        text = state.artist,
                         color = colors.muted,
-                        fontSize = 12.5.sp,
+                        fontSize = 11.sp,
+                        lineHeight = 14.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
 
                 Text(
-                    text = "${AudioPipeline.formatClock(state.positionMs / 1000.0)} / ${AudioPipeline.formatClock(state.durationMs / 1000.0)}",
+                    text = "${AudioPipeline.formatClock(state.positionMs / 1000.0)}/${AudioPipeline.formatClock(state.durationMs / 1000.0)}",
                     color = colors.muted,
-                    fontSize = 12.sp,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
+                    softWrap = false,
                 )
 
                 Surface(
@@ -1067,8 +1261,8 @@ fun NowPlayingBar(
                     color = if (state.loop) colors.accentSoft else colors.glassCardRaised,
                     border = BorderStroke(1.dp, if (state.loop) colors.accent.copy(alpha = 0.6f) else colors.border),
                     modifier = Modifier
-                        .size(34.dp)
-                        .interactivePressScale(loopInteraction, 0.92f)
+                        .size(28.dp)
+                        .interactivePressScale(loopInteraction, 0.90f)
                         .clickable(interactionSource = loopInteraction, indication = null) { onToggleLoop() },
                 ) {
                     Box(contentAlignment = Alignment.Center) {
@@ -1076,44 +1270,40 @@ fun NowPlayingBar(
                             Icons.Rounded.Repeat,
                             contentDescription = "Loop",
                             tint = if (state.loop) colors.accentInk else colors.muted,
-                            modifier = Modifier.size(17.dp),
+                            modifier = Modifier.size(15.dp),
                         )
                     }
                 }
             }
 
-            Spacer(Modifier.height(6.dp))
-            var seekWidthPx by remember { mutableFloatStateOf(1f) }
+            // Sleek flush hairline scrubbable progress strip along the bottom edge
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(20.dp)
-                    .onSizeChanged { seekWidthPx = max(1f, it.width.toFloat()) }
-                    .pointerInput(state.durationMs) {
+                    .height(6.dp)
+                    .pointerInput(state.durationMs, barWidthPx) {
                         detectTapGestures { pos ->
-                            if (seekWidthPx > 0f) onSeek((pos.x / seekWidthPx).coerceIn(0f, 1f))
+                            if (barWidthPx > 0f) onSeek((pos.x / barWidthPx).coerceIn(0f, 1f))
                         }
                     }
-                    .pointerInput(state.durationMs) {
+                    .pointerInput(state.durationMs, barWidthPx) {
                         detectHorizontalDragGestures { change, _ ->
                             change.consume()
-                            if (seekWidthPx > 0f) onSeek((change.position.x / seekWidthPx).coerceIn(0f, 1f))
+                            if (barWidthPx > 0f) onSeek((change.position.x / barWidthPx).coerceIn(0f, 1f))
                         }
                     },
-                contentAlignment = Alignment.Center,
+                contentAlignment = Alignment.BottomCenter,
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(4.5.dp)
-                        .clip(RoundedCornerShape(999.dp))
-                        .background(colors.border)
+                        .height(3.dp)
+                        .background(colors.border.copy(alpha = 0.55f))
                 ) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth(frac)
                             .fillMaxHeight()
-                            .clip(RoundedCornerShape(999.dp))
                             .background(colors.accent)
                     )
                 }
@@ -1133,6 +1323,7 @@ fun WaveformTrimEditor(
     endSec: Double,
     onRangeChange: (Double, Double) -> Unit,
     modifier: Modifier = Modifier,
+    playbackProgress: Float? = null,
 ) {
     val colors = LocalAppColors.current
     val safeDur = max(0.5, durationSec)
@@ -1230,6 +1421,10 @@ fun WaveformTrimEditor(
             drawLine(colors.accentInk, Offset(selRight, 0f), Offset(selRight, h), strokeWidth = 3.5f)
             drawRoundRect(colors.accentInk, Offset(selLeft - 7f, h / 2f - 16f), Size(14f, 32f), CornerRadius(7f, 7f))
             drawRoundRect(colors.accentInk, Offset(selRight - 7f, h / 2f - 16f), Size(14f, 32f), CornerRadius(7f, 7f))
+            if (playbackProgress != null) {
+                val playX = selLeft + (selRight - selLeft) * playbackProgress.coerceIn(0f, 1f)
+                drawLine(Color.White, Offset(playX, 4f), Offset(playX, h - 4f), strokeWidth = 3f)
+            }
         }
     }
 }

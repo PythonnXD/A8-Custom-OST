@@ -18,6 +18,7 @@ class PrefsStore(context: Context) {
             autoBackup = sp.getBoolean("auto_backup", true),
             warnUnsavedPlaylist = sp.getBoolean("warn_unsaved_playlist", true),
             outroEditorEnabled = sp.getBoolean("outro_editor_enabled", true),
+            showNowPlayingBar = sp.getBoolean("show_now_playing_bar", true),
             reduceMotion = sp.getBoolean("reduce_motion", false),
             loopPlayback = sp.getBoolean("loop_playback", false),
             conflictPolicy = ConflictPolicy.fromId(sp.getString("conflict_policy", ConflictPolicy.OVERWRITE.id)),
@@ -34,6 +35,7 @@ class PrefsStore(context: Context) {
             .putBoolean("auto_backup", prefs.autoBackup)
             .putBoolean("warn_unsaved_playlist", prefs.warnUnsavedPlaylist)
             .putBoolean("outro_editor_enabled", prefs.outroEditorEnabled)
+            .putBoolean("show_now_playing_bar", prefs.showNowPlayingBar)
             .putBoolean("reduce_motion", prefs.reduceMotion)
             .putBoolean("loop_playback", prefs.loopPlayback)
             .putString("conflict_policy", prefs.conflictPolicy.id)
@@ -98,7 +100,7 @@ class PrefsStore(context: Context) {
                         title = o.optString("title", "Untitled"),
                         artist = o.optString("artist", "Custom Artist"),
                         category = StationCategory.fromString(o.optString("category")),
-                        selected = o.optBoolean("selected", true),
+                        selected = o.optBoolean("selected", false),
                         conflict = baseId in existingGameIds,
                         hasOutro = hasOutro,
                         outroSrcPath = outroPath,

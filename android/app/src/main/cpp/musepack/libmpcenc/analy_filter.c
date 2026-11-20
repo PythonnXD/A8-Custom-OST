@@ -30,7 +30,7 @@
 #undef _
 #define _(value)  (float)(value##.##L / 0x200000)
 
-static float  Ci_opt [512] = {
+static const float Ci_opt_init [512] = {
     _(   0), _(  213), _( 2037), _(  6574), _(75038), _( 6574), _(2037), _(213),
     _(  -1), _(  218), _( 2000), _(  5959), _(74992), _( 7134), _(2063), _(208),
     _(  -1), _(  222), _( 1952), _(  5288), _(74856), _( 7640), _(2080), _(202),
@@ -99,6 +99,7 @@ static float  Ci_opt [512] = {
 #undef _
 
 
+static float Ci_opt [512];
 static float M [1024];
 
 void
@@ -116,19 +117,19 @@ Klemm ( void )
 
 #ifdef FASTER
     for ( i = 0; i < 384; i++ )
-        S[i] = Ci_opt[i];
+        S[i] = Ci_opt_init[i];
     for ( i = 384; i < 392; i++ )
         S[i] = 0;
     for ( i = 392; i < 512; i++ )
-        S[i] = -Ci_opt[i];
-    for ( i = 0; i < 512; i++ )
-       Ci_opt[i] = S[i];
+        S[i] = -Ci_opt_init[i];
     for ( i = 0; i < 128; i++ )
        Ci_opt[i] = S[(i&7) + 120 - (i&120)];
     for ( i = 128; i < 384; i++ )
        Ci_opt[i] = S[i];
     for ( i = 384; i < 512; i++ )
        Ci_opt[i] = S[ 384 + (i&7) + 120 - (i&120)];
+#else
+    memcpy ( Ci_opt, Ci_opt_init, sizeof(Ci_opt) );
 #endif
 }
 
@@ -304,6 +305,8 @@ Analyse_Init ( float Left, float Right, SubbandFloatTyp* out, const int MaxBand 
     int           i;
 
     /************************* calculate L-signal ***************************/
+    memset ( X_L, 0, sizeof(X_L) );
+    memset ( X_R, 0, sizeof(X_R) );
     memcpy ( X_L + X_MEM, X_L, 480*sizeof(*X_L) );
     x      = X_L + X_MEM;
 

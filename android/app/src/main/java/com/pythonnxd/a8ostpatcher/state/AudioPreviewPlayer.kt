@@ -3,6 +3,7 @@ package com.pythonnxd.a8ostpatcher.state
 import android.media.MediaPlayer
 import com.pythonnxd.a8ostpatcher.engine.AudioPipeline
 import com.pythonnxd.a8ostpatcher.engine.StationCategory
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -46,6 +47,7 @@ class AudioPreviewPlayer(
     private var player: MediaPlayer? = null
     private var tickJob: Job? = null
     private var loadJob: Job? = null
+    private var activePreviewSig: String? = null
 
     fun setLoop(enabled: Boolean) {
         _state.update { it.copy(loop = enabled) }
@@ -78,13 +80,20 @@ class AudioPreviewPlayer(
     ) {
         val cur = _state.value
         val hasCut = isOutro && (startSec != null || endSec != null || fadeInSec > 0.0 || fadeOutSec > 0.0)
-        if (cur.uid == uid && cur.isOutro == isOutro && cur.isLoaded && !hasCut) {
+        val sig = "$uid|$isOutro|${srcFile.absolutePath}|$startSec|$endSec|$fadeInSec|$fadeOutSec"
+        if (cur.isPreparing && activePreviewSig == sig) {
+            return
+        }
+        if (cur.uid == uid && cur.isOutro == isOutro && cur.isLoaded && (!hasCut || activePreviewSig == sig)) {
             val mp = player
             if (mp != null) {
                 if (mp.isPlaying) {
                     mp.pause()
                     _state.update { it.copy(isPlaying = false, positionMs = mp.currentPosition) }
                 } else {
+                    if (hasCut) {
+                        try { mp.seekTo(0) } catch (_: Exception) {}
+                    }
                     mp.start()
                     _state.update { it.copy(isPlaying = true) }
                     startTicking()
@@ -92,13 +101,14 @@ class AudioPreviewPlayer(
                 return
             }
         }
-        if (cur.uid == uid && cur.isOutro == isOutro && hasCut && cur.isPlaying) {
+        if (cur.uid == uid && cur.isOutro == isOutro && hasCut && cur.isPlaying && activePreviewSig == sig) {
             pause()
             return
         }
 
         loadJob?.cancel()
         releasePlayerOnly()
+        activePreviewSig = sig
         _state.update {
             it.copy(
                 uid = uid,
@@ -126,10 +136,15 @@ class AudioPreviewPlayer(
                         fadeOutSec = fadeOutSec,
                     )
                 }
+                if (activePreviewSig != sig) return@launch
                 val mp = MediaPlayer()
                 mp.setDataSource(playable.absolutePath)
                 mp.isLooping = _state.value.loop
                 mp.prepare()
+                if (activePreviewSig != sig) {
+                    try { mp.release() } catch (_: Exception) {}
+                    return@launch
+                }
                 val dur = mp.duration
                 mp.setOnCompletionListener {
                     if (!_state.value.loop) {
@@ -151,11 +166,16 @@ class AudioPreviewPlayer(
                     )
                 }
                 startTicking()
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                _state.update {
-                    it.copy(isPlaying = false, isPreparing = false, isLoaded = false, uid = null)
+                if (activePreviewSig == sig) {
+                    activePreviewSig = null
+                    _state.update {
+                        it.copy(isPlaying = false, isPreparing = false, isLoaded = false, uid = null)
+                    }
+                    onError("Could not play preview: ${e.message ?: "unsupported audio"}")
                 }
-                onError("Could not play preview: ${e.message ?: "unsupported audio"}")
             }
         }
     }
@@ -199,6 +219,7 @@ class AudioPreviewPlayer(
     }
 
     fun stopAndClear() {
+        activePreviewSig = null
         loadJob?.cancel()
         releasePlayerOnly()
         _state.update { cur -> NowPlayingState(loop = cur.loop) }

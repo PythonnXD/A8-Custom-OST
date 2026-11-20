@@ -1,18 +1,26 @@
 package com.pythonnxd.a8ostpatcher.ui.screens
 
+import android.view.HapticFeedbackConstants
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -29,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -40,6 +49,7 @@ import com.pythonnxd.a8ostpatcher.state.MainViewModel
 import com.pythonnxd.a8ostpatcher.state.NowPlayingState
 import com.pythonnxd.a8ostpatcher.ui.components.AnimatedCategoryFilterRow
 import com.pythonnxd.a8ostpatcher.ui.components.CategoryFilterItem
+import com.pythonnxd.a8ostpatcher.ui.components.LiquidGlassBottomSheet
 import com.pythonnxd.a8ostpatcher.ui.components.LiquidGlassCard
 import com.pythonnxd.a8ostpatcher.ui.components.SegmentItem
 import com.pythonnxd.a8ostpatcher.ui.components.SlidingSegmentedControl
@@ -69,7 +79,13 @@ fun LibraryScreen(
         }
     }
     val selectedTracks = ui.libraryTracks.filter { it.selected }
+    val selectionMode = selectedTracks.isNotEmpty()
     val focusedTrack = ui.libraryTracks.firstOrNull { it.uid == ui.focusedLibraryUid } ?: filtered.firstOrNull()
+    val view = LocalView.current
+
+    BackHandler(enabled = selectionMode) {
+        vm.clearLibrarySelection()
+    }
 
     var editingTrack by remember { mutableStateOf<InstalledTrack?>(null) }
     var showRemoveConfirm by remember { mutableStateOf(false) }
@@ -109,25 +125,6 @@ fun LibraryScreen(
                     color = colors.muted,
                     fontSize = 14.sp,
                 )
-            }
-            AnimatedVisibility(
-                visible = selectedTracks.isNotEmpty(),
-                enter = if (reduceMotion) EnterTransition.None else scaleIn(spring(0.70f, 480f)) + fadeIn(tween(150)),
-                exit = if (reduceMotion) ExitTransition.None else scaleOut(tween(110)) + fadeOut(tween(110)),
-            ) {
-                val removeInteraction = remember { MutableInteractionSource() }
-                Button(
-                    onClick = { showRemoveConfirm = true },
-                    interactionSource = removeInteraction,
-                    colors = ButtonDefaults.buttonColors(containerColor = colors.danger, contentColor = Color.White),
-                    shape = RoundedCornerShape(999.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    modifier = Modifier
-                        .defaultMinSize(minHeight = 42.dp)
-                        .interactivePressScale(removeInteraction, 0.94f),
-                ) {
-                    Text("Remove ${selectedTracks.size}", fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                }
             }
         }
 
@@ -183,6 +180,70 @@ fun LibraryScreen(
                 .defaultMinSize(minHeight = 52.dp),
         )
 
+        // Compact hold-to-select bar for Library
+        AnimatedVisibility(
+            visible = selectionMode,
+            enter = if (reduceMotion) EnterTransition.None else fadeIn(tween(160)) + expandVertically(spring(0.80f, 440f)),
+            exit = if (reduceMotion) ExitTransition.None else fadeOut(tween(120)) + shrinkVertically(tween(140)),
+        ) {
+            LiquidGlassCard(
+                shape = RoundedCornerShape(16.dp),
+                elevated = true,
+                accentBorder = colors.accent,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        IconButton(
+                            onClick = { vm.clearLibrarySelection() },
+                            modifier = Modifier.size(32.dp),
+                        ) {
+                            Icon(Icons.Rounded.Close, "Exit selection", tint = colors.muted, modifier = Modifier.size(19.dp))
+                        }
+                        Surface(shape = RoundedCornerShape(999.dp), color = colors.accentSoft) {
+                            Text(
+                                "${selectedTracks.size} selected",
+                                color = colors.accentInk,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            )
+                        }
+                        val allSelected = filtered.isNotEmpty() && filtered.all { it.selected }
+                        Text(
+                            if (allSelected) "Deselect all" else "Select all",
+                            color = colors.muted,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable {
+                                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                    vm.toggleSelectAllLibrary(filtered.map { it.uid }.toSet())
+                                }
+                                .padding(horizontal = 6.dp, vertical = 4.dp),
+                        )
+                    }
+                    Text(
+                        "Remove",
+                        color = colors.danger,
+                        fontSize = 13.5.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { showRemoveConfirm = true }
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                    )
+                }
+            }
+        }
+
         if (ui.libraryLoading) {
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = colors.accent)
@@ -204,6 +265,7 @@ fun LibraryScreen(
                         ) {
                             LibraryTrackRowCard(
                                 track = track,
+                                selectionMode = selectionMode,
                                 isFocused = focusedTrack?.uid == track.uid,
                                 isPlayingMain = nowPlaying.isPlaying && nowPlaying.uid == track.uid && !nowPlaying.isOutro,
                                 isPlayingOutro = nowPlaying.isPlaying && nowPlaying.uid == track.uid && nowPlaying.isOutro,
@@ -276,6 +338,7 @@ fun LibraryScreen(
                     ) {
                         LibraryTrackRowCard(
                             track = track,
+                            selectionMode = selectionMode,
                             isFocused = focusedTrack?.uid == track.uid,
                             isPlayingMain = nowPlaying.isPlaying && nowPlaying.uid == track.uid && !nowPlaying.isOutro,
                             isPlayingOutro = nowPlaying.isPlaying && nowPlaying.uid == track.uid && nowPlaying.isOutro,
@@ -295,18 +358,15 @@ fun LibraryScreen(
     if (editingTrack != null && !isTablet) {
         val tr = editingTrack!!
         var sheetTab by remember(tr.uid) { mutableIntStateOf(0) }
-        ModalBottomSheet(
+        LiquidGlassBottomSheet(
             onDismissRequest = { editingTrack = null },
-            containerColor = colors.glassDockFallback,
-            contentColor = colors.text,
-            dragHandle = { BottomSheetDefaults.DragHandle(color = colors.muted.copy(alpha = 0.48f)) },
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 20.dp)
-                    .padding(bottom = 32.dp),
+                    .padding(bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 SlidingSegmentedControl(
@@ -391,9 +451,11 @@ fun LibraryScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun LibraryTrackRowCard(
     track: InstalledTrack,
+    selectionMode: Boolean,
     isFocused: Boolean,
     isPlayingMain: Boolean,
     isPlayingOutro: Boolean,
@@ -405,24 +467,49 @@ private fun LibraryTrackRowCard(
     onEdit: () -> Unit,
 ) {
     val colors = LocalAppColors.current
-    val highlighted = isFocused || isPlayingMain || isPlayingOutro
+    val reduceMotion = LocalReduceMotion.current
+    val view = LocalView.current
+    val highlighted = isPlayingMain || isPlayingOutro || (selectionMode && track.selected) || (!selectionMode && isFocused)
     val playInteraction = remember { MutableInteractionSource() }
     val editInteraction = remember { MutableInteractionSource() }
 
     LiquidGlassCard(
         shape = RoundedCornerShape(18.dp),
-        tintColor = if (isPlayingMain || isPlayingOutro) colors.accentSoft.copy(alpha = 0.28f) else null,
+        tintColor = when {
+            isPlayingMain || isPlayingOutro -> colors.accentSoft.copy(alpha = 0.28f)
+            selectionMode && track.selected -> colors.accentSoft.copy(alpha = 0.16f)
+            else -> null
+        },
         accentBorder = if (highlighted) colors.accent else null,
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() },
+            .combinedClickable(
+                onClick = {
+                    if (selectionMode) {
+                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                        onSelectToggle()
+                    } else {
+                        onClick()
+                    }
+                },
+                onLongClick = {
+                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                    onSelectToggle()
+                },
+            ),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Checkbox(checked = track.selected, onCheckedChange = { onSelectToggle() }, modifier = Modifier.size(26.dp))
+            AnimatedVisibility(
+                visible = selectionMode,
+                enter = if (reduceMotion) EnterTransition.None else expandHorizontally(spring(0.80f, 480f)) + fadeIn(tween(140)),
+                exit = if (reduceMotion) ExitTransition.None else shrinkHorizontally(tween(140)) + fadeOut(tween(110)),
+            ) {
+                Checkbox(checked = track.selected, onCheckedChange = { onSelectToggle() }, modifier = Modifier.size(26.dp))
+            }
             Box(
                 modifier = Modifier
                     .size(42.dp)

@@ -29,11 +29,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,9 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -54,9 +48,12 @@ import com.pythonnxd.a8ostpatcher.state.AppTab
 import com.pythonnxd.a8ostpatcher.state.MainViewModel
 import com.pythonnxd.a8ostpatcher.ui.components.AmbientLiquidBackdrop
 import com.pythonnxd.a8ostpatcher.ui.components.FloatingPillNavBar
+import com.pythonnxd.a8ostpatcher.ui.components.LiquidGlassSheetHostState
+import com.pythonnxd.a8ostpatcher.ui.components.LiquidGlassSheetOverlay
 import com.pythonnxd.a8ostpatcher.ui.components.LocalChromeHazeState
+import com.pythonnxd.a8ostpatcher.ui.components.LocalLiquidGlassSheetHost
 import com.pythonnxd.a8ostpatcher.ui.components.NowPlayingBar
-import com.pythonnxd.a8ostpatcher.ui.components.liquidGlassChrome
+import com.pythonnxd.a8ostpatcher.ui.components.SwipeableStatusBanner
 import com.pythonnxd.a8ostpatcher.ui.screens.*
 import com.pythonnxd.a8ostpatcher.ui.theme.A8PatcherTheme
 import com.pythonnxd.a8ostpatcher.ui.theme.LocalAppColors
@@ -64,6 +61,7 @@ import com.pythonnxd.a8ostpatcher.ui.theme.LocalReduceMotion
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.haze
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -183,6 +181,7 @@ private fun MainAppShell(
     val config = LocalConfiguration.current
     val isTablet = config.screenWidthDp >= 600
     val chromeHazeState = remember { HazeState() }
+    val sheetHostState = remember { LiquidGlassSheetHostState() }
 
     var hasAllFilesAccess by remember {
         mutableStateOf(
@@ -269,7 +268,10 @@ private fun MainAppShell(
         vm.closeAboutScreen()
     }
 
-    CompositionLocalProvider(LocalChromeHazeState provides chromeHazeState) {
+    CompositionLocalProvider(
+        LocalChromeHazeState provides chromeHazeState,
+        LocalLiquidGlassSheetHost provides sheetHostState,
+    ) {
         Box(modifier = Modifier.fillMaxSize()) {
             // Haze source layer: ambient Liquid Glass backdrop + full edge-to-edge screen content
             Box(
@@ -362,10 +364,69 @@ private fun MainAppShell(
                 }
             }
 
-            // Floating Frosted Liquid Glass Status Banner (drops smoothly from top with real GPU blur)
+            // Bottom floating overlay: Sleek Frosted Now Playing Bar + Draggable Liquid Glass Pill Nav Bar
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.navigationBars)
+                    .padding(
+                        start = if (isTablet) 24.dp else 20.dp,
+                        end = if (isTablet) 24.dp else 20.dp,
+                        top = 6.dp,
+                        bottom = 12.dp,
+                    ),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                val showNowPlaying = ui.prefs.showNowPlayingBar &&
+                    (ui.tab == AppTab.QUEUE || ui.tab == AppTab.LIBRARY) &&
+                    (nowPlaying.isLocked || nowPlaying.isPreparing)
+                AnimatedVisibility(
+                    visible = showNowPlaying,
+                    enter = if (reduceMotion) EnterTransition.None
+                    else slideInVertically(spring(0.76f, 420f)) { it / 2 } + fadeIn(tween(180)) + scaleIn(tween(200), initialScale = 0.95f),
+                    exit = if (reduceMotion) ExitTransition.None
+                    else slideOutVertically(tween(150)) { it / 2 } + fadeOut(tween(130)),
+                ) {
+                    NowPlayingBar(
+                        state = nowPlaying,
+                        onTogglePlayPause = { vm.player.toggleCurrentPlayPause() },
+                        onSeek = { vm.player.seekToFraction(it) },
+                        onToggleLoop = { vm.updatePrefs { it.copy(loopPlayback = !it.loopPlayback) } },
+                        modifier = Modifier.widthIn(max = 600.dp),
+                    )
+                }
+
+                FloatingPillNavBar(
+                    selectedTab = ui.tab,
+                    onSelect = { vm.selectTab(it) },
+                    isTablet = isTablet,
+                )
+            }
+
+            // In-window GPU Frosted Liquid Glass Bottom Sheets (blurs live app screen behind sheet)
+            LiquidGlassSheetOverlay(
+                hostState = sheetHostState,
+                modifier = Modifier.fillMaxSize(),
+            )
+
+            // Floating Swipe-to-Dismiss & Auto-Dismiss Frosted Liquid Glass Status Banner (above sheets too)
             var lastBanner by remember { mutableStateOf(ui.banner) }
-            LaunchedEffect(ui.banner) {
-                if (ui.banner != null) lastBanner = ui.banner
+            var bannerDragging by remember { mutableStateOf(false) }
+            LaunchedEffect(ui.banner?.id) {
+                if (ui.banner != null) {
+                    lastBanner = ui.banner
+                    bannerDragging = false
+                }
+            }
+            LaunchedEffect(ui.banner?.id, bannerDragging) {
+                val current = ui.banner ?: return@LaunchedEffect
+                if (bannerDragging) return@LaunchedEffect
+                delay(if (current.isError) 5500L else 3200L)
+                if (vm.ui.value.banner?.id == current.id) {
+                    vm.dismissBanner()
+                }
             }
             AnimatedVisibility(
                 visible = ui.banner != null,
@@ -381,81 +442,16 @@ private fun MainAppShell(
             ) {
                 val banner = lastBanner
                 if (banner != null) {
-                    val accent = if (banner.isError) colors.danger else colors.ok
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .widthIn(max = 560.dp)
-                            .liquidGlassChrome(
-                                shape = RoundedCornerShape(18.dp),
-                                blurRadius = 24.dp,
-                                shadowElevation = 14.dp,
-                                borderAccent = accent,
-                                tintOverride = accent.copy(alpha = if (colors.isLight) 0.16f else 0.22f),
-                            )
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 13.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            Text(
-                                text = banner.text,
-                                color = if (banner.isError) colors.danger else colors.ok,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier.weight(1f),
-                            )
-                            Icon(
-                                Icons.Rounded.Close,
-                                contentDescription = "Dismiss",
-                                tint = colors.muted,
-                                modifier = Modifier
-                                    .size(22.dp)
-                                    .clickable { vm.dismissBanner() },
-                            )
-                        }
+                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        SwipeableStatusBanner(
+                            bannerId = banner.id,
+                            text = banner.text,
+                            isError = banner.isError,
+                            onDismiss = { vm.dismissBanner() },
+                            onDragActiveChange = { bannerDragging = it },
+                        )
                     }
                 }
-            }
-
-            // Bottom floating overlay: Frosted Now Playing Bar + Resized Draggable Liquid Glass Pill Nav Bar
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .windowInsetsPadding(WindowInsets.navigationBars)
-                    .padding(
-                        start = if (isTablet) 24.dp else 20.dp,
-                        end = if (isTablet) 24.dp else 20.dp,
-                        top = 6.dp,
-                        bottom = 12.dp,
-                    ),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                val showNowPlaying = (ui.tab == AppTab.QUEUE || ui.tab == AppTab.LIBRARY) && (nowPlaying.isLocked || nowPlaying.isPreparing)
-                AnimatedVisibility(
-                    visible = showNowPlaying,
-                    enter = if (reduceMotion) EnterTransition.None
-                    else slideInVertically(spring(0.76f, 420f)) { it / 2 } + fadeIn(tween(180)) + scaleIn(tween(200), initialScale = 0.95f),
-                    exit = if (reduceMotion) ExitTransition.None
-                    else slideOutVertically(tween(150)) { it / 2 } + fadeOut(tween(130)),
-                ) {
-                    NowPlayingBar(
-                        state = nowPlaying,
-                        onTogglePlayPause = { vm.player.toggleCurrentPlayPause() },
-                        onSeek = { vm.player.seekToFraction(it) },
-                        onToggleLoop = { vm.updatePrefs { it.copy(loopPlayback = !it.loopPlayback) } },
-                        modifier = Modifier.widthIn(max = 640.dp),
-                    )
-                }
-
-                FloatingPillNavBar(
-                    selectedTab = ui.tab,
-                    onSelect = { vm.selectTab(it) },
-                    isTablet = isTablet,
-                )
             }
         }
     }

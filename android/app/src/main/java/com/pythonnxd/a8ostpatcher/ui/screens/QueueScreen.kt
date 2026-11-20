@@ -1,26 +1,31 @@
 package com.pythonnxd.a8ostpatcher.ui.screens
 
 import android.view.HapticFeedbackConstants
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -83,13 +88,28 @@ fun QueueScreen(
         }
     }
     val selectedCount = ui.queueTracks.count { it.selected }
+    val selectionMode = selectedCount > 0
     val focusedTrack = ui.queueTracks.firstOrNull { it.uid == ui.focusedQueueUid } ?: filtered.firstOrNull()
 
     var editingTrackUid by remember { mutableStateOf<String?>(null) }
     var outroEditingTrackUid by remember { mutableStateOf<String?>(null) }
     var tabletInspectorTab by remember { mutableIntStateOf(0) } // 0 = Song details, 1 = Outro
+    var showSelectionOptions by remember { mutableStateOf(false) }
+    var showBatchCategoryRow by remember { mutableStateOf(false) }
+    var showBatchArtistDialog by remember { mutableStateOf(false) }
     var batchArtistInput by remember { mutableStateOf("") }
     var batchStation by remember { mutableStateOf(StationCategory.ROCK) }
+
+    LaunchedEffect(selectedCount) {
+        if (selectedCount == 0) {
+            showSelectionOptions = false
+            showBatchCategoryRow = false
+        }
+    }
+
+    BackHandler(enabled = selectionMode) {
+        vm.clearQueueSelection()
+    }
 
     val categoryItems = remember(ui.queueTracks) {
         buildList {
@@ -142,9 +162,10 @@ fun QueueScreen(
                 }
 
                 val installInteraction = remember { MutableInteractionSource() }
+                val installTargetCount = if (selectedCount > 0) selectedCount else ui.queueTracks.size
                 Button(
                     onClick = { vm.startInstallSelected() },
-                    enabled = selectedCount > 0 && ui.gameDirValid && !ui.installProgress.active,
+                    enabled = installTargetCount > 0 && ui.gameDirValid && !ui.installProgress.active,
                     interactionSource = installInteraction,
                     shape = RoundedCornerShape(999.dp),
                     colors = ButtonDefaults.buttonColors(
@@ -157,7 +178,7 @@ fun QueueScreen(
                         .interactivePressScale(installInteraction, 0.94f),
                 ) {
                     AnimatedContent(
-                        targetState = if (selectedCount > 0) "Install $selectedCount" else "Install",
+                        targetState = if (installTargetCount > 0) "Install $installTargetCount" else "Install",
                         transitionSpec = {
                             if (reduceMotion) EnterTransition.None togetherWith ExitTransition.None
                             else (slideInVertically(spring(0.75f, 480f)) { it / 2 } + fadeIn(tween(150))) togetherWith
@@ -175,11 +196,13 @@ fun QueueScreen(
             }
         }
 
-        // Frosted Quick Actions Bar
+        // Frosted Quick Actions Bar with dynamic off-screen scroll edge feather
+        val actionsScroll = rememberScrollState()
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
+                .horizontalScrollEdgeFade(actionsScroll, edgeWidth = 28.dp)
+                .horizontalScroll(actionsScroll),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -254,135 +277,169 @@ fun QueueScreen(
             )
         }
 
-        // Contextual Frosted Batch Edit Bar (spring reveal when >= 1 selected)
+        // Compact Contextual Frosted Selection Bar (appears on hold-to-select, expands options via three-dots button)
         AnimatedVisibility(
-            visible = selectedCount > 0,
-            enter = if (reduceMotion) EnterTransition.None else fadeIn(tween(180)) + expandVertically(spring(0.78f, 420f)),
-            exit = if (reduceMotion) ExitTransition.None else fadeOut(tween(130)) + shrinkVertically(tween(150)),
+            visible = selectionMode,
+            enter = if (reduceMotion) EnterTransition.None else fadeIn(tween(170)) + expandVertically(spring(0.78f, 440f)),
+            exit = if (reduceMotion) ExitTransition.None else fadeOut(tween(120)) + shrinkVertically(tween(140)),
         ) {
             LiquidGlassCard(
-                shape = RoundedCornerShape(18.dp),
+                shape = RoundedCornerShape(16.dp),
                 elevated = true,
                 accentBorder = colors.accent,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Column(
-                    modifier = Modifier.padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            IconButton(
+                                onClick = { vm.clearQueueSelection() },
+                                modifier = Modifier.size(32.dp),
+                            ) {
+                                Icon(Icons.Rounded.Close, "Exit selection", tint = colors.muted, modifier = Modifier.size(19.dp))
+                            }
                             Surface(shape = RoundedCornerShape(999.dp), color = colors.accentSoft) {
                                 Text(
                                     "$selectedCount selected",
                                     color = colors.accentInk,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 11.dp, vertical = 4.dp),
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                                 )
                             }
+                            val allFilteredSelected = filtered.isNotEmpty() && filtered.all { it.selected }
                             Text(
-                                "Toggle all",
+                                if (allFilteredSelected) "Deselect all" else "Select all",
                                 color = colors.muted,
-                                fontSize = 13.5.sp,
+                                fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier.clickable {
-                                    vm.toggleSelectAllQueue(filtered.map { it.uid }.toSet())
-                                },
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable {
+                                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                        vm.toggleSelectAllQueue(filtered.map { it.uid }.toSet())
+                                    }
+                                    .padding(horizontal = 6.dp, vertical = 4.dp),
                             )
                         }
-                        Text(
-                            "Remove selected",
-                            color = colors.danger,
-                            fontSize = 13.5.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.clickable { vm.removeSelectedQueueTracks() },
-                        )
-                    }
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        OutlinedTextField(
-                            value = batchArtistInput,
-                            onValueChange = { batchArtistInput = it },
-                            placeholder = { Text("Batch artist", fontSize = 14.sp, color = colors.faint) },
-                            singleLine = true,
-                            textStyle = MaterialTheme.typography.bodyMedium,
-                            shape = RoundedCornerShape(12.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = colors.ground.copy(alpha = 0.65f),
-                                unfocusedContainerColor = colors.ground.copy(alpha = 0.65f),
-                                focusedBorderColor = colors.accent,
-                                unfocusedBorderColor = colors.glassSpecularMid,
-                                focusedTextColor = colors.text,
-                                unfocusedTextColor = colors.text,
+                        // Three-dots selection options button
+                        val optsInteraction = remember { MutableInteractionSource() }
+                        Surface(
+                            shape = CircleShape,
+                            color = if (showSelectionOptions) colors.accentSoft else colors.glassCardRaised,
+                            border = BorderStroke(
+                                1.dp,
+                                if (showSelectionOptions) colors.accent.copy(alpha = 0.65f) else colors.glassSpecularMid,
                             ),
                             modifier = Modifier
-                                .weight(1f)
-                                .defaultMinSize(minHeight = 48.dp),
-                        )
-                        val applyInteraction = remember { MutableInteractionSource() }
-                        FilledTonalButton(
-                            onClick = {
-                                if (batchArtistInput.isNotBlank()) {
-                                    vm.batchUpdateQueueArtist(batchArtistInput)
-                                    batchArtistInput = ""
-                                }
-                            },
-                            interactionSource = applyInteraction,
-                            shape = RoundedCornerShape(12.dp),
-                            contentPadding = PaddingValues(horizontal = 16.dp),
-                            modifier = Modifier
-                                .defaultMinSize(minHeight = 46.dp)
-                                .interactivePressScale(applyInteraction, 0.94f),
+                                .size(36.dp)
+                                .interactivePressScale(optsInteraction, 0.90f)
+                                .clickable(interactionSource = optsInteraction, indication = null) {
+                                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                    showSelectionOptions = !showSelectionOptions
+                                    if (!showSelectionOptions) showBatchCategoryRow = false
+                                },
                         ) {
-                            Text("Apply", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Rounded.MoreVert,
+                                    contentDescription = "Selection options",
+                                    tint = if (showSelectionOptions) colors.accentInk else colors.text,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
                         }
                     }
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                    // Expandable row of selection actions: Set Artist, Set Category, Remove
+                    AnimatedVisibility(
+                        visible = showSelectionOptions,
+                        enter = if (reduceMotion) EnterTransition.None else fadeIn(tween(150)) + expandVertically(spring(0.80f, 460f)),
+                        exit = if (reduceMotion) ExitTransition.None else fadeOut(tween(110)) + shrinkVertically(tween(130)),
                     ) {
-                        Text("Set station:", color = colors.muted, fontSize = 13.5.sp)
-                        StationCategory.entries.forEach { cat ->
-                            val active = batchStation == cat
-                            val stInteraction = remember { MutableInteractionSource() }
-                            val bg by animateColorAsState(
-                                if (active) colors.accentSoft else colors.glassCardRaised,
-                                if (reduceMotion) snap() else tween(160),
-                                label = "batchStBg${cat.name}",
-                            )
-                            Surface(
-                                shape = RoundedCornerShape(999.dp),
-                                color = bg,
-                                border = BorderStroke(1.dp, if (active) colors.accent.copy(alpha = 0.65f) else colors.border),
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            val optionsScroll = rememberScrollState()
+                            Row(
                                 modifier = Modifier
-                                    .defaultMinSize(minHeight = 36.dp)
-                                    .interactivePressScale(stInteraction, 0.93f)
-                                    .clickable(interactionSource = stInteraction, indication = null) {
-                                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                                        batchStation = cat
-                                        vm.batchUpdateQueueStation(cat)
-                                    },
+                                    .fillMaxWidth()
+                                    .horizontalScrollEdgeFade(optionsScroll, edgeWidth = 22.dp)
+                                    .horizontalScroll(optionsScroll),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Box(Modifier.padding(horizontal = 13.dp, vertical = 7.dp), contentAlignment = Alignment.Center) {
-                                    Text(
-                                        cat.displayName,
-                                        color = if (active) colors.accentInk else colors.text,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                    )
+                                ActionPill(Icons.Rounded.Person, "Set artist") {
+                                    batchArtistInput = ""
+                                    showBatchArtistDialog = true
+                                }
+                                ActionPill(
+                                    Icons.Rounded.Radio,
+                                    "Set category",
+                                ) {
+                                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                    showBatchCategoryRow = !showBatchCategoryRow
+                                }
+                                ActionPill(Icons.Rounded.DeleteOutline, "Remove", isDanger = true) {
+                                    vm.removeSelectedQueueTracks()
+                                }
+                            }
+
+                            AnimatedVisibility(
+                                visible = showBatchCategoryRow,
+                                enter = if (reduceMotion) EnterTransition.None else fadeIn(tween(140)) + expandVertically(spring(0.82f, 480f)),
+                                exit = if (reduceMotion) ExitTransition.None else fadeOut(tween(100)) + shrinkVertically(tween(120)),
+                            ) {
+                                val catPickScroll = rememberScrollState()
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .horizontalScrollEdgeFade(catPickScroll, edgeWidth = 22.dp)
+                                        .horizontalScroll(catPickScroll),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    StationCategory.entries.forEach { cat ->
+                                        val active = batchStation == cat
+                                        val stInteraction = remember { MutableInteractionSource() }
+                                        val bg by animateColorAsState(
+                                            if (active) colors.accentSoft else colors.glassCardRaised,
+                                            if (reduceMotion) snap() else tween(160),
+                                            label = "batchStBg${cat.name}",
+                                        )
+                                        Surface(
+                                            shape = RoundedCornerShape(999.dp),
+                                            color = bg,
+                                            border = BorderStroke(1.dp, if (active) colors.accent.copy(alpha = 0.65f) else colors.border),
+                                            modifier = Modifier
+                                                .defaultMinSize(minHeight = 36.dp)
+                                                .interactivePressScale(stInteraction, 0.93f)
+                                                .clickable(interactionSource = stInteraction, indication = null) {
+                                                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                                    batchStation = cat
+                                                    vm.batchUpdateQueueStation(cat)
+                                                    showBatchCategoryRow = false
+                                                },
+                                        ) {
+                                            Box(Modifier.padding(horizontal = 13.dp, vertical = 7.dp), contentAlignment = Alignment.Center) {
+                                                Text(
+                                                    cat.displayName,
+                                                    color = if (active) colors.accentInk else colors.text,
+                                                    fontSize = 13.sp,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -423,6 +480,7 @@ fun QueueScreen(
                         ) {
                             QueueTrackRowCard(
                                 track = track,
+                                selectionMode = selectionMode,
                                 isFocused = focusedTrack?.uid == track.uid,
                                 isPlayingMain = nowPlaying.isPlaying && nowPlaying.uid == track.uid && !nowPlaying.isOutro,
                                 isPlayingOutro = nowPlaying.isPlaying && nowPlaying.uid == track.uid && nowPlaying.isOutro,
@@ -516,6 +574,7 @@ fun QueueScreen(
                                 } else {
                                     QueueOutroEditorBody(
                                         track = focusedTrack,
+                                        nowPlaying = nowPlaying,
                                         outroEditorEnabled = ui.prefs.outroEditorEnabled,
                                         onPickCustomOutro = { onPickCustomOutroForQueue(focusedTrack.uid) },
                                         onPreview = { s, e, fi, fo ->
@@ -533,6 +592,18 @@ fun QueueScreen(
                                                 onError = { vm.showBanner(it, isError = true) },
                                             )
                                         },
+                                        onPreviewCustom = { customFile ->
+                                            vm.player.togglePlay(
+                                                uid = focusedTrack.uid,
+                                                title = focusedTrack.title,
+                                                artist = focusedTrack.artist,
+                                                category = focusedTrack.category,
+                                                srcFile = customFile,
+                                                isOutro = true,
+                                                onError = { vm.showBanner(it, isError = true) },
+                                            )
+                                        },
+                                        onStopPreview = { vm.player.pause() },
                                         onSaveTrim = { s, e, fi, fo, fiOn, foOn ->
                                             vm.saveQueueTrackOutro(focusedTrack.uid, null, s, e, fi, fo, fiOn, foOn)
                                         },
@@ -560,6 +631,7 @@ fun QueueScreen(
                         )
                     ) {
                         SwipeableTrackCard(
+                            enabled = !selectionMode,
                             onOutroClick = {
                                 if (ui.prefs.outroEditorEnabled) outroEditingTrackUid = track.uid
                                 else onPickCustomOutroForQueue(track.uid)
@@ -568,6 +640,7 @@ fun QueueScreen(
                         ) {
                             QueueTrackRowCard(
                                 track = track,
+                                selectionMode = selectionMode,
                                 isFocused = focusedTrack?.uid == track.uid,
                                 isPlayingMain = nowPlaying.isPlaying && nowPlaying.uid == track.uid && !nowPlaying.isOutro,
                                 isPlayingOutro = nowPlaying.isPlaying && nowPlaying.uid == track.uid && nowPlaying.isOutro,
@@ -614,20 +687,18 @@ fun QueueScreen(
         }
     }
 
-    // Phone draggable Frosted Edit Song Details ModalBottomSheet
+    // Phone draggable GPU Frosted Liquid Glass Edit Song Details Sheet
     val editTrack = ui.queueTracks.firstOrNull { it.uid == editingTrackUid }
     if (editTrack != null && !isTablet) {
-        ModalBottomSheet(
+        LiquidGlassBottomSheet(
             onDismissRequest = { editingTrackUid = null },
-            containerColor = colors.glassDockFallback,
-            contentColor = colors.text,
-            dragHandle = { BottomSheetDefaults.DragHandle(color = colors.muted.copy(alpha = 0.48f)) },
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
                     .padding(horizontal = 20.dp)
-                    .padding(bottom = 32.dp),
+                    .padding(bottom = 24.dp),
             ) {
                 Text("Edit song details", color = colors.text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(14.dp))
@@ -646,27 +717,25 @@ fun QueueScreen(
         }
     }
 
-    // Phone draggable Frosted Outro Editor ModalBottomSheet
+    // Phone draggable GPU Frosted Liquid Glass Outro Editor Sheet (blurs live app screen behind sheet)
     val outroTrack = ui.queueTracks.firstOrNull { it.uid == outroEditingTrackUid }
     if (outroTrack != null && !isTablet) {
-        ModalBottomSheet(
+        LiquidGlassBottomSheet(
             onDismissRequest = { outroEditingTrackUid = null },
-            containerColor = colors.glassDockFallback,
-            contentColor = colors.text,
-            dragHandle = { BottomSheetDefaults.DragHandle(color = colors.muted.copy(alpha = 0.48f)) },
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 20.dp)
-                    .padding(bottom = 32.dp),
+                    .padding(bottom = 24.dp),
             ) {
                 Text("Outro editor", color = colors.text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 Text("\"${outroTrack.title}\" - ${outroTrack.artist}", color = colors.muted, fontSize = 14.sp)
                 Spacer(Modifier.height(14.dp))
                 QueueOutroEditorBody(
                     track = outroTrack,
+                    nowPlaying = nowPlaying,
                     outroEditorEnabled = ui.prefs.outroEditorEnabled,
                     onPickCustomOutro = {
                         outroEditingTrackUid = null
@@ -687,6 +756,18 @@ fun QueueScreen(
                             onError = { vm.showBanner(it, isError = true) },
                         )
                     },
+                    onPreviewCustom = { customFile ->
+                        vm.player.togglePlay(
+                            uid = outroTrack.uid,
+                            title = outroTrack.title,
+                            artist = outroTrack.artist,
+                            category = outroTrack.category,
+                            srcFile = customFile,
+                            isOutro = true,
+                            onError = { vm.showBanner(it, isError = true) },
+                        )
+                    },
+                    onStopPreview = { vm.player.pause() },
                     onSaveTrim = { s, e, fi, fo, fiOn, foOn ->
                         vm.saveQueueTrackOutro(outroTrack.uid, null, s, e, fi, fo, fiOn, foOn)
                         outroEditingTrackUid = null
@@ -698,6 +779,49 @@ fun QueueScreen(
                 )
             }
         }
+    }
+
+    // Batch Set Artist Dialog (opened from Selection Options -> Set artist)
+    if (showBatchArtistDialog) {
+        AlertDialog(
+            onDismissRequest = { showBatchArtistDialog = false },
+            containerColor = colors.glassDockFallback,
+            titleContentColor = colors.text,
+            textContentColor = colors.muted,
+            title = { Text("Set artist on $selectedCount song(s)", fontSize = 19.sp, fontWeight = FontWeight.Bold) },
+            text = {
+                OutlinedTextField(
+                    value = batchArtistInput,
+                    onValueChange = { batchArtistInput = it },
+                    placeholder = { Text("Artist name", fontSize = 14.5.sp, color = colors.faint) },
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyMedium,
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            },
+            dismissButton = {
+                TextButton(onClick = { showBatchArtistDialog = false }) {
+                    Text("Cancel", fontSize = 14.sp)
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (batchArtistInput.isNotBlank()) {
+                            vm.batchUpdateQueueArtist(batchArtistInput)
+                            batchArtistInput = ""
+                            showBatchArtistDialog = false
+                        }
+                    },
+                    enabled = batchArtistInput.isNotBlank(),
+                    shape = RoundedCornerShape(999.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = colors.capsuleBg, contentColor = colors.capsuleInk),
+                ) {
+                    Text("Apply", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                }
+            },
+        )
     }
 
     // Install Progress Dialog
@@ -799,9 +923,11 @@ fun QueueScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun QueueTrackRowCard(
     track: QueueTrack,
+    selectionMode: Boolean,
     isFocused: Boolean,
     isPlayingMain: Boolean,
     isPlayingOutro: Boolean,
@@ -814,28 +940,53 @@ private fun QueueTrackRowCard(
     onOutroClick: () -> Unit,
 ) {
     val colors = LocalAppColors.current
-    val highlighted = isPlayingMain || isPlayingOutro || isFocused
+    val reduceMotion = LocalReduceMotion.current
+    val view = LocalView.current
+    val highlighted = isPlayingMain || isPlayingOutro || (selectionMode && track.selected) || (!selectionMode && isFocused)
     val playInteraction = remember { MutableInteractionSource() }
     val editInteraction = remember { MutableInteractionSource() }
 
     LiquidGlassCard(
         shape = RoundedCornerShape(18.dp),
-        tintColor = if (isPlayingMain || isPlayingOutro) colors.accentSoft.copy(alpha = 0.28f) else null,
+        tintColor = when {
+            isPlayingMain || isPlayingOutro -> colors.accentSoft.copy(alpha = 0.28f)
+            selectionMode && track.selected -> colors.accentSoft.copy(alpha = 0.16f)
+            else -> null
+        },
         accentBorder = if (highlighted) colors.accent else null,
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onRowClick() },
+            .combinedClickable(
+                onClick = {
+                    if (selectionMode) {
+                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                        onSelectToggle()
+                    } else {
+                        onRowClick()
+                    }
+                },
+                onLongClick = {
+                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                    onSelectToggle()
+                },
+            ),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Checkbox(
-                checked = track.selected,
-                onCheckedChange = { onSelectToggle() },
-                modifier = Modifier.size(26.dp),
-            )
+            AnimatedVisibility(
+                visible = selectionMode,
+                enter = if (reduceMotion) EnterTransition.None else expandHorizontally(spring(0.80f, 480f)) + fadeIn(tween(140)),
+                exit = if (reduceMotion) ExitTransition.None else shrinkHorizontally(tween(140)) + fadeOut(tween(110)),
+            ) {
+                Checkbox(
+                    checked = track.selected,
+                    onCheckedChange = { onSelectToggle() },
+                    modifier = Modifier.size(26.dp),
+                )
+            }
 
             Box(
                 modifier = Modifier
@@ -1015,21 +1166,35 @@ private fun SingleTrackDetailsForm(
 @Composable
 private fun QueueOutroEditorBody(
     track: QueueTrack,
+    nowPlaying: NowPlayingState,
     outroEditorEnabled: Boolean,
     onPickCustomOutro: () -> Unit,
     onPreview: (Double, Double, Double, Double) -> Unit,
+    onPreviewCustom: (File) -> Unit,
+    onStopPreview: () -> Unit,
     onSaveTrim: (Double, Double, Double, Double, Boolean, Boolean) -> Unit,
     onRemoveOutro: () -> Unit,
 ) {
     val colors = LocalAppColors.current
     val dur = max(1.0, track.profile?.durationSec ?: 180.0)
     var modeTab by remember(track.uid) { mutableIntStateOf(if (track.outroSrcPath != null && track.outroSrcPath != track.srcPath) 1 else 0) }
-    var startSec by remember(track.uid) { mutableDoubleStateOf(track.outroStartSec ?: max(0.0, dur - 20.0)) }
-    var endSec by remember(track.uid) { mutableDoubleStateOf(track.outroEndSec ?: dur) }
+    var startSec by remember(track.uid) { mutableDoubleStateOf((track.outroStartSec ?: max(0.0, dur - 20.0)).coerceIn(0.0, max(0.0, dur - 0.5))) }
+    var endSec by remember(track.uid) { mutableDoubleStateOf((track.outroEndSec ?: dur).coerceIn(min(dur, startSec + 0.5), dur)) }
     var fadeInOn by remember(track.uid) { mutableStateOf(track.outroFadeInEnabled) }
     var fadeOutOn by remember(track.uid) { mutableStateOf(track.outroFadeOutEnabled) }
     var fadeInSec by remember(track.uid) { mutableFloatStateOf(track.outroFadeIn.toFloat().takeIf { it > 0f } ?: 0.8f) }
     var fadeOutSec by remember(track.uid) { mutableFloatStateOf(track.outroFadeOut.toFloat().takeIf { it > 0f } ?: 1.2f) }
+
+    LaunchedEffect(dur) {
+        if (endSec > dur) endSec = dur
+        if (startSec >= endSec - 0.5) startSec = max(0.0, endSec - 20.0)
+    }
+
+    val isPreparingOutro = nowPlaying.uid == track.uid && nowPlaying.isOutro && nowPlaying.isPreparing
+    val isPlayingOutro = nowPlaying.uid == track.uid && nowPlaying.isOutro && nowPlaying.isPlaying
+    val playbackProgress = if (isPlayingOutro && nowPlaying.durationMs > 0) {
+        (nowPlaying.positionMs.toFloat() / nowPlaying.durationMs.toFloat()).coerceIn(0f, 1f)
+    } else null
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         if (!outroEditorEnabled) {
@@ -1064,12 +1229,15 @@ private fun QueueOutroEditorBody(
                 startSec = startSec,
                 endSec = endSec,
                 onRangeChange = { s, e -> startSec = s; endSec = e },
+                playbackProgress = playbackProgress,
             )
 
+            val presetsScroll = rememberScrollState()
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
+                    .horizontalScrollEdgeFade(presetsScroll, edgeWidth = 22.dp)
+                    .horizontalScroll(presetsScroll),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 ActionPill(null, "Last 20s") { startSec = max(0.0, dur - 20.0); endSec = dur }
@@ -1128,17 +1296,46 @@ private fun QueueOutroEditorBody(
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedButton(
                         onClick = {
-                            onPreview(
-                                startSec,
-                                endSec,
-                                if (fadeInOn) fadeInSec.toDouble() else 0.0,
-                                if (fadeOutOn) fadeOutSec.toDouble() else 0.0,
-                            )
+                            if (isPlayingOutro) {
+                                onStopPreview()
+                            } else if (!isPreparingOutro) {
+                                onPreview(
+                                    startSec,
+                                    endSec,
+                                    if (fadeInOn) fadeInSec.toDouble() else 0.0,
+                                    if (fadeOutOn) fadeOutSec.toDouble() else 0.0,
+                                )
+                            }
                         },
+                        enabled = !isPreparingOutro,
                         shape = RoundedCornerShape(999.dp),
+                        border = BorderStroke(
+                            1.dp,
+                            if (isPlayingOutro) colors.accent else colors.glassSpecularTop,
+                        ),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = if (isPlayingOutro) colors.accentSoft else Color.Transparent,
+                            contentColor = if (isPlayingOutro) colors.accentInk else colors.text,
+                        ),
                         modifier = Modifier.defaultMinSize(minHeight = 44.dp),
                     ) {
-                        Text("Preview", fontSize = 14.sp)
+                        if (isPreparingOutro) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(15.dp),
+                                strokeWidth = 2.dp,
+                                color = colors.accentInk,
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text("Loading...", fontSize = 14.sp)
+                        } else {
+                            Icon(
+                                if (isPlayingOutro) Icons.Rounded.Stop else Icons.Rounded.PlayArrow,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(if (isPlayingOutro) "Stop" else "Preview", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                        }
                     }
                     Button(
                         onClick = {
@@ -1171,12 +1368,24 @@ private fun QueueOutroEditorBody(
                         color = colors.muted,
                         fontSize = 14.sp,
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                         Button(onClick = onPickCustomOutro, shape = RoundedCornerShape(999.dp)) {
                             Text("Choose audio file", fontSize = 14.sp)
                         }
+                        val customFile = track.outroSrcPath?.takeIf { it != track.srcPath }?.let { File(it) }?.takeIf { it.isFile }
+                        if (customFile != null) {
+                            OutlinedButton(
+                                onClick = {
+                                    if (isPlayingOutro) onStopPreview() else if (!isPreparingOutro) onPreviewCustom(customFile)
+                                },
+                                enabled = !isPreparingOutro,
+                                shape = RoundedCornerShape(999.dp),
+                            ) {
+                                Text(if (isPlayingOutro) "Stop" else "Preview", fontSize = 14.sp)
+                            }
+                        }
                         if (track.hasOutro) {
-                            TextButton(onClick = onRemoveOutro) { Text("Remove outro", color = colors.danger, fontSize = 14.sp) }
+                            TextButton(onClick = onRemoveOutro) { Text("Remove", color = colors.danger, fontSize = 14.sp) }
                         }
                     }
                 }

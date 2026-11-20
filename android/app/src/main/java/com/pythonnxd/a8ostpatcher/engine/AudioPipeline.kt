@@ -1,6 +1,7 @@
 package com.pythonnxd.a8ostpatcher.engine
 
 import android.content.Context
+import android.media.AudioFormat
 import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
@@ -36,6 +37,28 @@ data class DecodedPcm(
 object AudioPipeline {
     val AUDIO_EXTENSIONS = setOf(".mpc", ".ogg", ".mp3", ".wav", ".flac", ".m4a", ".aac")
     val NATIVE_PLAYABLE_EXTS = setOf(".mp3", ".ogg", ".wav", ".flac", ".m4a", ".aac")
+
+    private val pcmCacheLock = Any()
+    private var lastDecodedKey: String? = null
+    private var lastDecodedPcm: DecodedPcm? = null
+
+    private fun decodeToPcmCached(srcFile: File, tempDir: File): DecodedPcm {
+        val key = "${srcFile.absolutePath}|${srcFile.lastModified()}|${srcFile.length()}"
+        synchronized(pcmCacheLock) {
+            if (lastDecodedKey == key) {
+                lastDecodedPcm?.let { return it }
+            }
+        }
+        val decoded = decodeToPcm(srcFile, tempDir)
+        // Cache up to ~32M shorts (~64 MB, ~6 min 44.1kHz stereo) so repeated outro trim previews are instant
+        if (decoded.samples.size <= 32_000_000) {
+            synchronized(pcmCacheLock) {
+                lastDecodedKey = key
+                lastDecodedPcm = decoded
+            }
+        }
+        return decoded
+    }
 
     fun sanitizeId(rawName: String, prefix: String = "m_"): String {
         val base = File(rawName).nameWithoutExtension
@@ -283,6 +306,7 @@ object AudioPipeline {
             val mime = format.getString(MediaFormat.KEY_MIME)!!
             var sampleRate = if (format.containsKey(MediaFormat.KEY_SAMPLE_RATE)) format.getInteger(MediaFormat.KEY_SAMPLE_RATE) else 44100
             var channels = if (format.containsKey(MediaFormat.KEY_CHANNEL_COUNT)) format.getInteger(MediaFormat.KEY_CHANNEL_COUNT) else 2
+            var pcmEncoding = AudioFormat.ENCODING_PCM_16BIT
 
             codec = MediaCodec.createDecoderByType(mime)
             codec.configure(format, null, null, 0)
@@ -316,17 +340,27 @@ object AudioPipeline {
                         val outFmt = codec.outputFormat
                         if (outFmt.containsKey(MediaFormat.KEY_SAMPLE_RATE)) sampleRate = outFmt.getInteger(MediaFormat.KEY_SAMPLE_RATE)
                         if (outFmt.containsKey(MediaFormat.KEY_CHANNEL_COUNT)) channels = outFmt.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+                        if (outFmt.containsKey(MediaFormat.KEY_PCM_ENCODING)) pcmEncoding = outFmt.getInteger(MediaFormat.KEY_PCM_ENCODING)
                     }
                     outIdx >= 0 -> {
                         val outBuf = codec.getOutputBuffer(outIdx)
                         if (outBuf != null && info.size > 0) {
                             outBuf.position(info.offset)
                             outBuf.limit(info.offset + info.size)
-                            val count = info.size / 2
-                            val arr = ShortArray(count)
-                            outBuf.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(arr)
+                            val arr = if (pcmEncoding == AudioFormat.ENCODING_PCM_FLOAT) {
+                                val fCount = info.size / 4
+                                val fb = outBuf.order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
+                                ShortArray(fCount) {
+                                    (fb.get() * 32767f).coerceIn(-32768f, 32767f).toInt().toShort()
+                                }
+                            } else {
+                                val count = info.size / 2
+                                val a = ShortArray(count)
+                                outBuf.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(a)
+                                a
+                            }
                             chunks.add(arr)
-                            totalShorts += count
+                            totalShorts += arr.size
                         }
                         codec.releaseOutputBuffer(outIdx, false)
                         if ((info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
@@ -501,7 +535,7 @@ object AudioPipeline {
 
     fun analyzeAudioProfile(srcFile: File, tempDir: File, numBins: Int = 96, includePeaks: Boolean = true): AudioProfile {
         return try {
-            val decoded = decodeToPcm(srcFile, tempDir)
+            val decoded = decodeToPcmCached(srcFile, tempDir)
             val n = decoded.samples.size
             if (n == 0) {
                 return AudioProfile(durationSec = 0.0, peakDb = -96.0, rmsDb = -96.0, badge = "Silent")
@@ -586,7 +620,7 @@ object AudioPipeline {
         val outWav = File(cacheDir, "prev_$hash.wav")
         if (outWav.isFile && outWav.length() > 44) return outWav
 
-        val decoded = decodeToPcm(srcFile, cacheDir)
+        val decoded = decodeToPcmCached(srcFile, cacheDir)
         val processed = if (hasTrimOrFade) {
             processPcm(decoded, 44100, startSec, endSec, fadeInSec, fadeOutSec)
         } else {
@@ -652,7 +686,7 @@ object AudioPipeline {
                 title = title,
                 artist = artist,
                 category = category,
-                selected = true,
+                selected = false,
                 conflict = baseId in existingGameIds,
                 hasOutro = outroFile != null,
                 outroSrcPath = outroFile?.absolutePath,

@@ -36,6 +36,7 @@ enum class ToolsSection(val label: String) {
 data class BannerMessage(
     val text: String,
     val isError: Boolean = false,
+    val id: Long = System.nanoTime(),
 )
 
 data class MainUiState(
@@ -1003,11 +1004,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             showBanner("Select a valid Asphalt 8 folder in Settings first.", isError = true)
             return
         }
-        val selected = st.queueTracks.filter { it.selected }
+        val selected = st.queueTracks.filter { it.selected }.ifEmpty { st.queueTracks }
         if (selected.isEmpty()) {
-            showBanner("Select at least one song to install.", isError = true)
+            showBanner("Add at least one song to install.", isError = true)
             return
         }
+        val installTracks = selected.map { it.copy(selected = true) }
         viewModelScope.launch {
             _ui.update {
                 it.copy(
@@ -1033,7 +1035,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             appFilesDir = appCtx.filesDir,
                             tempDir = File(appCtx.cacheDir, "install_tmp"),
                             gameDirPath = ws.mirrorDir.absolutePath,
-                            tracks = st.queueTracks,
+                            tracks = installTracks,
                             qualityPreset = st.prefs.qualityPreset,
                             keepOriginal = st.prefs.keepOriginal,
                             conflictPolicy = st.prefs.conflictPolicy,
@@ -1059,7 +1061,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             appFilesDir = appCtx.filesDir,
                             tempDir = File(appCtx.cacheDir, "install_tmp"),
                             gameDirPath = st.prefs.gameDir,
-                            tracks = st.queueTracks,
+                            tracks = installTracks,
                             qualityPreset = st.prefs.qualityPreset,
                             keepOriginal = st.prefs.keepOriginal,
                             conflictPolicy = st.prefs.conflictPolicy,
@@ -1127,6 +1129,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             cur.copy(libraryTracks = cur.libraryTracks.map {
                 if (it.uid == uid) it.copy(selected = !it.selected) else it
             })
+        }
+    }
+
+    fun toggleSelectAllLibrary(filteredUids: Set<String>) {
+        _ui.update { cur ->
+            val target = cur.libraryTracks.filter { it.uid in filteredUids }
+            val allChecked = target.isNotEmpty() && target.all { it.selected }
+            cur.copy(libraryTracks = cur.libraryTracks.map {
+                if (it.uid in filteredUids) it.copy(selected = !allChecked) else it
+            })
+        }
+    }
+
+    fun clearLibrarySelection() {
+        _ui.update { cur ->
+            cur.copy(libraryTracks = cur.libraryTracks.map { it.copy(selected = false) })
         }
     }
 

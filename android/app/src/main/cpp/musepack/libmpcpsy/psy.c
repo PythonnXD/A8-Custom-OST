@@ -112,6 +112,7 @@ static float         tmp_Mask_L [PART_LONG];
 static float         tmp_Mask_R [PART_LONG];           // for Post-Masking L/R
 static int           Vocal_L    [MAX_CVD_LINE + 4];
 static int           Vocal_R    [MAX_CVD_LINE + 4];    // FFT-Line belongs to harmonic?
+static float         g_adapt_ltq_loud = 0.f;
 
 /* F U N C T I O N S */
 
@@ -143,6 +144,7 @@ void Init_Psychoakustik ( PsyModel* m)
 	memset ( T_R,       0, sizeof T_R     );
 	memset ( Vocal_L,   0, sizeof Vocal_L );
 	memset ( Vocal_R,   0, sizeof Vocal_R );
+	g_adapt_ltq_loud = 0.f;
 
 	m->SampleFreq = 0.;
 	m->BandWidth = 0.;
@@ -172,6 +174,18 @@ void Init_Psychoakustik ( PsyModel* m)
     return;
 }
 
+
+void Reset_Psychoakustik_Thresholds ( void )
+{
+    int i;
+    g_adapt_ltq_loud = 0.f;
+    for ( i = 0; i < PART_LONG; i++ ) {
+        pre_erg_L  [0][i/3] = pre_erg_R  [0][i/3] =
+        pre_erg_L  [1][i/3] = pre_erg_R  [1][i/3] =
+        tmp_Mask_L [i]      = tmp_Mask_R [i]      =
+        PreThr_L   [i]      = PreThr_R   [i]      = partLtq [i];
+    }
+}
 
 // VBRmode 1: Adjustment of all SMRs via a factor (offset of SMRoffset dB)
 // VBRmode 2: SMRs have a minimum of minSMR dB
@@ -564,7 +578,6 @@ ApplyTonalityOffset ( float* erg0, float* erg1, const float* werg0, const float*
 static float
 AdaptLtq ( PsyModel* m, const float* erg0, const float* erg1 )
 {
-    static float  loud   = 0.f;
 	float*        weight = Loudness;
     float         sum    = 0.f;
     int           n;
@@ -575,10 +588,10 @@ AdaptLtq ( PsyModel* m, const float* erg0, const float* erg1 )
 
     // Utilization of the time constants (fast drop of Ltq T=5, slow rise of Ltq T=20)
     //loud = (sum < loud) ? (4 * sum + loud)*0.2f : (19 * loud + sum)*0.05f;
-    loud = 0.98 * loud + 0.02 * (0.5 * sum);
+    g_adapt_ltq_loud = 0.98 * g_adapt_ltq_loud + 0.02 * (0.5 * sum);
 
     // calculate dynamic offset for threshold in quiet, 0...+20 dB, at 96 dB loudness, an offset of 20 dB is assumed
-    return 1.f + m->varLtq * loud * 5.023772e-08f;
+    return 1.f + m->varLtq * g_adapt_ltq_loud * 5.023772e-08f;
 }
 
 // input : simultaneous masking threshold *frqthr,

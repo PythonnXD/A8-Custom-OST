@@ -561,8 +561,15 @@ fun SettingsScreen(
             )
         }
 
-        // 6. App (Reduce motion + About the app)
+        // 6. App (Now Playing bar + Reduce motion + About the app)
         SettingsGroupCard(title = "App") {
+            SettingSwitchRow(
+                title = "Now Playing bar",
+                description = "Show the compact floating mini-player above the navigation bar while previewing tracks.",
+                checked = prefs.showNowPlayingBar,
+                onCheckedChange = { v -> vm.updatePrefs { it.copy(showNowPlayingBar = v) } },
+            )
+            HorizontalDivider(color = colors.rule)
             SettingSwitchRow(
                 title = "Reduce motion",
                 description = "Disable UI animations, transitions, and moving indicators across the app.",
